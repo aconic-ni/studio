@@ -5,7 +5,7 @@
 /* Define HSL values for the page background, grid, and component themes */
 :root {
   /* Page background and grid */
-  --app-bg-color: 213 57% 23%; /* #1a365d - Page background */
+  --app-bg-color: 221.2 83.2% 53.3%; /* Vibrant Blue from original primary button */
   --app-grid-line-color: 0 0% 100%; /* White for grid lines */
   --app-grid-line-alpha: 0.05; /* Alpha for grid lines */
   --app-text-on-page-bg: 0 0% 95%; /* Light text for elements directly on page background */
@@ -59,8 +59,8 @@
 }
 
 .dark {
-  /* Page background and grid for dark theme - using the same as light, as requested */
-  --app-bg-color: 213 57% 23%; /* #1a365d */
+  /* Page background and grid for dark theme */
+  --app-bg-color: 217.2 91.2% 59.8%; /* Vibrant Blue from original dark primary button */
   --app-grid-line-color: 0 0% 100%; /* White for grid lines */
   --app-grid-line-alpha: 0.05; /* Alpha for grid lines */
   --app-text-on-page-bg: 0 0% 95%; /* Light text for direct page background */
