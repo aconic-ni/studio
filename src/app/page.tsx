@@ -314,12 +314,15 @@ export default function CustomsPage() {
       if (editingExamId) { 
         const examDocRef = doc(db, "exams", editingExamId);
         await updateDoc(examDocRef, examDataToSave);
-        toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado en la base de datos." });
       } else { 
         const docRef = await addDoc(collection(db, "exams"), examDataToSave);
-        toast({ title: "Examen Guardado", description: `El examen ha sido guardado en la base de datos (ID: ${docRef.id}).` });
       }
       setDbError(null);
+
+      toast({ 
+        title: "Operación Guardada Exitosamente", 
+        description: `Correos enviados a: gerencia@aconic.com.ni; coordinacion@aconic.com.ni y asuntos.juridicos@aconic.com.ni. Muchas gracias por tu excelente desempeño ${examInfo.inspectorName}.` 
+      });
 
       if (generateReports) {
         try {
@@ -819,4 +822,5 @@ export default function CustomsPage() {
     
 
     
+
 
