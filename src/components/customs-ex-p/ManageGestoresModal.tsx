@@ -2,7 +2,7 @@
 "use client";
 
 import type { FC } from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,35 +15,37 @@ import { z } from 'zod';
 import type { ManagedGestorAccount } from '@/types';
 import { Users, PlusCircle, Edit, Trash2, Save, X, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDocs, writeBatch } from 'firebase/firestore';
 
 const gestorAccountSchema = z.object({
   username: z.string().min(3, "Nombre de usuario debe tener al menos 3 caracteres."),
-  password: z.string().min(6, "Clave debe tener al menos 6 caracteres.").optional(), // Optional during edit if not changing
+  password: z.string().min(6, "Clave debe tener al menos 6 caracteres.").optional(), 
   gestorName: z.string().min(1, "Nombre del Gestor es requerido."),
 });
 
 type GestorAccountFormData = z.infer<typeof gestorAccountSchema>;
 
 interface GestorAccountFormProps {
-  onSubmit: (data: GestorAccountFormData, accountId?: string) => void;
+  onSubmit: (data: GestorAccountFormData, accountId?: string) => Promise<void>; // Made async
+  onCancel: () => void; // Added for closing form
   initialData?: ManagedGestorAccount;
   existingUsernames: string[];
   isEditing?: boolean;
+  isSaving: boolean; // To disable button during save
 }
 
-const GestorAccountForm: FC<GestorAccountFormProps> = ({ onSubmit, initialData, existingUsernames, isEditing }) => {
+const GestorAccountForm: FC<GestorAccountFormProps> = ({ onSubmit, onCancel, initialData, existingUsernames, isEditing, isSaving }) => {
   const { control, handleSubmit, formState: { errors }, watch, reset } = useForm<GestorAccountFormData>({
     resolver: zodResolver(gestorAccountSchema.refine(data => {
-        // Password is required if not editing, or if editing and password field is touched/filled
-        if (!isEditing) return !!data.password;
+        if (!isEditing) return !!data.password && data.password.length >= 6;
         if (isEditing && data.password && data.password.length > 0) return data.password.length >= 6;
-        return true; // If editing and password not touched, it's fine
+        return true; 
     }, {
         message: "Clave es requerida y debe tener al menos 6 caracteres.",
         path: ["password"],
     }).refine(data => {
-      // Username must be unique if not editing or if username changed during edit
-      if (isEditing && initialData?.username === data.username) return true;
+      if (isEditing && initialData?.username.toLowerCase() === data.username.toLowerCase()) return true;
       return !existingUsernames.includes(data.username.toLowerCase());
     }, {
       message: "Este nombre de usuario ya existe.",
@@ -52,14 +54,14 @@ const GestorAccountForm: FC<GestorAccountFormProps> = ({ onSubmit, initialData, 
     defaultValues: {
       username: initialData?.username || '',
       gestorName: initialData?.gestorName || '',
-      password: '', // Always start password empty for security
+      password: '', 
     },
   });
   const [showPassword, setShowPassword] = useState(false);
 
-  const submitHandler = (data: GestorAccountFormData) => {
-    onSubmit(data, initialData?.id);
-    reset(); // Reset form after submission
+  const submitHandler = async (data: GestorAccountFormData) => {
+    await onSubmit(data, initialData?.id);
+    // Reset is handled by modal re-render or explicit call
   };
   
   return (
@@ -70,7 +72,7 @@ const GestorAccountForm: FC<GestorAccountFormProps> = ({ onSubmit, initialData, 
         render={({ field }) => (
           <div>
             <Label htmlFor="username">Nombre de Usuario</Label>
-            <Input id="username" {...field} placeholder="e.g., jgestor" disabled={isEditing}/>
+            <Input id="username" {...field} placeholder="e.g., jgestor" disabled={isEditing || isSaving}/>
             {errors.username && <p className="text-xs text-destructive mt-1">{errors.username.message}</p>}
           </div>
         )}
@@ -81,7 +83,7 @@ const GestorAccountForm: FC<GestorAccountFormProps> = ({ onSubmit, initialData, 
         render={({ field }) => (
           <div>
             <Label htmlFor="gestorName">Nombre Completo del Gestor</Label>
-            <Input id="gestorName" {...field} placeholder="e.g., Juan Gestor Pérez" />
+            <Input id="gestorName" {...field} placeholder="e.g., Juan Gestor Pérez" disabled={isSaving} />
             {errors.gestorName && <p className="text-xs text-destructive mt-1">{errors.gestorName.message}</p>}
           </div>
         )}
@@ -93,22 +95,20 @@ const GestorAccountForm: FC<GestorAccountFormProps> = ({ onSubmit, initialData, 
             name="password"
             control={control}
             render={({ field }) => (
-                <Input id="password" type={showPassword ? "text" : "password"} {...field} placeholder="Nueva clave" />
+                <Input id="password" type={showPassword ? "text" : "password"} {...field} placeholder="Nueva clave" disabled={isSaving} />
             )}
         />
-        <Button type="button" variant="ghost" size="icon" onClick={() => setShowPassword(!showPassword)} aria-label="Mostrar/ocultar clave">
+        <Button type="button" variant="ghost" size="icon" onClick={() => setShowPassword(!showPassword)} disabled={isSaving} aria-label="Mostrar/ocultar clave">
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </Button>
         </div>
         {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
       </div>
       <DialogFooter className="pt-4">
-        <DialogClose asChild>
-            <Button type="button" variant="outline"> <X className="mr-2 h-4 w-4" />Cancelar</Button>
-        </DialogClose>
-        <Button type="submit">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSaving}> <X className="mr-2 h-4 w-4" />Cancelar</Button>
+        <Button type="submit" disabled={isSaving}>
           <Save className="mr-2 h-4 w-4" />
-          {isEditing ? 'Actualizar Cuenta' : 'Crear Cuenta'}
+          {isSaving ? (isEditing ? 'Actualizando...' : 'Creando...') : (isEditing ? 'Actualizar Cuenta' : 'Crear Cuenta')}
         </Button>
       </DialogFooter>
     </form>
@@ -119,43 +119,92 @@ const GestorAccountForm: FC<GestorAccountFormProps> = ({ onSubmit, initialData, 
 interface ManageGestoresModalProps {
   isOpen: boolean;
   onClose: () => void;
-  accounts: ManagedGestorAccount[];
-  onSaveAccounts: (accounts: ManagedGestorAccount[]) => void;
+  // accounts and onSaveAccounts are removed as we'll use Firestore directly
 }
 
-export const ManageGestoresModal: FC<ManageGestoresModalProps> = ({ isOpen, onClose, accounts, onSaveAccounts }) => {
+export const ManageGestoresModal: FC<ManageGestoresModalProps> = ({ isOpen, onClose }) => {
+  const [accounts, setAccounts] = useState<ManagedGestorAccount[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingAccount, setEditingAccount] = useState<ManagedGestorAccount | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+  const firebaseConfigured = db !== null;
 
-  const handleAddOrUpdateAccount = (data: GestorAccountFormData, accountId?: string) => {
-    let updatedAccounts;
-    if (accountId) { // Editing
-      updatedAccounts = accounts.map(acc =>
-        acc.id === accountId ? { ...acc, username: data.username, gestorName: data.gestorName, password: data.password || acc.password } : acc
-      );
-      toast({ title: "Cuenta Actualizada", description: `La cuenta para ${data.username} ha sido actualizada.` });
-    } else { // Adding new
-      const newAccount: ManagedGestorAccount = {
-        id: crypto.randomUUID(),
-        username: data.username,
-        password: data.password!, // Password is required for new accounts by schema
-        gestorName: data.gestorName,
-      };
-      updatedAccounts = [...accounts, newAccount];
-      toast({ title: "Cuenta Creada", description: `La cuenta para ${data.username} ha sido creada.` });
+  useEffect(() => {
+    if (!isOpen || !firebaseConfigured) {
+      setAccounts([]); // Clear accounts if modal is closed or Firebase not configured
+      return;
     }
-    onSaveAccounts(updatedAccounts);
-    setShowForm(false);
-    setEditingAccount(null);
+    setIsLoading(true);
+    const gestorAccountsRef = collection(db, "gestorAccounts");
+    const unsubscribe = onSnapshot(gestorAccountsRef, (snapshot) => {
+      const fetchedAccounts: ManagedGestorAccount[] = [];
+      snapshot.forEach(doc => {
+        fetchedAccounts.push({ id: doc.id, ...doc.data() } as ManagedGestorAccount);
+      });
+      setAccounts(fetchedAccounts);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching gestor accounts:", error);
+      toast({ title: "Error de Carga", description: "No se pudieron cargar las cuentas de gestores.", variant: "destructive" });
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [isOpen, firebaseConfigured, toast]);
+
+  const handleAddOrUpdateAccount = async (data: GestorAccountFormData, accountId?: string) => {
+    if (!firebaseConfigured) {
+      toast({ title: "Error de Configuración", description: "Firebase no está configurado.", variant: "destructive"});
+      return;
+    }
+    setIsSaving(true);
+    try {
+      if (accountId) { // Editing
+        const accountRef = doc(db, "gestorAccounts", accountId);
+        const accountToUpdate: Partial<ManagedGestorAccount> = { 
+            username: data.username, 
+            gestorName: data.gestorName 
+        };
+        if (data.password) { // Only update password if provided
+            accountToUpdate.password = data.password;
+        }
+        await updateDoc(accountRef, accountToUpdate);
+        toast({ title: "Cuenta Actualizada", description: `La cuenta para ${data.username} ha sido actualizada.` });
+      } else { // Adding new
+        const newAccountData: Omit<ManagedGestorAccount, 'id'> = {
+          username: data.username.toLowerCase(), // Store username in lowercase for case-insensitive query
+          password: data.password!, 
+          gestorName: data.gestorName,
+        };
+        await addDoc(collection(db, "gestorAccounts"), newAccountData);
+        toast({ title: "Cuenta Creada", description: `La cuenta para ${data.username} ha sido creada.` });
+      }
+      setShowForm(false);
+      setEditingAccount(null);
+    } catch (error) {
+      console.error("Error saving gestor account:", error);
+      toast({ title: "Error al Guardar", description: "No se pudo guardar la cuenta del gestor.", variant: "destructive"});
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDeleteAccount = (accountId: string) => {
+  const handleDeleteAccount = async (accountId: string) => {
+    if (!firebaseConfigured) {
+      toast({ title: "Error de Configuración", description: "Firebase no está configurado.", variant: "destructive"});
+      return;
+    }
     const accountToDelete = accounts.find(acc => acc.id === accountId);
     if (window.confirm(`¿Está seguro que desea eliminar la cuenta de ${accountToDelete?.username}? Esta acción no se puede deshacer.`)) {
-        const updatedAccounts = accounts.filter(acc => acc.id !== accountId);
-        onSaveAccounts(updatedAccounts);
-        toast({ title: "Cuenta Eliminada", description: `La cuenta ha sido eliminada.`, variant: "destructive" });
+        try {
+            await deleteDoc(doc(db, "gestorAccounts", accountId));
+            toast({ title: "Cuenta Eliminada", description: `La cuenta ha sido eliminada.`, variant: "destructive" });
+        } catch (error) {
+            console.error("Error deleting gestor account:", error);
+            toast({ title: "Error al Eliminar", description: "No se pudo eliminar la cuenta.", variant: "destructive"});
+        }
     }
   };
 
@@ -168,11 +217,43 @@ export const ManageGestoresModal: FC<ManageGestoresModalProps> = ({ isOpen, onCl
     setEditingAccount(null);
     setShowForm(true);
   };
+  
+  const handleCloseForm = () => {
+    setShowForm(false);
+    setEditingAccount(null);
+  }
 
   const existingUsernames = accounts.map(acc => acc.username.toLowerCase());
 
+  const handleCloseModal = () => {
+    if (isSaving) return; // Prevent closing if saving
+    setShowForm(false);
+    setEditingAccount(null);
+    onClose();
+  }
+
+  if (!firebaseConfigured && isOpen) {
+    return (
+      <Dialog open={isOpen} onOpenChange={handleCloseModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Error de Configuración</DialogTitle>
+          </DialogHeader>
+          <DialogDescription>
+            Firebase no está configurado. La gestión de cuentas de gestores no está disponible.
+            Por favor, configure Firebase en <code className="bg-muted text-muted-foreground px-1 rounded-sm">src/lib/firebase.ts</code>.
+          </DialogDescription>
+          <DialogFooter>
+            <Button onClick={handleCloseModal}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) { setShowForm(false); setEditingAccount(null); onClose(); } }}>
+    <Dialog open={isOpen} onOpenChange={handleCloseModal}>
       <DialogContent className="sm:max-w-[600px] md:max-w-[750px] lg:max-w-[800px] flex flex-col max-h-[90vh] text-foreground">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
@@ -186,19 +267,23 @@ export const ManageGestoresModal: FC<ManageGestoresModalProps> = ({ isOpen, onCl
           <GestorAccountForm
             key={editingAccount ? editingAccount.id : 'new'}
             onSubmit={handleAddOrUpdateAccount}
+            onCancel={handleCloseForm}
             initialData={editingAccount || undefined}
             existingUsernames={existingUsernames.filter(u => u !== editingAccount?.username.toLowerCase())}
             isEditing={!!editingAccount}
+            isSaving={isSaving}
           />
         ) : (
           <>
             <div className="py-2">
-              <Button onClick={handleShowAddForm} size="sm">
+              <Button onClick={handleShowAddForm} size="sm" disabled={isLoading || isSaving}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Añadir Nueva Cuenta
               </Button>
             </div>
             <ScrollArea className="flex-grow min-h-0 pr-1">
-              {accounts.length === 0 ? (
+              {isLoading ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Cargando cuentas...</p>
+              ) : accounts.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">No hay cuentas de gestores configuradas.</p>
               ) : (
               <Table>
@@ -215,10 +300,10 @@ export const ManageGestoresModal: FC<ManageGestoresModalProps> = ({ isOpen, onCl
                       <TableCell>{account.username}</TableCell>
                       <TableCell>{account.gestorName}</TableCell>
                       <TableCell className="text-right space-x-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleEditAccount(account)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleEditAccount(account)} disabled={isSaving}>
                           <Edit className="h-4 w-4 text-blue-600" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteAccount(account.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteAccount(account.id)} disabled={isSaving}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </TableCell>
@@ -229,7 +314,7 @@ export const ManageGestoresModal: FC<ManageGestoresModalProps> = ({ isOpen, onCl
               )}
             </ScrollArea>
             <DialogFooter className="pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => {setShowForm(false); setEditingAccount(null); onClose();}}>
+              <Button type="button" variant="outline" onClick={handleCloseModal} disabled={isSaving}>
                 <X className="mr-2 h-4 w-4" /> Cerrar
               </Button>
             </DialogFooter>
@@ -239,3 +324,5 @@ export const ManageGestoresModal: FC<ManageGestoresModalProps> = ({ isOpen, onCl
     </Dialog>
   );
 };
+
+    
