@@ -50,7 +50,7 @@ const initialProductFormData: Omit<Product, 'id'> = {
   itemNumber: '',
   packageNumbers: '',
   packageQuantity: 0,
-  unitQuantity: 1,
+  unitQuantity: 0,
   description: '',
   brand: '',
   model: '',
@@ -58,7 +58,7 @@ const initialProductFormData: Omit<Product, 'id'> = {
   merchandiseState: '',
   weightValue: 0,
   weightUnit: 'kg',
-  measurementUnit: 'unidades',
+  measurementUnit: '',
   serialNumber: '',
   observation: '',
   status: PRODUCT_STATUS.CONFORME,
@@ -657,7 +657,7 @@ export default function CustomsPage() {
                       <Button 
                         onClick={handlePreview} 
                         size="lg" 
-                        disabled={commonDisabledConditionForActions} // Preview doesn't strictly need firebase
+                        disabled={commonDisabledConditionForActions} 
                         className="w-full sm:w-auto order-5 sm:order-none bg-accent hover:bg-accent/90 text-accent-foreground"
                       >
                         <Eye className="mr-2 h-5 w-5" />
@@ -711,4 +711,5 @@ export default function CustomsPage() {
     
 
     
+
 

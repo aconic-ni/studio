@@ -18,18 +18,18 @@ export type ProductStatus = typeof PRODUCT_STATUS[keyof typeof PRODUCT_STATUS];
 
 export interface Product {
   id: string;
-  itemNumber: string;
+  itemNumber?: string;
   packageNumbers?: string;
-  packageQuantity: number;
-  unitQuantity: number;
+  packageQuantity?: number;
+  unitQuantity?: number;
   description: string;
   brand?: string;
   model?: string;
-  origin: string;
+  origin?: string;
   merchandiseState?: string; // e.g., "Nuevo", "Usado", "Dañado leve"
   weightValue?: number;
   weightUnit?: string; // e.g., "kg", "lb", "g"
-  measurementUnit: string; // e.g., "unidades", "pares", "docenas"
+  measurementUnit?: string; // e.g., "unidades", "pares", "docenas"
   serialNumber?: string;
   observation?: string;
   status: ProductStatus;
