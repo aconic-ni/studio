@@ -21,11 +21,11 @@ import { CheckCircle, FileText, Package, DownloadCloud, X, Save, Eye } from 'luc
 interface PreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void; // For 'form' view, this will trigger save. For 'database' view (viewer), it's just a close.
   examInfo: ExamInfo | null;
   products: Product[];
   isEditing?: boolean; 
-  isViewerMode?: boolean; 
+  isViewerMode?: boolean; // True if opened from database view by a viewer or admin just to see details
 }
 
 const getStatusBadgeVariant = (status: ProductStatus): string => {
@@ -59,8 +59,8 @@ export const PreviewModal: FC<PreviewModalProps> = ({
   onConfirm, 
   examInfo, 
   products, 
-  isEditing = false,
-  isViewerMode = false 
+  isEditing = false, // Is the exam being edited (relevant for 'form' view)
+  isViewerMode = false // Is the modal opened in a read-only context (from 'database' view)
 }) => {
   if (!examInfo) return null;
 
@@ -72,9 +72,7 @@ export const PreviewModal: FC<PreviewModalProps> = ({
   
   const confirmButtonIcon = isViewerMode 
     ? <X className="mr-2 h-4 w-4" /> 
-    : isEditing 
-      ? <Save className="mr-2 h-4 w-4" /> 
-      : <DownloadCloud className="mr-2 h-4 w-4" />;
+    : <Save className="mr-2 h-4 w-4" /> ; // Save icon for both new and edit confirmation from form view
 
   const titleText = isViewerMode
     ? "Detalles del Examen"
@@ -97,7 +95,7 @@ export const PreviewModal: FC<PreviewModalProps> = ({
           </DialogTitle>
           <DialogDescription>
             {isViewerMode 
-              ? "Visualizando los detalles del examen seleccionado."
+              ? `Visualizando los detalles del examen ID: ${examInfo.examId}. ${isEditing ? '(Este examen está siendo o fue editado recientemente)' : ''}`
               : "Revise toda la información ingresada antes de continuar."
             }
           </DialogDescription>
@@ -159,12 +157,15 @@ export const PreviewModal: FC<PreviewModalProps> = ({
           <Button variant="outline" onClick={onClose}>
             <X className="mr-2 h-4 w-4" /> {isViewerMode ? "Cerrar" : "Cancelar"}
           </Button>
-          {(isViewerMode) ? (
-             <Button onClick={onConfirm} > 
+          {/* Only show confirm button if not in viewer mode, or if it's for specific actions from viewer mode in future */}
+          {!isViewerMode && (
+            <Button onClick={onConfirm} className={isEditing ? "" : "bg-green-600 hover:bg-green-700"}>
               {confirmButtonIcon} {confirmButtonText}
             </Button>
-          ) : (
-            <Button onClick={onConfirm} className={isEditing ? "" : "bg-green-600 hover:bg-green-700"}>
+          )}
+          {/* If it is viewer mode, the onConfirm from page.tsx is already set to just close the modal */}
+           {isViewerMode && (
+             <Button onClick={onConfirm} > 
               {confirmButtonIcon} {confirmButtonText}
             </Button>
           )}
@@ -173,3 +174,5 @@ export const PreviewModal: FC<PreviewModalProps> = ({
     </Dialog>
   );
 };
+
+    

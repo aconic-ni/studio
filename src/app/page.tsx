@@ -2,8 +2,33 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
+import type { FirebaseApp } from 'firebase/app'; // Only for type, not used directly here
+import { 
+  getFirestore, 
+  collection, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  orderBy, 
+  serverTimestamp,
+  Timestamp
+} from 'firebase/firestore';
+// Assume db is exported from a firebase config file
+// IMPORTANT: You need to create/configure src/lib/firebase.ts and export 'db'
+// For example:
+// import { initializeApp } from 'firebase/app';
+// import { getFirestore } from 'firebase/firestore';
+// const firebaseConfig = { /* your config */ };
+// const app = initializeApp(firebaseConfig);
+// const db = getFirestore(app);
+// export { db };
+import { db } from '@/lib/firebase'; // Use alias for consistency
+
 import type { ExamInfo, Product, UserRole, SavedExam, ProductStatus } from '@/types';
-import type { ProductFormData } from '@/components/customs-ex-p/AddProductForm'; // Import ProductFormData
+import type { ProductFormData } from '@/components/customs-ex-p/AddProductForm';
 import { USER_ROLES, PRODUCT_STATUS } from '@/types';
 import { Header } from '@/components/Header';
 import { InitialExamForm } from '@/components/customs-ex-p/InitialExamForm';
@@ -14,7 +39,7 @@ import { AddProductModal } from '@/components/customs-ex-p/AddProductModal';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { generateTxtReport, generateExcelReport } from '@/lib/reportUtils';
-import { Eye, PackagePlus, List, Edit3, Trash2, LogOut, ArrowLeftToLine, Save, FileText, FileSpreadsheet } from 'lucide-react';
+import { Eye, PackagePlus, List, Edit3, Trash2, LogOut, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 const PASSWORDS: Record<string, UserRole> = {
@@ -23,8 +48,6 @@ const PASSWORDS: Record<string, UserRole> = {
   "admin123": USER_ROLES.ADMIN,
 };
 
-const LOCAL_STORAGE_KEY_EXAMS = "customsExamsData_v2";
-
 const initialExamData: ExamInfo = {
   examId: '',
   date: new Date().toISOString().split('T')[0],
@@ -32,7 +55,6 @@ const initialExamData: ExamInfo = {
   location: '',
 };
 
-// This is used for resetting the AddProductForm for a NEW product
 const initialProductFormData: Omit<Product, 'id'> = {
   itemNumber: '',
   packageNumbers: '',
@@ -60,34 +82,47 @@ export default function CustomsPage() {
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(initialExamData);
   const [products, setProducts] = useState<Product[]>([]);
   const [savedExams, setSavedExams] = useState<SavedExam[]>([]);
-  const [editingExamId, setEditingExamId] = useState<string | null>(null); // For the exam being edited
-  const [productToEdit, setProductToEdit] = useState<Product | null>(null); // For the product being edited/added
+  const [editingExamId, setEditingExamId] = useState<string | null>(null); 
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
 
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [dbError, setDbError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Firestore listener for exams
   useEffect(() => {
-    try {
-      const storedExams = localStorage.getItem(LOCAL_STORAGE_KEY_EXAMS);
-      if (storedExams) {
-        setSavedExams(JSON.parse(storedExams));
+    if (!db || !(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER)) {
+      if (userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER) {
+         setDbError("Error de conexión con la base de datos. Verifique la configuración de Firebase en src/lib/firebase.ts.");
       }
-    } catch (error) {
-      console.error("Error loading exams from localStorage:", error);
-      toast({ title: "Error", description: "No se pudieron cargar los exámenes guardados.", variant: "destructive" });
+      return;
     }
-  }, [toast]);
+    setDbError(null);
+    const examsCollectionRef = collection(db, "exams");
+    const q = query(examsCollectionRef, orderBy("timestamp", "desc"));
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY_EXAMS, JSON.stringify(savedExams));
-    } catch (error) {
-      console.error("Error saving exams to localStorage:", error);
-      toast({ title: "Error", description: "No se pudieron guardar los cambios en los exámenes.", variant: "destructive" });
-    }
-  }, [savedExams, toast]);
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const examsFromDb: SavedExam[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        examsFromDb.push({
+          id: doc.id,
+          examInfo: data.examInfo,
+          products: data.products,
+          timestamp: (data.timestamp as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+        });
+      });
+      setSavedExams(examsFromDb);
+    }, (error) => {
+      console.error("Error fetching exams from Firestore:", error);
+      toast({ title: "Error de Base de Datos", description: "No se pudieron cargar los exámenes guardados. Verifique la consola para más detalles.", variant: "destructive" });
+      setDbError("Error al cargar datos. Verifique la configuración de Firebase y su conexión. Intente recargar la página.");
+    });
+
+    return () => unsubscribe(); // Cleanup listener on component unmount
+  }, [userRole, toast]);
 
 
   const handlePasswordSubmit = (password: string) => {
@@ -121,6 +156,7 @@ export default function CustomsPage() {
     setUserRole(null);
     setCurrentView('login');
     resetForm();
+    setDbError(null); // Clear DB error on logout
     toast({ title: "Sesión Cerrada"});
   };
   
@@ -129,7 +165,7 @@ export default function CustomsPage() {
   };
 
   const handleOpenAddProductModal = () => {
-    setProductToEdit(null); // Ensure we're adding a new product
+    setProductToEdit(null); 
     setShowAddProductModal(true);
   };
 
@@ -139,11 +175,11 @@ export default function CustomsPage() {
   };
   
   const handleSaveProduct = (productData: ProductFormData, editingProductId: string | null) => {
-    if (editingProductId) { // Editing existing product
+    if (editingProductId) { 
         const updatedProduct: Product = { ...productData, id: editingProductId };
         setProducts(prevProducts => prevProducts.map(p => p.id === editingProductId ? updatedProduct : p));
         toast({ title: "Producto Actualizado", description: `${updatedProduct.description} ha sido actualizado.` });
-    } else { // Adding new product
+    } else { 
         const newProduct: Product = {
             ...productData,
             id: crypto.randomUUID(),
@@ -151,8 +187,8 @@ export default function CustomsPage() {
         setProducts(prevProducts => [...prevProducts, newProduct]);
         toast({ title: "Producto Agregado", description: `${newProduct.description} ha sido agregado.` });
     }
-    setShowAddProductModal(false); // Close modal after save
-    setProductToEdit(null); // Reset editing state
+    setShowAddProductModal(false); 
+    setProductToEdit(null); 
   };
 
   const handleRemoveProduct = (productId: string) => {
@@ -172,46 +208,61 @@ export default function CustomsPage() {
     setIsPreviewModalOpen(true);
   };
 
-  const handleSaveOrUpdateExamAndGenerateReports = (generateReports = true) => {
-    if (!examInfo) return;
+  const handleSaveOrUpdateExamAndGenerateReports = async (generateReports = true) => {
+    if (!db) {
+        toast({ title: "Error de Configuración", description: "La conexión a la base de datos (Firebase) no está configurada. Revise src/lib/firebase.ts", variant: "destructive" });
+        setDbError("Firebase no configurado. Siga las instrucciones en src/lib/firebase.ts.");
+        return;
+    }
+    if (!examInfo) {
+        toast({ title: "Error", description: "Información del examen no disponible.", variant: "destructive" });
+        return;
+    }
 
-    const currentExamData: SavedExam = {
-      id: editingExamId || examInfo.examId, 
-      examInfo,
-      products,
-      timestamp: new Date().toISOString(),
-    };
-    
     const productsWithIds = products.map(p => p.id ? p : {...p, id: crypto.randomUUID()});
-    const finalExamData: SavedExam = { ...currentExamData, products: productsWithIds };
-
-    if (savedExams.some(ex => ex.id === finalExamData.id)) { 
-      setSavedExams(prev => prev.map(ex => ex.id === finalExamData.id ? finalExamData : ex));
-      toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado." });
-    } else { 
-      setSavedExams(prev => [...prev, finalExamData]);
-      toast({ title: "Examen Guardado", description: "El examen ha sido guardado." });
-    }
     
-    if (generateReports) {
-      try {
-        generateTxtReport(finalExamData.examInfo, finalExamData.products);
-        toast({ title: "Reporte TXT Generado" });
-      } catch (error) {
-        console.error("Error generando reporte TXT:", error);
-        toast({ title: "Error en Reporte TXT", variant: "destructive" });
+    const examDataToSave = {
+      examInfo,
+      products: productsWithIds,
+      timestamp: serverTimestamp(), // Use Firestore server timestamp
+    };
+
+    try {
+      if (editingExamId) { // Update existing exam
+        const examDocRef = doc(db, "exams", editingExamId);
+        await updateDoc(examDocRef, examDataToSave);
+        toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado en la base de datos." });
+      } else { // Save new exam
+        const docRef = await addDoc(collection(db, "exams"), examDataToSave);
+        // editingExamId might be set here if we want to immediately transition to edit, but typically not for 'inspector' role
+        toast({ title: "Examen Guardado", description: `El examen ha sido guardado en la base de datos (ID: ${docRef.id}).` });
       }
 
-      try {
-        generateExcelReport(finalExamData.examInfo, finalExamData.products);
-        toast({ title: "Reporte Excel Generado" });
-      } catch (error) {
-        console.error("Error generando reporte Excel:", error);
-        toast({ title: "Error en Reporte Excel", variant: "destructive" });
+      if (generateReports) {
+        try {
+          generateTxtReport(examInfo, productsWithIds);
+          toast({ title: "Reporte TXT Generado" });
+        } catch (error) {
+          console.error("Error generando reporte TXT:", error);
+          toast({ title: "Error en Reporte TXT", variant: "destructive" });
+        }
+
+        try {
+          generateExcelReport(examInfo, productsWithIds);
+          toast({ title: "Reporte Excel Generado" });
+        } catch (error) {
+          console.error("Error generando reporte Excel:", error);
+          toast({ title: "Error en Reporte Excel", variant: "destructive" });
+        }
       }
+    } catch (error) {
+      console.error("Error saving/updating exam to Firestore:", error);
+      toast({ title: "Error de Base de Datos", description: "No se pudo guardar/actualizar el examen. Verifique la consola.", variant: "destructive" });
+      setDbError("Error al guardar en la base de datos. Verifique la conexión e inténtelo de nuevo.");
+      return; // Stop further execution if save failed
     }
     
-    setIsPreviewModalOpen(false); // Ensure preview modal is closed if this was called from there
+    setIsPreviewModalOpen(false); 
     
     if (userRole === USER_ROLES.INSPECTOR) {
       resetForm(); 
@@ -260,21 +311,34 @@ export default function CustomsPage() {
     }
   };
 
-
-  const handleEditExam = (examId: string) => {
-    const examToEdit = savedExams.find(ex => ex.id === examId);
+  const handleEditExam = (examIdToEdit: string) => {
+    const examToEdit = savedExams.find(ex => ex.id === examIdToEdit);
     if (examToEdit) {
       setExamInfo(examToEdit.examInfo);
       const productsWithDefaults = examToEdit.products.map(p => ({ ...initialProductFormData, ...p }));
       setProducts(productsWithDefaults);
-      setEditingExamId(examId); 
+      setEditingExamId(examIdToEdit); 
       setCurrentView('form');
+    } else {
+      toast({ title: "Error", description: "No se encontró el examen para editar.", variant: "destructive" });
     }
   };
 
-  const handleDeleteExam = (examId: string) => {
-    setSavedExams(prev => prev.filter(ex => ex.id !== examId));
-    toast({ title: "Examen Eliminado", description: "El examen ha sido eliminado permanentemente.", variant: "destructive"});
+  const handleDeleteExam = async (examIdToDelete: string) => {
+    if (!db) {
+      toast({ title: "Error de Configuración", description: "La conexión a la base de datos (Firebase) no está configurada.", variant: "destructive" });
+      setDbError("Firebase no configurado.");
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, "exams", examIdToDelete));
+      toast({ title: "Examen Eliminado", description: "El examen ha sido eliminado de la base de datos.", variant: "destructive"});
+      // No need to manually filter savedExams, onSnapshot will update the list
+    } catch (error) {
+      console.error("Error deleting exam from Firestore:", error);
+      toast({ title: "Error de Base de Datos", description: "No se pudo eliminar el examen.", variant: "destructive" });
+      setDbError("Error al eliminar de la base de datos.");
+    }
   };
   
   const handleCancelEdit = () => {
@@ -325,6 +389,17 @@ export default function CustomsPage() {
       <div className="min-h-screen flex flex-col bg-secondary/50">
         <Header onLogout={handleLogout} actions={headerActions} />
         <main className="flex-grow container mx-auto p-4 md:p-6 space-y-8">
+          {dbError && (
+            <Card className="bg-destructive/10 border-destructive shadow-md">
+              <CardHeader>
+                <CardTitle className="text-destructive flex items-center"><AlertTriangle className="mr-2 h-5 w-5" />Error de Base de Datos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-destructive-foreground">{dbError}</p>
+                <p className="text-sm text-muted-foreground mt-2">Asegúrese de que Firebase esté configurado correctamente en `src/lib/firebase.ts` y que su conexión a Internet esté activa. Es posible que deba recargar la página después de la configuración.</p>
+              </CardContent>
+            </Card>
+          )}
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl flex items-center justify-between">
@@ -336,11 +411,13 @@ export default function CustomsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {savedExams.length === 0 ? (
+              {savedExams.length === 0 && !dbError ? (
                 <p className="text-muted-foreground text-center py-8">No hay exámenes para mostrar.</p>
+              ) : savedExams.length === 0 && dbError ? (
+                 <p className="text-destructive text-center py-8">No se pudieron cargar los exámenes debido a un error.</p>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {savedExams.slice().sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map(exam => ( 
+                {savedExams.map(exam => ( 
                   <Card key={exam.id} className="flex flex-col shadow-md hover:shadow-lg transition-shadow">
                     <CardHeader>
                       <CardTitle className="text-lg">ID: {exam.examInfo.examId}</CardTitle>
@@ -362,7 +439,7 @@ export default function CustomsPage() {
                       <p className="text-xs text-muted-foreground">Guardado: {new Date(exam.timestamp).toLocaleString()}</p>
                       <div className="flex gap-2 items-center">
                         {(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER) && (
-                           <Button variant="outline" size="sm" onClick={() => { setExamInfo(exam.examInfo); setProducts(exam.products.map(p => ({...initialProductFormData, ...p }))); setIsPreviewModalOpen(true); } }>
+                           <Button variant="outline" size="sm" onClick={() => { setExamInfo(exam.examInfo); setProducts(exam.products.map(p => ({...initialProductFormData, ...p }))); setIsPreviewModalOpen(true); setEditingExamId(exam.id); /* Pass ID for context if needed by modal */ } }>
                               <Eye className="mr-1 h-4 w-4" /> Ver Detalles
                             </Button>
                          )}
@@ -392,10 +469,11 @@ export default function CustomsPage() {
              <PreviewModal
                 isOpen={isPreviewModalOpen}
                 onClose={() => { setIsPreviewModalOpen(false); resetForm();}} 
-                onConfirm={() => { setIsPreviewModalOpen(false); resetForm();}} 
+                onConfirm={() => { setIsPreviewModalOpen(false); resetForm();}} // Confirm is just close for viewer
                 examInfo={examInfo}
                 products={products}
                 isViewerMode={true} 
+                isEditing={!!editingExamId} // Pass editingExamId to know if it's an existing exam being viewed
             />
         )}
       </div>
@@ -410,9 +488,30 @@ export default function CustomsPage() {
            {userRole === USER_ROLES.ADMIN && (
             <div className={`flex justify-between items-center p-3 mb-6 rounded-md ${editingExamId ? 'bg-blue-100 dark:bg-blue-900 border border-blue-300 dark:border-blue-700' : 'bg-green-100 dark:bg-green-900 border border-green-300 dark:border-green-700'}`}>
                 <p className={`${editingExamId ? 'text-blue-700 dark:text-blue-200' : 'text-green-700 dark:text-green-200'} font-semibold`}>
-                    {editingExamId ? `Modo Edición Administrador: Editando examen ID: ${examInfo?.examId || ''}` : 'Modo Administrador: Creando nuevo examen.'}
+                    {editingExamId ? `Modo Edición Administrador: Editando examen ID: ${examInfo?.examId || ''} (Firestore ID: ${editingExamId})` : 'Modo Administrador: Creando nuevo examen.'}
                 </p>
             </div>
+          )}
+          {dbError && !db && ( // Show specific Firebase config error if db is null
+            <Card className="bg-destructive/10 border-destructive shadow-md">
+              <CardHeader>
+                <CardTitle className="text-destructive flex items-center"><AlertTriangle className="mr-2 h-5 w-5" />Error de Configuración de Firebase</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-destructive-foreground">{dbError}</p>
+                <p className="text-sm text-muted-foreground mt-2">Por favor, siga las instrucciones en `src/lib/firebase.ts` para configurar su proyecto Firebase.</p>
+              </CardContent>
+            </Card>
+          )}
+           {dbError && db && ( // Generic DB error if db is configured but other issues occur
+            <Card className="bg-destructive/10 border-destructive shadow-md">
+              <CardHeader>
+                <CardTitle className="text-destructive flex items-center"><AlertTriangle className="mr-2 h-5 w-5" />Error de Base de Datos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-destructive-foreground">{dbError}</p>
+              </CardContent>
+            </Card>
           )}
           <section id="exam-info">
             <InitialExamForm 
@@ -454,7 +553,7 @@ export default function CustomsPage() {
                     onClick={handleDirectDownloadTXT}
                     variant="outline" 
                     size="lg" 
-                    disabled={commonDisabledCondition}
+                    disabled={commonDisabledCondition || (!!dbError && !db)}
                     className="w-full sm:w-auto order-2 sm:order-none"
                   >
                     <FileText className="mr-2 h-5 w-5" /> Descargar TXT
@@ -463,7 +562,7 @@ export default function CustomsPage() {
                     onClick={handleDirectDownloadExcel}
                     variant="outline" 
                     size="lg" 
-                    disabled={commonDisabledCondition}
+                    disabled={commonDisabledCondition || (!!dbError && !db)}
                     className="w-full sm:w-auto order-3 sm:order-none"
                   >
                     <FileSpreadsheet className="mr-2 h-5 w-5" /> Descargar Excel
@@ -471,7 +570,7 @@ export default function CustomsPage() {
                   <Button 
                     onClick={() => handleSaveOrUpdateExamAndGenerateReports(true)}
                     size="lg" 
-                    disabled={commonDisabledCondition}
+                    disabled={commonDisabledCondition || (!!dbError && !db) || !db}
                     className="w-full sm:w-auto order-4 sm:order-none"
                   >
                     <Save className="mr-2 h-5 w-5" /> 
@@ -480,7 +579,7 @@ export default function CustomsPage() {
                   <Button 
                     onClick={handlePreview} 
                     size="lg" 
-                    disabled={commonDisabledCondition}
+                    disabled={commonDisabledCondition || (!!dbError && !db)}
                     className="w-full sm:w-auto order-5 sm:order-none bg-blue-600 hover:bg-blue-700"
                   >
                     <Eye className="mr-2 h-5 w-5" />
@@ -494,7 +593,7 @@ export default function CustomsPage() {
             <PreviewModal
               isOpen={isPreviewModalOpen}
               onClose={() => setIsPreviewModalOpen(false)}
-              onConfirm={() => handleSaveOrUpdateExamAndGenerateReports(true)}
+              onConfirm={() => handleSaveOrUpdateExamAndGenerateReports(true)} // Confirm from preview also saves
               examInfo={examInfo}
               products={products}
               isEditing={!!editingExamId}
@@ -523,5 +622,3 @@ export default function CustomsPage() {
     </div>
   );
 }
-
-    
