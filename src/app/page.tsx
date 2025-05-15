@@ -673,6 +673,7 @@ export default function CustomsPage() {
                     size="lg"
                     onClick={() => setInspectorStep('products')}
                     disabled={!isExamInfoComplete}
+                    variant="outline"
                     className="text-primary border-primary hover:bg-accent hover:text-primary focus-visible:ring-primary"
                   >
                     Continuar <ChevronRight className="ml-2 h-5 w-5" />
@@ -708,20 +709,15 @@ export default function CustomsPage() {
               )}
 
               <section id="products" className="space-y-6">
-                <Card className="shadow-md">
-                  <CardHeader>
-                      <CardTitle className="text-xl">Gestión de Productos</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                      <Button onClick={handleOpenAddProductModal} size="lg" className="w-full sm:w-auto">
-                          <PackagePlus className="mr-2 h-5 w-5" /> Agregar Nuevo Producto
-                      </Button>
-                  </CardContent>
-                </Card>
                 <ProductsTable 
                   products={products} 
                   onRemoveProduct={handleRemoveProduct}
-                  onEditProduct={handleOpenEditProductModal} 
+                  onEditProduct={handleOpenEditProductModal}
+                  headerActions={
+                    <Button onClick={handleOpenAddProductModal} size="default">
+                        <PackagePlus className="mr-2 h-5 w-5" /> Agregar Nuevo Producto
+                    </Button>
+                  }
                 />
               </section>
               
@@ -767,7 +763,7 @@ export default function CustomsPage() {
                         onClick={handlePreview} 
                         variant="outline"
                         size="lg" 
-                        disabled={commonDisabledConditionForActions} 
+                        disabled={commonDisabledConditionForActions || !firebaseConfigured} 
                         className="w-full sm:w-auto order-5 sm:order-none"
                       >
                         <Eye className="mr-2 h-5 w-5" />

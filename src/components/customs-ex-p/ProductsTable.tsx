@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { FC } from 'react';
+import type { FC, ReactNode } from 'react';
 import type { Product, ProductStatus } from '@/types';
 import { PRODUCT_STATUS } from '@/types';
 import {
@@ -15,12 +15,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Trash2, ListChecks, Edit3 } from 'lucide-react'; // Added Edit3
+import { Trash2, ListChecks, Edit3 } from 'lucide-react'; 
 
 interface ProductsTableProps {
   products: Product[];
   onRemoveProduct: (productId: string) => void;
-  onEditProduct: (product: Product) => void; // New prop for editing
+  onEditProduct: (product: Product) => void; 
+  headerActions?: ReactNode; // To pass the "Add New Product" button
 }
 
 const getStatusBadgeVariant = (status: ProductStatus): string => {
@@ -48,97 +49,89 @@ const getStatusDisplayName = (status: ProductStatus): string => {
     }
 }
 
-export const ProductsTable: FC<ProductsTableProps> = ({ products, onRemoveProduct, onEditProduct }) => {
-  if (products.length === 0) {
-    return (
-      <Card className="mt-8 shadow-md">
-        <CardHeader>
-            <CardTitle className="text-xl flex items-center gap-2">
-                <ListChecks className="w-5 h-5 text-primary" />
-                Listado de Productos
-            </CardTitle>
-        </CardHeader>
-        <CardContent>
-            <p className="text-muted-foreground text-center py-8">Aún no se han agregado productos. Use el botón de "Agregar Nuevo Producto" para comenzar.</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
+export const ProductsTable: FC<ProductsTableProps> = ({ products, onRemoveProduct, onEditProduct, headerActions }) => {
   return (
     <Card className="mt-8 shadow-lg">
-        <CardHeader>
-            <CardTitle className="text-xl flex items-center gap-2">
-                <ListChecks className="w-5 h-5 text-primary" />
-                Listado de Productos
-            </CardTitle>
-            <CardDescription>Resumen de todos los productos agregados a esta examinación.</CardDescription>
+        <CardHeader className="flex flex-row justify-between items-center">
+            <div>
+                <CardTitle className="text-xl flex items-center gap-2">
+                    <ListChecks className="w-5 h-5 text-primary" />
+                    Listado de Productos
+                </CardTitle>
+                {products.length > 0 && <CardDescription>Resumen de todos los productos agregados a esta examinación.</CardDescription>}
+            </div>
+            {headerActions && <div>{headerActions}</div>}
         </CardHeader>
         <CardContent className="overflow-x-auto">
-            <Table>
-            <TableHeader>
-                <TableRow>
-                <TableHead>Item</TableHead>
-                <TableHead>Descripción</TableHead>
-                <TableHead>Cant. Unid.</TableHead>
-                <TableHead>Unid. Medida</TableHead>
-                <TableHead>Marca</TableHead>
-                <TableHead>Modelo</TableHead>
-                <TableHead>Origen</TableHead>
-                <TableHead>Estado Merc.</TableHead>
-                <TableHead>Peso</TableHead>
-                <TableHead>Serie</TableHead>
-                <TableHead>Cant. Bultos</TableHead>
-                <TableHead>Num. Bultos</TableHead>
-                <TableHead>Observación</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {products.map((product) => (
-                <TableRow key={product.id}>
-                    <TableCell className="font-medium">{product.itemNumber}</TableCell>
-                    <TableCell>{product.description}</TableCell>
-                    <TableCell className="text-right">{product.unitQuantity}</TableCell>
-                    <TableCell>{product.measurementUnit}</TableCell>
-                    <TableCell>{product.brand || '-'}</TableCell>
-                    <TableCell>{product.model || '-'}</TableCell>
-                    <TableCell>{product.origin}</TableCell>
-                    <TableCell>{product.merchandiseState || '-'}</TableCell>
-                    <TableCell className="text-right">{product.weightValue && product.weightUnit ? `${product.weightValue} ${product.weightUnit}` : '-'}</TableCell>
-                    <TableCell>{product.serialNumber || '-'}</TableCell>
-                    <TableCell className="text-right">{product.packageQuantity}</TableCell>
-                    <TableCell>{product.packageNumbers || '-'}</TableCell>
-                    <TableCell className="max-w-xs truncate" title={product.observation}>{product.observation ? (product.observation.length > 30 ? product.observation.substring(0, 27) + '...' : product.observation) : '-'}</TableCell>
-                    <TableCell>
-                        <Badge variant="outline" className={`font-semibold ${getStatusBadgeVariant(product.status)}`}>
-                            {getStatusDisplayName(product.status)}
-                        </Badge>
-                    </TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onEditProduct(product)}
-                        aria-label={`Editar ${product.description}`}
-                      >
-                        <Edit3 className="h-4 w-4 text-blue-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onRemoveProduct(product.id)}
-                        aria-label={`Eliminar ${product.description}`}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </TableCell>
-                </TableRow>
-                ))}
-            </TableBody>
-            </Table>
+            {products.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">Aún no se han agregado productos. Use el botón de "Agregar Nuevo Producto" para comenzar.</p>
+            ) : (
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead>Descripción</TableHead>
+                    <TableHead>Cant. Unid.</TableHead>
+                    <TableHead>Unid. Medida</TableHead>
+                    <TableHead>Marca</TableHead>
+                    <TableHead>Modelo</TableHead>
+                    <TableHead>Origen</TableHead>
+                    <TableHead>Estado Merc.</TableHead>
+                    <TableHead>Peso</TableHead>
+                    <TableHead>Serie</TableHead>
+                    <TableHead>Cant. Bultos</TableHead>
+                    <TableHead>Num. Bultos</TableHead>
+                    <TableHead>Observación</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {products.map((product) => (
+                    <TableRow key={product.id}>
+                        <TableCell className="font-medium">{product.itemNumber}</TableCell>
+                        <TableCell>{product.description}</TableCell>
+                        <TableCell className="text-right">{product.unitQuantity}</TableCell>
+                        <TableCell>{product.measurementUnit}</TableCell>
+                        <TableCell>{product.brand || '-'}</TableCell>
+                        <TableCell>{product.model || '-'}</TableCell>
+                        <TableCell>{product.origin}</TableCell>
+                        <TableCell>{product.merchandiseState || '-'}</TableCell>
+                        <TableCell className="text-right">{product.weightValue && product.weightUnit ? `${product.weightValue} ${product.weightUnit}` : '-'}</TableCell>
+                        <TableCell>{product.serialNumber || '-'}</TableCell>
+                        <TableCell className="text-right">{product.packageQuantity}</TableCell>
+                        <TableCell>{product.packageNumbers || '-'}</TableCell>
+                        <TableCell className="max-w-xs truncate" title={product.observation}>{product.observation ? (product.observation.length > 30 ? product.observation.substring(0, 27) + '...' : product.observation) : '-'}</TableCell>
+                        <TableCell>
+                            <Badge variant="outline" className={`font-semibold ${getStatusBadgeVariant(product.status)}`}>
+                                {getStatusDisplayName(product.status)}
+                            </Badge>
+                        </TableCell>
+                        <TableCell className="text-right space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onEditProduct(product)}
+                            aria-label={`Editar ${product.description}`}
+                          >
+                            <Edit3 className="h-4 w-4 text-blue-600" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onRemoveProduct(product.id)}
+                            aria-label={`Eliminar ${product.description}`}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+                </Table>
+            )}
         </CardContent>
     </Card>
   );
 };
+
