@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { FC } from 'react';
@@ -13,15 +14,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { KeyRound, LogIn } from 'lucide-react';
+import { KeyRound, LogIn, X } from 'lucide-react';
 
 interface PasswordModalProps {
   isOpen: boolean;
   onSubmit: (password: string) => void;
+  onClose: () => void; // Added onClose prop
   error?: string;
 }
 
-export const PasswordModal: FC<PasswordModalProps> = ({ isOpen, onSubmit, error: initialError }) => {
+export const PasswordModal: FC<PasswordModalProps> = ({ isOpen, onSubmit, onClose, error: initialError }) => {
   const [password, setPassword] = useState('');
   const [currentError, setCurrentError] = useState(initialError || '');
 
@@ -34,24 +36,29 @@ export const PasswordModal: FC<PasswordModalProps> = ({ isOpen, onSubmit, error:
     onSubmit(password);
   };
   
-  // Ensure password field is focused when modal opens and error is cleared
   useEffect(() => {
     if (isOpen) {
-      setPassword(''); // Clear password field on open
-      setCurrentError(initialError || ''); // Reset error state
+      setPassword(''); 
+      setCurrentError(initialError || ''); 
       setTimeout(() => {
         const inputElement = document.getElementById('password');
         if (inputElement) {
           inputElement.focus();
         }
-      }, 100); // Delay to ensure modal is rendered
+      }, 100); 
     }
   }, [isOpen, initialError]);
 
+  // Handle dialog's onOpenChange to call our onClose prop
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      onClose();
+    }
+  };
 
   return (
-    <Dialog open={isOpen} >
-      <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => { e.preventDefault(); onClose(); }} onEscapeKeyDown={(e) => {e.preventDefault(); onClose(); }}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <KeyRound className="w-6 h-6 text-primary" />
@@ -83,8 +90,11 @@ export const PasswordModal: FC<PasswordModalProps> = ({ isOpen, onSubmit, error:
           </div>
           {currentError && <p id="password-error" className="text-sm text-destructive">{currentError}</p>}
         </div>
-        <DialogFooter>
-          <Button onClick={handleSubmit} className="w-full">
+        <DialogFooter className="sm:justify-between">
+          <Button variant="outline" onClick={onClose} className="mt-2 sm:mt-0">
+            <X className="mr-2 h-4 w-4" /> Cancelar
+          </Button>
+          <Button onClick={handleSubmit}>
             <LogIn className="mr-2 h-4 w-4" /> Ingresar
           </Button>
         </DialogFooter>
@@ -92,3 +102,5 @@ export const PasswordModal: FC<PasswordModalProps> = ({ isOpen, onSubmit, error:
     </Dialog>
   );
 };
+
+    

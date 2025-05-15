@@ -39,7 +39,7 @@ import { AddProductModal } from '@/components/customs-ex-p/AddProductModal';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { generateTxtReport, generateExcelReport } from '@/lib/reportUtils';
-import { Eye, PackagePlus, List, Edit3, Trash2, LogOut, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { Eye, PackagePlus, List, Edit3, Trash2, LogOut, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle, KeyRound } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 const PASSWORDS: Record<string, UserRole> = {
@@ -75,9 +75,9 @@ const initialProductFormData: Omit<Product, 'id'> = {
 
 
 export default function CustomsPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false); // Retained for conceptual auth state, though primary control is currentView
   const [userRole, setUserRole] = useState<UserRole>(null);
-  const [currentView, setCurrentView] = useState<'login' | 'form' | 'database'>('login');
+  const [currentView, setCurrentView] = useState<'welcome' | 'login' | 'form' | 'database'>('welcome');
   
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(initialExamData);
   const [products, setProducts] = useState<Product[]>([]);
@@ -141,6 +141,7 @@ export default function CustomsPage() {
       }
     } else {
       setPasswordError("Clave incorrecta. Intente de nuevo.");
+      // Keep currentView as 'login' so modal stays open
     }
   };
   
@@ -154,7 +155,7 @@ export default function CustomsPage() {
   const handleLogout = () => {
     setIsAuthenticated(false);
     setUserRole(null);
-    setCurrentView('login');
+    setCurrentView('welcome'); // Go back to welcome screen
     resetForm();
     setDbError(null); // Clear DB error on logout
     toast({ title: "Sesión Cerrada"});
@@ -234,7 +235,6 @@ export default function CustomsPage() {
         toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado en la base de datos." });
       } else { // Save new exam
         const docRef = await addDoc(collection(db, "exams"), examDataToSave);
-        // editingExamId might be set here if we want to immediately transition to edit, but typically not for 'inspector' role
         toast({ title: "Examen Guardado", description: `El examen ha sido guardado en la base de datos (ID: ${docRef.id}).` });
       }
 
@@ -333,7 +333,6 @@ export default function CustomsPage() {
     try {
       await deleteDoc(doc(db, "exams", examIdToDelete));
       toast({ title: "Examen Eliminado", description: "El examen ha sido eliminado de la base de datos.", variant: "destructive"});
-      // No need to manually filter savedExams, onSnapshot will update the list
     } catch (error) {
       console.error("Error deleting exam from Firestore:", error);
       toast({ title: "Error de Base de Datos", description: "No se pudo eliminar el examen.", variant: "destructive" });
@@ -356,22 +355,46 @@ export default function CustomsPage() {
 
   const commonDisabledCondition = !examInfo || !examInfo.examId || (products.length === 0 && !editingExamId && userRole !== USER_ROLES.ADMIN);
 
-
-  if (currentView === 'login') {
+  if (currentView === 'welcome') {
     return (
-      <div className="min-h-screen flex flex-col bg-secondary/50 items-center justify-center p-4">
-        <PasswordModal
-          isOpen={true}
-          onSubmit={handlePasswordSubmit}
-          error={passwordError}
+      <div className="min-h-screen flex flex-col bg-secondary/50 items-center justify-center p-4 text-center">
+        <FileText 
+          className="w-24 h-24 text-primary mb-6 cursor-pointer hover:text-primary/80 transition-colors" 
+          onClick={() => setCurrentView('login')}
+          aria-label="Iniciar sesión"
+          role="button"
         />
-         <div className="text-center mt-8">
-            <h1 className="text-3xl font-bold text-primary mb-2">Customs Ex-p</h1>
-            <p className="text-muted-foreground">Requiere Autenticación</p>
-        </div>
+        <h1 className="text-4xl font-bold text-primary mb-2">Customs Ex-p</h1>
+        <p className="text-lg text-muted-foreground">Aplicación Progresiva para Exámenes Aduaneros</p>
+        <p className="text-sm text-muted-foreground mt-4">Haga clic en el icono para ingresar.</p>
       </div>
     );
   }
+
+  // PasswordModal is rendered conditionally but outside the main view switch if currentView is 'login'
+  // This allows other content (like welcome screen) to be potentially visible behind it,
+  // though Dialog component typically overlays everything.
+  if (currentView === 'login') {
+     return (
+      <>
+        <div className="min-h-screen flex flex-col bg-secondary/50 items-center justify-center p-4 text-center -z-10 opacity-50">
+            <FileText 
+              className="w-24 h-24 text-primary mb-6" 
+              aria-hidden="true"
+            />
+            <h1 className="text-4xl font-bold text-primary mb-2">Customs Ex-p</h1>
+            <p className="text-lg text-muted-foreground">Aplicación Progresiva para Exámenes Aduaneros</p>
+        </div>
+        <PasswordModal
+            isOpen={true} // Modal is open if currentView is 'login'
+            onSubmit={handlePasswordSubmit}
+            error={passwordError}
+            onClose={() => setCurrentView('welcome')} // Allow closing modal to go back to welcome
+        />
+      </>
+    );
+  }
+
 
   const headerActions = userRole === USER_ROLES.ADMIN && currentView === 'form' && editingExamId ? (
       <Button variant="outline" onClick={handleCancelEdit} size="sm">
@@ -622,3 +645,5 @@ export default function CustomsPage() {
     </div>
   );
 }
+
+    
