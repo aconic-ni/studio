@@ -14,7 +14,7 @@ import { AddProductModal } from '@/components/customs-ex-p/AddProductModal';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { generateTxtReport, generateExcelReport } from '@/lib/reportUtils';
-import { Eye, PackagePlus, List, Edit3, Trash2, LogOut, ArrowLeftToLine, Save } from 'lucide-react';
+import { Eye, PackagePlus, List, Edit3, Trash2, LogOut, ArrowLeftToLine, Save, FileText, FileSpreadsheet } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 const PASSWORDS: Record<string, UserRole> = {
@@ -172,47 +172,47 @@ export default function CustomsPage() {
     setIsPreviewModalOpen(true);
   };
 
-  const handleSaveOrUpdateExamAndGenerateReports = () => {
+  const handleSaveOrUpdateExamAndGenerateReports = (generateReports = true) => {
     if (!examInfo) return;
 
     const currentExamData: SavedExam = {
-      id: editingExamId || examInfo.examId, // Use examInfo.examId if not editing an existing saved exam
+      id: editingExamId || examInfo.examId, 
       examInfo,
       products,
       timestamp: new Date().toISOString(),
     };
     
-    // Make sure all products have an ID. This should be guaranteed by handleSaveProduct.
     const productsWithIds = products.map(p => p.id ? p : {...p, id: crypto.randomUUID()});
-
     const finalExamData: SavedExam = { ...currentExamData, products: productsWithIds };
-
 
     if (savedExams.some(ex => ex.id === finalExamData.id)) { 
       setSavedExams(prev => prev.map(ex => ex.id === finalExamData.id ? finalExamData : ex));
-      toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado y los reportes generados." });
+      toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado." });
     } else { 
       setSavedExams(prev => [...prev, finalExamData]);
-      toast({ title: "Examen Guardado", description: "El examen ha sido guardado y los reportes generados." });
+      toast({ title: "Examen Guardado", description: "El examen ha sido guardado." });
     }
     
-    try {
-      generateTxtReport(finalExamData.examInfo, finalExamData.products);
-      toast({ title: "Reporte TXT Generado" });
-    } catch (error) {
-      console.error("Error generando reporte TXT:", error);
-      toast({ title: "Error en Reporte TXT", variant: "destructive" });
-    }
+    if (generateReports) {
+      try {
+        generateTxtReport(finalExamData.examInfo, finalExamData.products);
+        toast({ title: "Reporte TXT Generado" });
+      } catch (error) {
+        console.error("Error generando reporte TXT:", error);
+        toast({ title: "Error en Reporte TXT", variant: "destructive" });
+      }
 
-    try {
-      generateExcelReport(finalExamData.examInfo, finalExamData.products);
-      toast({ title: "Reporte Excel Generado" });
-    } catch (error) {
-      console.error("Error generando reporte Excel:", error);
-      toast({ title: "Error en Reporte Excel", variant: "destructive" });
+      try {
+        generateExcelReport(finalExamData.examInfo, finalExamData.products);
+        toast({ title: "Reporte Excel Generado" });
+      } catch (error) {
+        console.error("Error generando reporte Excel:", error);
+        toast({ title: "Error en Reporte Excel", variant: "destructive" });
+      }
     }
     
-    setIsPreviewModalOpen(false);
+    setIsPreviewModalOpen(false); // Ensure preview modal is closed if this was called from there
+    
     if (userRole === USER_ROLES.INSPECTOR) {
       resetForm(); 
     } else if (userRole === USER_ROLES.ADMIN && editingExamId) {
@@ -224,13 +224,50 @@ export default function CustomsPage() {
     }
   };
 
+  const handleDirectDownloadTXT = () => {
+    if (!examInfo || !examInfo.examId) {
+      toast({ title: "Falta Información", description: "Complete la información del examen.", variant: "destructive" });
+      return;
+    }
+     if (products.length === 0 && !editingExamId) {
+        toast({ title: "Sin Productos", description: "Agregue al menos un producto.", variant: "destructive" });
+        return;
+    }
+    try {
+      generateTxtReport(examInfo, products);
+      toast({ title: "Reporte TXT Descargado" });
+    } catch (error) {
+      console.error("Error generando reporte TXT:", error);
+      toast({ title: "Error en Reporte TXT", variant: "destructive" });
+    }
+  };
+
+  const handleDirectDownloadExcel = () => {
+     if (!examInfo || !examInfo.examId) {
+      toast({ title: "Falta Información", description: "Complete la información del examen.", variant: "destructive" });
+      return;
+    }
+    if (products.length === 0 && !editingExamId) {
+        toast({ title: "Sin Productos", description: "Agregue al menos un producto.", variant: "destructive" });
+        return;
+    }
+    try {
+      generateExcelReport(examInfo, products);
+      toast({ title: "Reporte Excel Descargado" });
+    } catch (error) {
+      console.error("Error generando reporte Excel:", error);
+      toast({ title: "Error en Reporte Excel", variant: "destructive" });
+    }
+  };
+
+
   const handleEditExam = (examId: string) => {
     const examToEdit = savedExams.find(ex => ex.id === examId);
     if (examToEdit) {
       setExamInfo(examToEdit.examInfo);
       const productsWithDefaults = examToEdit.products.map(p => ({ ...initialProductFormData, ...p }));
       setProducts(productsWithDefaults);
-      setEditingExamId(examId); // This is the ID of the *SavedExam* entry
+      setEditingExamId(examId); 
       setCurrentView('form');
     }
   };
@@ -252,6 +289,8 @@ export default function CustomsPage() {
         }
     }
   }, [currentView, editingExamId, userRole, examInfo?.examId]);
+
+  const commonDisabledCondition = !examInfo || !examInfo.examId || (products.length === 0 && !editingExamId && userRole !== USER_ROLES.ADMIN);
 
 
   if (currentView === 'login') {
@@ -353,7 +392,7 @@ export default function CustomsPage() {
              <PreviewModal
                 isOpen={isPreviewModalOpen}
                 onClose={() => { setIsPreviewModalOpen(false); resetForm();}} 
-                onConfirm={() => { setIsPreviewModalOpen(false); resetForm();}} // For viewer, confirm is just close
+                onConfirm={() => { setIsPreviewModalOpen(false); resetForm();}} 
                 examInfo={examInfo}
                 products={products}
                 isViewerMode={true} 
@@ -402,23 +441,50 @@ export default function CustomsPage() {
           
           <section id="actions" className="py-6">
             <Card className="shadow-lg">
-              <CardContent className="p-6 flex flex-col sm:flex-row justify-end items-center gap-4">
-                  <p className="text-sm text-muted-foreground mr-auto">
+              <CardContent className="p-6 flex flex-col sm:flex-row flex-wrap justify-end items-center gap-4">
+                  <p className="text-sm text-muted-foreground mr-auto self-center">
                       Productos Totales: {products.length}
                   </p>
                   {userRole === USER_ROLES.ADMIN && editingExamId && (
-                    <Button variant="outline" onClick={handleCancelEdit} size="lg" className="w-full sm:w-auto">
+                    <Button variant="outline" onClick={handleCancelEdit} size="lg" className="w-full sm:w-auto order-1 sm:order-none">
                       <ArrowLeftToLine className="mr-2 h-5 w-5" /> Cancelar Edición
                     </Button>
                   )}
                   <Button 
+                    onClick={handleDirectDownloadTXT}
+                    variant="outline" 
+                    size="lg" 
+                    disabled={commonDisabledCondition}
+                    className="w-full sm:w-auto order-2 sm:order-none"
+                  >
+                    <FileText className="mr-2 h-5 w-5" /> Descargar TXT
+                  </Button>
+                   <Button 
+                    onClick={handleDirectDownloadExcel}
+                    variant="outline" 
+                    size="lg" 
+                    disabled={commonDisabledCondition}
+                    className="w-full sm:w-auto order-3 sm:order-none"
+                  >
+                    <FileSpreadsheet className="mr-2 h-5 w-5" /> Descargar Excel
+                  </Button>
+                  <Button 
+                    onClick={() => handleSaveOrUpdateExamAndGenerateReports(true)}
+                    size="lg" 
+                    disabled={commonDisabledCondition}
+                    className="w-full sm:w-auto order-4 sm:order-none"
+                  >
+                    <Save className="mr-2 h-5 w-5" /> 
+                    {editingExamId ? "Actualizar y Generar" : "Guardar y Generar"}
+                  </Button>
+                  <Button 
                     onClick={handlePreview} 
                     size="lg" 
-                    disabled={!examInfo || !examInfo.examId || (products.length === 0 && !editingExamId && userRole !== USER_ROLES.ADMIN)} 
-                    className="w-full sm:w-auto"
+                    disabled={commonDisabledCondition}
+                    className="w-full sm:w-auto order-5 sm:order-none bg-blue-600 hover:bg-blue-700"
                   >
-                    {editingExamId ? <Save className="mr-2 h-5 w-5" /> : <Eye className="mr-2 h-5 w-5" />}
-                    {editingExamId ? "Actualizar y Ver Previa" : "Vista Previa y Guardar"}
+                    <Eye className="mr-2 h-5 w-5" />
+                     Previsualizar y Finalizar
                   </Button>
               </CardContent>
             </Card>
@@ -428,7 +494,7 @@ export default function CustomsPage() {
             <PreviewModal
               isOpen={isPreviewModalOpen}
               onClose={() => setIsPreviewModalOpen(false)}
-              onConfirm={handleSaveOrUpdateExamAndGenerateReports}
+              onConfirm={() => handleSaveOrUpdateExamAndGenerateReports(true)}
               examInfo={examInfo}
               products={products}
               isEditing={!!editingExamId}
@@ -440,7 +506,7 @@ export default function CustomsPage() {
             onClose={() => { setShowAddProductModal(false); setProductToEdit(null); }}
             onSaveProduct={handleSaveProduct}
             productToEdit={productToEdit}
-            initialProductData={initialProductFormData} // Pass initial empty data for new products
+            initialProductData={initialProductFormData} 
           />
         </main>
         <footer className="text-center p-4 text-sm text-muted-foreground border-t">
@@ -457,3 +523,5 @@ export default function CustomsPage() {
     </div>
   );
 }
+
+    
