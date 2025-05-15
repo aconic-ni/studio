@@ -72,7 +72,7 @@ export const PreviewModal: FC<PreviewModalProps> = ({
   
   const confirmButtonIcon = isViewerMode 
     ? <X className="mr-2 h-4 w-4" /> 
-    : <Save className="mr-2 h-4 w-4" /> ; // Save icon for both new and edit confirmation from form view
+    : <Save className="mr-2 h-4 w-4" /> ; 
 
   const titleText = isViewerMode
     ? "Detalles del Examen"
@@ -81,13 +81,13 @@ export const PreviewModal: FC<PreviewModalProps> = ({
       : "Confirmar Detalles de la Examinación";
 
   const titleIcon = isViewerMode 
-    ? <Eye className="w-6 h-6 text-primary" />
+    ? <Eye className="w-6 h-6 text-foreground" /> // Changed from text-primary
     : <CheckCircle className="w-6 h-6 text-green-500" />;
 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] md:max-w-[800px] max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-[700px] md:max-w-[800px] max-h-[90vh] flex flex-col text-foreground">
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
             {titleIcon}
@@ -103,7 +103,7 @@ export const PreviewModal: FC<PreviewModalProps> = ({
         <ScrollArea className="flex-grow pr-6 -mr-6"> 
           <div className="space-y-6 py-4">
             <div>
-              <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><FileText className="w-5 h-5 text-primary" />Información del Examen</h3>
+              <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><FileText className="w-5 h-5 text-foreground" />Información del Examen</h3>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm p-4 bg-muted/50 rounded-md">
                 <div><strong>ID Examen:</strong></div><div>{examInfo.examId}</div>
                 <div><strong>Fecha:</strong></div><div>{examInfo.date}</div>
@@ -115,7 +115,7 @@ export const PreviewModal: FC<PreviewModalProps> = ({
             <Separator />
 
             <div>
-              <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Package className="w-5 h-5 text-primary" />Productos ({products.length})</h3>
+              <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><Package className="w-5 h-5 text-foreground" />Productos ({products.length})</h3>
               {products.length > 0 ? (
                 <ul className="space-y-4">
                   {products.map((product, index) => (
@@ -157,13 +157,11 @@ export const PreviewModal: FC<PreviewModalProps> = ({
           <Button variant="outline" onClick={onClose}>
             <X className="mr-2 h-4 w-4" /> {isViewerMode ? "Cerrar" : "Cancelar"}
           </Button>
-          {/* Only show confirm button if not in viewer mode, or if it's for specific actions from viewer mode in future */}
           {!isViewerMode && (
             <Button onClick={onConfirm} className={isEditing ? "" : "bg-green-600 hover:bg-green-700"}>
               {confirmButtonIcon} {confirmButtonText}
             </Button>
           )}
-          {/* If it is viewer mode, the onConfirm from page.tsx is already set to just close the modal */}
            {isViewerMode && (
              <Button onClick={onConfirm} > 
               {confirmButtonIcon} {confirmButtonText}
@@ -174,5 +172,3 @@ export const PreviewModal: FC<PreviewModalProps> = ({
     </Dialog>
   );
 };
-
-    

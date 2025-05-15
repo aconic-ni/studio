@@ -39,17 +39,16 @@ export const AddProductModal: FC<AddProductModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] md:max-w-[750px] lg:max-w-[900px] flex flex-col max-h-[90vh] overflow-hidden">
+      <DialogContent className="sm:max-w-[600px] md:max-w-[750px] lg:max-w-[900px] flex flex-col max-h-[90vh] overflow-hidden text-foreground">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
-            <PackagePlus className="w-5 h-5 text-primary" />
+            <PackagePlus className="w-5 h-5 text-foreground" />
             {isEditing ? 'Editar Producto' : 'Agregar Nuevo Producto'}
           </DialogTitle>
           <DialogDescription>
             {isEditing ? 'Modifique los detalles del producto.' : 'Especifique las características del producto para agregarlo a la lista.'}
           </DialogDescription>
         </DialogHeader>
-        {/* Ensure ScrollArea grows and can shrink, pr-2 -mr-4 for custom scrollbar aesthetics */}
         <ScrollArea className="flex-grow min-h-0 pr-2 -mr-4">
           <AddProductForm
             key={formKey} // Ensures form re-initializes when productToEdit changes
