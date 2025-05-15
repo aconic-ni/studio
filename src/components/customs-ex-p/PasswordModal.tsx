@@ -14,16 +14,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { KeyRound, LogIn, X } from 'lucide-react';
+import { KeyRound, LogIn, X, User as UserIcon } from 'lucide-react';
+
+export interface LoginCredentials {
+  username?: string;
+  password: string;
+}
 
 interface PasswordModalProps {
   isOpen: boolean;
-  onSubmit: (password: string) => void;
-  onClose: () => void; 
+  onSubmit: (credentials: LoginCredentials) => void;
+  onClose: () => void;
   error?: string;
 }
 
 export const PasswordModal: FC<PasswordModalProps> = ({ isOpen, onSubmit, onClose, error: initialError }) => {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [currentError, setCurrentError] = useState(initialError || '');
 
@@ -32,20 +38,24 @@ export const PasswordModal: FC<PasswordModalProps> = ({ isOpen, onSubmit, onClos
   }, [initialError]);
 
   const handleSubmit = () => {
-    setCurrentError(''); 
-    onSubmit(password);
+    setCurrentError('');
+    onSubmit({ username: username.trim() === '' ? undefined : username.trim(), password });
   };
-  
+
   useEffect(() => {
     if (isOpen) {
-      setPassword(''); 
-      setCurrentError(initialError || ''); 
+      setUsername('');
+      setPassword('');
+      setCurrentError(initialError || '');
       setTimeout(() => {
-        const inputElement = document.getElementById('password');
+        const inputElement = document.getElementById('username'); // Focus username first
         if (inputElement) {
           inputElement.focus();
+        } else {
+           const passwordElement = document.getElementById('password');
+           if (passwordElement) passwordElement.focus();
         }
-      }, 100); 
+      }, 100);
     }
   }, [isOpen, initialError]);
 
@@ -57,17 +67,28 @@ export const PasswordModal: FC<PasswordModalProps> = ({ isOpen, onSubmit, onClos
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[425px] text-foreground" onInteractOutside={(e) => { e.preventDefault(); onClose(); }} onEscapeKeyDown={(e) => {e.preventDefault(); onClose(); }}>
+      <DialogContent className="sm:max-w-[425px] text-foreground overflow-hidden" onInteractOutside={(e) => { onClose(); }} onEscapeKeyDown={(e) => { onClose(); }}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <KeyRound className="w-6 h-6 text-foreground" />
             Acceso Restringido
           </DialogTitle>
           <DialogDescription>
-            Por favor, ingrese la clave para continuar.
+            Por favor, ingrese sus credenciales para continuar.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
+          <div className="grid items-center gap-2">
+            <Label htmlFor="username" className="flex items-center gap-1"><UserIcon className="w-3 h-3" />Nombre de Usuario (Opcional para Admin/Viewer)</Label>
+            <Input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Ingrese su nombre de usuario"
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
+            />
+          </div>
           <div className="grid items-center gap-2">
             <Label htmlFor="password">Clave</Label>
             <Input
@@ -76,15 +97,11 @@ export const PasswordModal: FC<PasswordModalProps> = ({ isOpen, onSubmit, onClos
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
-                if (currentError) setCurrentError(''); 
+                if (currentError) setCurrentError('');
               }}
               placeholder="Ingrese su clave"
               aria-describedby="password-error"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleSubmit();
-                }
-              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
             />
           </div>
           {currentError && <p id="password-error" className="text-sm text-destructive">{currentError}</p>}
@@ -101,5 +118,3 @@ export const PasswordModal: FC<PasswordModalProps> = ({ isOpen, onSubmit, onClos
     </Dialog>
   );
 };
-
-    

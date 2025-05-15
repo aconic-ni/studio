@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import type { FirebaseApp } from 'firebase/app'; // Only for type, not used directly here
+import type { FirebaseApp } from 'firebase/app';
 import { 
   getFirestore, 
   collection, 
@@ -16,35 +16,37 @@ import {
   serverTimestamp,
   Timestamp
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase'; // Use alias for consistency
+import { db } from '@/lib/firebase'; 
 
-import type { ExamInfo, Product, UserRole, SavedExam, ProductStatus } from '@/types';
+import type { ExamInfo, Product, UserRole, SavedExam, ProductStatus, ManagedGestorAccount } from '@/types';
 import type { ProductFormData } from '@/components/customs-ex-p/AddProductForm';
 import { USER_ROLES, PRODUCT_STATUS } from '@/types';
 import { Header } from '@/components/Header';
 import { InitialExamForm } from '@/components/customs-ex-p/InitialExamForm';
 import { ProductsTable } from '@/components/customs-ex-p/ProductsTable';
 import { PreviewModal } from '@/components/customs-ex-p/PreviewModal';
-import { PasswordModal } from '@/components/customs-ex-p/PasswordModal';
+import { PasswordModal, type LoginCredentials } from '@/components/customs-ex-p/PasswordModal';
 import { AddProductModal } from '@/components/customs-ex-p/AddProductModal';
+import { ManageGestoresModal } from '@/components/customs-ex-p/ManageGestoresModal';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { generateTxtReport, generateExcelReport } from '@/lib/reportUtils';
-import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle, PackageSearch, LogIn, ChevronRight, ChevronLeft, Info, DatabaseZap, WifiOff } from 'lucide-react';
+import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle, PackageSearch, LogIn, ChevronRight, ChevronLeft, Info, DatabaseZap, WifiOff, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
-const PASSWORDS: Record<string, UserRole> = {
-  "inspector123": USER_ROLES.INSPECTOR, // Clave para Gestor Aduanero
+// Static passwords for Admin and Viewer
+const STATIC_PASSWORDS: Record<string, UserRole> = {
   "viewer123": USER_ROLES.VIEWER,
   "admin123": USER_ROLES.ADMIN,
 };
 
-const ROLE_DISPLAY_NAMES: Record<NonNullable<UserRole>, string> = {
+const ROLE_DISPLAY_NAMES: Record<Exclude<UserRole, null>, string> = {
   [USER_ROLES.INSPECTOR]: "Gestor Aduanero",
   [USER_ROLES.VIEWER]: "Visualizador",
   [USER_ROLES.ADMIN]: "Administrador",
 };
 
+const GESTOR_ACCOUNTS_STORAGE_KEY = 'customsAppGestorAccounts';
 
 const initialExamData: ExamInfo = {
   examId: '',
@@ -92,6 +94,29 @@ export default function CustomsPage() {
   
   const firebaseConfigured = db !== null; 
 
+  // Gestor Aduanero Account Management
+  const [managedGestorAccounts, setManagedGestorAccounts] = useState<ManagedGestorAccount[]>([]);
+  const [showManageGestoresModal, setShowManageGestoresModal] = useState(false);
+
+  useEffect(() => {
+    // Load managed gestor accounts from localStorage
+    const storedAccounts = localStorage.getItem(GESTOR_ACCOUNTS_STORAGE_KEY);
+    if (storedAccounts) {
+      try {
+        setManagedGestorAccounts(JSON.parse(storedAccounts));
+      } catch (e) {
+        console.error("Error parsing gestor accounts from localStorage", e);
+        localStorage.removeItem(GESTOR_ACCOUNTS_STORAGE_KEY); // Clear corrupted data
+      }
+    }
+  }, []);
+
+  const saveManagedGestorAccounts = (accounts: ManagedGestorAccount[]) => {
+    setManagedGestorAccounts(accounts);
+    localStorage.setItem(GESTOR_ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+  };
+
+
   useEffect(() => {
     if (!firebaseConfigured || !(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER)) {
       if (userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER) {
@@ -115,7 +140,7 @@ export default function CustomsPage() {
         });
       });
       setSavedExams(examsFromDb);
-      setDbError(null); // Clear previous errors on successful fetch
+      setDbError(null);
     }, (error) => {
       console.error("Error fetching exams from Firestore:", error);
       toast({ title: "Error de Base de Datos", description: "No se pudieron cargar los exámenes guardados. Verifique la consola para más detalles.", variant: "destructive" });
@@ -126,39 +151,80 @@ export default function CustomsPage() {
   }, [userRole, toast, firebaseConfigured]);
 
 
-  const handlePasswordSubmit = (password: string) => {
-    const role = PASSWORDS[password];
-    if (role) {
+  const handlePasswordSubmit = (credentials: LoginCredentials) => {
+    const { username, password } = credentials;
+
+    // Check static Admin/Viewer passwords first (password only needed)
+    const staticRole = STATIC_PASSWORDS[password];
+    if (staticRole) {
       setIsAuthenticated(true);
-      setUserRole(role);
+      setUserRole(staticRole);
       setPasswordError('');
-      const roleName = ROLE_DISPLAY_NAMES[role] || role;
+      const roleName = ROLE_DISPLAY_NAMES[staticRole] || staticRole;
       toast({ title: "Acceso Concedido", description: `Bienvenido como ${roleName}.` });
-      if (role === USER_ROLES.VIEWER || role === USER_ROLES.ADMIN) {
+      if (staticRole === USER_ROLES.VIEWER || staticRole === USER_ROLES.ADMIN) {
         setCurrentView('database');
-      } else { // Gestor Aduanero
+      } else { // Should not happen with current static passwords but good for structure
         setCurrentView('form');
-        resetForm(); 
+        resetForm();
       }
-    } else {
-      setPasswordError("Clave incorrecta. Intente de nuevo.");
+      return;
     }
+
+    // Check managed Gestor Aduanero accounts (username and password needed)
+    if (username) {
+      const gestorAccount = managedGestorAccounts.find(
+        acc => acc.username.toLowerCase() === username.toLowerCase() && acc.password === password
+      );
+
+      if (gestorAccount) {
+        setIsAuthenticated(true);
+        setUserRole(USER_ROLES.INSPECTOR);
+        setPasswordError('');
+        // Pre-fill inspectorName and reset form for a new exam
+        setExamInfo(prev => ({
+          ...initialExamData,
+          ...(prev && prev.examId ? { examId: prev.examId } : {} ), // keep existing examId if any (e.g. from a previous state)
+          examId: `EXM-${Date.now().toString().slice(-6)}`, // Always generate new ID for new session for gestor
+          inspectorName: gestorAccount.gestorName, // Pre-fill name
+          date: new Date().toISOString().split('T')[0],
+          location: '', // Clear location for new exam
+        }));
+        setProducts([]); // Clear products for new exam
+        setEditingExamId(null);
+        setProductToEdit(null);
+        setInspectorStep('examInfo'); // Start Gestor at exam info step
+
+        toast({ title: "Acceso Concedido", description: `Bienvenido Gestor: ${gestorAccount.gestorName}.` });
+        setCurrentView('form');
+        return;
+      }
+    }
+    setPasswordError("Usuario o clave incorrecta. Intente de nuevo.");
   };
   
   const resetForm = useCallback(() => {
-    setExamInfo({...initialExamData, examId: `EXM-${Date.now().toString().slice(-6)}` });
+    // If user is a logged-in gestor, keep their name, otherwise clear it.
+    const currentGestorName = userRole === USER_ROLES.INSPECTOR && examInfo?.inspectorName ? examInfo.inspectorName : '';
+    
+    setExamInfo({
+        ...initialExamData, 
+        examId: `EXM-${Date.now().toString().slice(-6)}`,
+        inspectorName: currentGestorName 
+    });
     setProducts([]);
     setEditingExamId(null);
     setProductToEdit(null);
     setInspectorStep('examInfo'); 
-  }, []);
+  }, [userRole, examInfo?.inspectorName]);
 
   const handleLogout = () => {
     setIsAuthenticated(false);
     setUserRole(null);
     setCurrentView('welcome'); 
-    resetForm();
+    resetForm(); // This will clear inspectorName if not a gestor
     setDbError(null); 
+    setExamInfo(initialExamData); // Fully reset examInfo on logout
     toast({ title: "Sesión Cerrada"});
   };
   
@@ -240,7 +306,7 @@ export default function CustomsPage() {
         const docRef = await addDoc(collection(db, "exams"), examDataToSave);
         toast({ title: "Examen Guardado", description: `El examen ha sido guardado en la base de datos (ID: ${docRef.id}).` });
       }
-      setDbError(null); // Clear error on successful save
+      setDbError(null);
 
       if (generateReports) {
         try {
@@ -324,7 +390,7 @@ export default function CustomsPage() {
       setEditingExamId(examIdToEdit); 
       setCurrentView('form');
       if (userRole === USER_ROLES.INSPECTOR) setInspectorStep('products'); 
-      setDbError(null); // Clear db errors when starting an edit
+      setDbError(null);
     } else {
       toast({ title: "Error", description: "No se encontró el examen para editar.", variant: "destructive" });
     }
@@ -354,9 +420,10 @@ export default function CustomsPage() {
 
   useEffect(() => {
     if (currentView === 'form' && !editingExamId && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN)) {
-        if (!examInfo?.examId || examInfo.examId === initialExamData.examId) { 
+        if (userRole === USER_ROLES.ADMIN && (!examInfo?.examId || examInfo.examId === initialExamData.examId)) {
              setExamInfo(prev => ({...initialExamData, ...prev!, examId: `EXM-${Date.now().toString().slice(-6)}`}));
         }
+        // For gestor, examId and name are set on login.
     }
   }, [currentView, editingExamId, userRole, examInfo?.examId]);
 
@@ -446,15 +513,25 @@ export default function CustomsPage() {
     );
   }
 
-  const headerActions = userRole === USER_ROLES.ADMIN && currentView === 'form' && editingExamId ? (
-      <Button variant="outline" onClick={handleAdminCancelEdit} size="sm">
-          <ArrowLeftToLine className="mr-2 h-4 w-4" /> Volver a Base de Datos
-      </Button>
-  ) : userRole === USER_ROLES.ADMIN && currentView === 'database' ? (
-    <Button onClick={() => { resetForm(); setCurrentView('form'); setEditingExamId(null); setDbError(null); }}>
-        <PackagePlus className="mr-2 h-5 w-5" /> Nuevo Examen
-    </Button>
-  ) : null;
+  const headerActions = (
+    <>
+      {userRole === USER_ROLES.ADMIN && currentView === 'form' && editingExamId && (
+        <Button variant="outline" onClick={handleAdminCancelEdit} size="sm">
+            <ArrowLeftToLine className="mr-2 h-4 w-4" /> Volver a Base de Datos
+        </Button>
+      )}
+      {userRole === USER_ROLES.ADMIN && currentView === 'database' && (
+        <>
+          <Button onClick={() => setShowManageGestoresModal(true)} variant="outline" size="sm">
+            <Users className="mr-2 h-4 w-4" /> Gestionar Gestores
+          </Button>
+          <Button onClick={() => { resetForm(); setCurrentView('form'); setEditingExamId(null); setDbError(null); }}>
+              <PackagePlus className="mr-2 h-5 w-5" /> Nuevo Examen
+          </Button>
+        </>
+      )}
+    </>
+  );
 
 
   if (currentView === 'database' && (userRole === USER_ROLES.VIEWER || userRole === USER_ROLES.ADMIN)) {
@@ -537,11 +614,18 @@ export default function CustomsPage() {
                 products={products}
             />
         )}
+         {userRole === USER_ROLES.ADMIN && (
+            <ManageGestoresModal
+                isOpen={showManageGestoresModal}
+                onClose={() => setShowManageGestoresModal(false)}
+                accounts={managedGestorAccounts}
+                onSaveAccounts={saveManagedGestorAccounts}
+            />
+        )}
       </div>
     );
   }
   
-  // Form View for Gestor Aduanero or Admin
   if (currentView === 'form' && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN) && examInfo) {
     const isInspectorCreatingNew = userRole === USER_ROLES.INSPECTOR && !editingExamId;
 
@@ -563,12 +647,12 @@ export default function CustomsPage() {
               <InitialExamForm 
                 onExamInfoSubmit={handleExamInfoChange} 
                 initialData={examInfo} 
+                isReadOnly={userRole === USER_ROLES.INSPECTOR && !!examInfo.inspectorName} // Gestor name pre-filled is readonly
               />
               {isInspectorCreatingNew && inspectorStep === 'examInfo' && (
                 <div className="mt-6 flex justify-end">
                   <Button 
                     size="lg"
-                    variant="outline"
                     onClick={() => setInspectorStep('products')}
                     disabled={!isExamInfoComplete}
                     className="text-primary border-primary hover:bg-accent hover:text-primary focus-visible:ring-primary"
@@ -699,7 +783,6 @@ export default function CustomsPage() {
     );
   }
 
-  // Fallback for invalid state
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-grow flex items-center justify-center p-4">

@@ -1,6 +1,6 @@
 
 export const USER_ROLES = {
-  INSPECTOR: "gestorAduanero", // Valor cambiado
+  INSPECTOR: "gestorAduanero",
   VIEWER: "viewer",
   ADMIN: "admin",
 } as const;
@@ -26,10 +26,10 @@ export interface Product {
   brand?: string;
   model?: string;
   origin?: string;
-  merchandiseState?: string; // e.g., "Nuevo", "Usado", "Dañado leve"
+  merchandiseState?: string;
   weightValue?: number;
-  weightUnit?: string; // e.g., "kg", "lb", "g"
-  measurementUnit?: string; // e.g., "unidades", "pares", "docenas"
+  weightUnit?: string;
+  measurementUnit?: string;
   serialNumber?: string;
   observation?: string;
   status: ProductStatus;
@@ -38,13 +38,20 @@ export interface Product {
 export interface ExamInfo {
   examId: string;
   date: string;
-  inspectorName: string; // El nombre del campo sigue igual, la etiqueta cambiará
+  inspectorName: string;
   location: string;
 }
 
 export interface SavedExam {
-  id: string; // Unique ID for the saved exam
+  id: string; // Firestore document ID
   examInfo: ExamInfo;
   products: Product[];
-  timestamp: string; // ISO string date of when it was saved/updated
+  timestamp: string; // ISO string date
+}
+
+export interface ManagedGestorAccount {
+  id: string;
+  username: string;
+  password?: string; // Optional when displaying, required for saving
+  gestorName: string;
 }

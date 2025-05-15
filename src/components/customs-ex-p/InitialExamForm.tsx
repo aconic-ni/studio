@@ -2,7 +2,7 @@
 "use client";
 
 import type { FC } from 'react';
-import { useEffect } from 'react'; // Added useEffect
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -23,10 +23,11 @@ type ExamInfoFormData = z.infer<typeof examInfoSchema>;
 
 interface InitialExamFormProps {
   onExamInfoSubmit: (data: ExamInfo) => void;
-  initialData?: ExamInfo | null; 
+  initialData?: ExamInfo | null;
+  isReadOnly?: boolean; // For pre-filled gestor name
 }
 
-export const InitialExamForm: FC<InitialExamFormProps> = ({ onExamInfoSubmit, initialData }) => {
+export const InitialExamForm: FC<InitialExamFormProps> = ({ onExamInfoSubmit, initialData, isReadOnly }) => {
   const form = useForm<ExamInfoFormData>({
     resolver: zodResolver(examInfoSchema),
     defaultValues: initialData || {
@@ -47,23 +48,14 @@ export const InitialExamForm: FC<InitialExamFormProps> = ({ onExamInfoSubmit, in
   useEffect(() => {
     const debouncedSubmit = setTimeout(() => {
       form.trigger().then(isValid => {
-        if (isValid) {
-          const currentValues = form.getValues();
-          onExamInfoSubmit({
+        // Always submit current values, valid or not, to keep parent state updated
+        const currentValues = form.getValues();
+        onExamInfoSubmit({
             examId: currentValues.examId || '',
             date: currentValues.date || new Date().toISOString().split('T')[0],
             inspectorName: currentValues.inspectorName || '',
             location: currentValues.location || '',
-          });
-        } else { // If not valid, still submit the current (potentially invalid) values to allow UI updates
-            const currentValues = form.getValues();
-             onExamInfoSubmit({
-                examId: currentValues.examId || '',
-                date: currentValues.date || new Date().toISOString().split('T')[0],
-                inspectorName: currentValues.inspectorName || '',
-                location: currentValues.location || '',
-            });
-        }
+        });
       });
     }, 300); 
 
@@ -115,7 +107,12 @@ export const InitialExamForm: FC<InitialExamFormProps> = ({ onExamInfoSubmit, in
                 <FormItem>
                   <FormLabel className="flex items-center gap-2"><User className="w-4 h-4" />Nombre del Gestor Aduanero</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Juan Pérez" {...field} />
+                    <Input 
+                      placeholder="e.g., Juan Pérez" 
+                      {...field} 
+                      readOnly={isReadOnly && !!initialData?.inspectorName} 
+                      className={isReadOnly && !!initialData?.inspectorName ? "bg-muted/50 cursor-not-allowed" : ""}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
