@@ -39,7 +39,7 @@ import { AddProductModal } from '@/components/customs-ex-p/AddProductModal';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { generateTxtReport, generateExcelReport } from '@/lib/reportUtils';
-import { Eye, PackagePlus, List, Edit3, Trash2, LogOut, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle, KeyRound } from 'lucide-react';
+import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 const PASSWORDS: Record<string, UserRole> = {
@@ -90,13 +90,13 @@ export default function CustomsPage() {
   const [passwordError, setPasswordError] = useState('');
   const [dbError, setDbError] = useState<string | null>(null);
   const { toast } = useToast();
+  const firebaseConfigured = !!db; // Check if db is not null/undefined
 
   // Firestore listener for exams
   useEffect(() => {
-    if (!db || !(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER)) {
+    if (!firebaseConfigured || !(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER)) {
       if (userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER) {
-         // Only set DB error if db itself is null but we expect to use it.
-         if (!db) setDbError("Error de conexión con la base de datos. Verifique la configuración de Firebase en src/lib/firebase.ts.");
+         if (!firebaseConfigured) setDbError("Error de conexión con la base de datos. Verifique la configuración de Firebase en src/lib/firebase.ts.");
       }
       return;
     }
@@ -123,7 +123,7 @@ export default function CustomsPage() {
     });
 
     return () => unsubscribe(); // Cleanup listener on component unmount
-  }, [userRole, toast]);
+  }, [userRole, toast, firebaseConfigured]);
 
 
   const handlePasswordSubmit = (password: string) => {
@@ -212,7 +212,7 @@ export default function CustomsPage() {
   };
 
   const handleSaveOrUpdateExamAndGenerateReports = async (generateReports = true) => {
-    if (!db) {
+    if (!firebaseConfigured) {
         toast({ title: "Error de Configuración", description: "La conexión a la base de datos (Firebase) no está configurada. Revise src/lib/firebase.ts", variant: "destructive" });
         setDbError("Firebase no configurado. Siga las instrucciones en src/lib/firebase.ts.");
         return;
@@ -282,7 +282,7 @@ export default function CustomsPage() {
       toast({ title: "Falta Información", description: "Complete la información del examen.", variant: "destructive" });
       return;
     }
-     if (products.length === 0 && !editingExamId && userRole !== USER_ROLES.ADMIN) { // Admin can download empty if editing
+     if (products.length === 0 && !editingExamId && (userRole === USER_ROLES.INSPECTOR || (userRole === USER_ROLES.ADMIN && !editingExamId)) ) { 
         toast({ title: "Sin Productos", description: "Agregue al menos un producto.", variant: "destructive" });
         return;
     }
@@ -300,7 +300,7 @@ export default function CustomsPage() {
       toast({ title: "Falta Información", description: "Complete la información del examen.", variant: "destructive" });
       return;
     }
-    if (products.length === 0 && !editingExamId && userRole !== USER_ROLES.ADMIN) { // Admin can download empty if editing
+    if (products.length === 0 && !editingExamId && (userRole === USER_ROLES.INSPECTOR || (userRole === USER_ROLES.ADMIN && !editingExamId))) {
         toast({ title: "Sin Productos", description: "Agregue al menos un producto.", variant: "destructive" });
         return;
     }
@@ -328,7 +328,7 @@ export default function CustomsPage() {
   };
 
   const handleDeleteExam = async (examIdToDelete: string) => {
-    if (!db) {
+    if (!firebaseConfigured) {
       toast({ title: "Error de Configuración", description: "La conexión a la base de datos (Firebase) no está configurada.", variant: "destructive" });
       setDbError("Firebase no configurado.");
       return;
@@ -356,22 +356,29 @@ export default function CustomsPage() {
     }
   }, [currentView, editingExamId, userRole, examInfo?.examId]);
 
-  const commonDisabledCondition = !examInfo || !examInfo.examId || (products.length === 0 && !editingExamId && userRole !== USER_ROLES.ADMIN && userRole !== USER_ROLES.INSPECTOR);
-  const firebaseConfigured = !!db;
-
+  const commonDisabledCondition = !examInfo || !examInfo.examId || (products.length === 0 && !editingExamId && (userRole === USER_ROLES.INSPECTOR || (userRole === USER_ROLES.ADMIN && !editingExamId)));
+  
+  const FooterContent = () => (
+    <footer className="text-center p-4 text-sm text-muted-foreground border-t">
+      Stvaer © 2025 <em className="italic">for</em> ACONIC
+    </footer>
+  );
 
   if (currentView === 'welcome') {
     return (
-      <div className="min-h-screen flex flex-col bg-secondary/50 items-center justify-center p-4 text-center">
-        <FileText 
-          className="w-24 h-24 text-primary mb-6 cursor-pointer hover:text-primary/80 transition-colors" 
-          onClick={() => setCurrentView('login')}
-          aria-label="Iniciar sesión"
-          role="button"
-        />
-        <h1 className="text-4xl font-bold text-primary mb-2">Customs Ex-p</h1>
-        <p className="text-lg text-muted-foreground">Aplicación Progresiva para Exámenes Aduaneros</p>
-        <p className="text-sm text-muted-foreground mt-4">Haga clic en el icono para ingresar.</p>
+      <div className="min-h-screen flex flex-col bg-secondary/50">
+        <main className="flex-grow flex flex-col items-center justify-center p-4 text-center">
+            <FileText 
+            className="w-24 h-24 text-primary mb-6 cursor-pointer hover:text-primary/80 transition-colors" 
+            onClick={() => setCurrentView('login')}
+            aria-label="Iniciar sesión"
+            role="button"
+            />
+            <h1 className="text-4xl font-bold text-primary mb-2">Customs Ex-p</h1>
+            <p className="text-lg text-muted-foreground">Aplicación Progresiva para Exámenes Aduaneros</p>
+            <p className="text-sm text-muted-foreground mt-4">Haga clic en el icono para ingresar.</p>
+        </main>
+        <FooterContent />
       </div>
     );
   }
@@ -379,13 +386,19 @@ export default function CustomsPage() {
   if (currentView === 'login') {
      return (
       <>
-        <div className="min-h-screen flex flex-col bg-secondary/50 items-center justify-center p-4 text-center -z-10 opacity-50">
-            <FileText 
-              className="w-24 h-24 text-primary mb-6" 
-              aria-hidden="true"
-            />
-            <h1 className="text-4xl font-bold text-primary mb-2">Customs Ex-p</h1>
-            <p className="text-lg text-muted-foreground">Aplicación Progresiva para Exámenes Aduaneros</p>
+        <div className="min-h-screen flex flex-col bg-secondary/50 -z-10 opacity-50">
+            <main className="flex-grow flex flex-col items-center justify-center p-4 text-center">
+                <FileText 
+                className="w-24 h-24 text-primary mb-6" 
+                aria-hidden="true"
+                />
+                <h1 className="text-4xl font-bold text-primary mb-2">Customs Ex-p</h1>
+                <p className="text-lg text-muted-foreground">Aplicación Progresiva para Exámenes Aduaneros</p>
+            </main>
+             {/* Placeholder to keep footer at bottom when modal is open over this view */}
+            <footer className="text-center p-4 text-sm text-muted-foreground border-t invisible"> 
+               Stvaer © 2025 <em className="italic">for</em> ACONIC
+            </footer>
         </div>
         <PasswordModal
             isOpen={true} 
@@ -489,9 +502,7 @@ export default function CustomsPage() {
             </CardContent>
           </Card>
         </main>
-        <footer className="text-center p-4 text-sm text-muted-foreground border-t">
-          © {new Date().getFullYear()} Customs Ex-p. Todos los derechos reservados.
-        </footer>
+        <FooterContent />
         {isPreviewModalOpen && examInfo && (currentView === 'database') && (
              <PreviewModal
                 isOpen={isPreviewModalOpen}
@@ -627,21 +638,21 @@ export default function CustomsPage() {
             initialProductData={initialProductFormData} 
           />
         </main>
-        <footer className="text-center p-4 text-sm text-muted-foreground border-t">
-          © {new Date().getFullYear()} Customs Ex-p. Todos los derechos reservados.
-        </footer>
+        <FooterContent />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p>Error: Estado de la aplicación no válido o cargando...</p>
-      <Button onClick={handleLogout} className="ml-4">Reintentar Login</Button>
+    <div className="min-h-screen flex flex-col bg-secondary/50">
+      <main className="flex-grow flex items-center justify-center">
+        <p>Error: Estado de la aplicación no válido o cargando...</p>
+        <Button onClick={handleLogout} className="ml-4">Reintentar Login</Button>
+      </main>
+      <FooterContent />
     </div>
   );
 }
-
     
 
     
