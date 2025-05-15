@@ -30,7 +30,7 @@ import { AddProductModal } from '@/components/customs-ex-p/AddProductModal';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { generateTxtReport, generateExcelReport } from '@/lib/reportUtils';
-import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle, PackageSearch } from 'lucide-react';
+import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle, PackageSearch, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 const PASSWORDS: Record<string, UserRole> = {
@@ -355,20 +355,16 @@ export default function CustomsPage() {
   if (currentView === 'welcome') {
     return (
       <div className={`min-h-screen flex flex-col relative ${currentView === 'login' ? 'backdrop-blur-sm' : ''}`}>
-        <div className="absolute top-10 left-1/2 -translate-x-1/2 transform flex flex-col items-center gap-2 z-10">
-          <PackageSearch className="h-12 w-12 text-primary" />
-          <h1 className="text-3xl font-bold text-primary">Customs Ex-p</h1>
-        </div>
         <main className="flex-grow flex flex-col items-center justify-center p-4 text-center">
-            <FileText 
-              className="w-24 h-24 text-card-foreground mb-6 cursor-pointer hover:text-card-foreground/80 transition-colors" 
-              onClick={() => setCurrentView('login')}
-              aria-label="Iniciar sesión"
-              role="button"
-            />
-            <h2 className="text-4xl font-semibold text-card-foreground mb-2">Bienvenido</h2>
-            <p className="text-lg text-muted-foreground">Aplicación Progresiva para Exámenes Aduaneros</p>
-            <p className="text-sm text-muted-foreground mt-4">Haga clic en el icono para ingresar.</p>
+            <div 
+                className="flex flex-col items-center cursor-pointer group"
+                onClick={() => setCurrentView('login')}
+                aria-label="Iniciar sesión"
+                role="button"
+            >
+                <PackageSearch className="h-32 w-32 text-white transition-transform group-hover:scale-110" />
+                <p className="mt-4 text-3xl font-semibold text-white">Customs Ex-p</p>
+            </div>
         </main>
         <FooterContent />
       </div>
@@ -380,17 +376,11 @@ export default function CustomsPage() {
       <>
         {/* Welcome screen content (blurred) */}
         <div className="min-h-screen flex flex-col relative backdrop-blur-sm">
-          <div className="absolute top-10 left-1/2 -translate-x-1/2 transform flex flex-col items-center gap-2 z-10">
-            <PackageSearch className="h-12 w-12 text-primary" />
-            <h1 className="text-3xl font-bold text-primary">Customs Ex-p</h1>
-          </div>
           <main className="flex-grow flex flex-col items-center justify-center p-4 text-center opacity-50">
-              <FileText 
-              className="w-24 h-24 text-card-foreground mb-6" 
-              aria-hidden="true"
-              />
-              <h2 className="text-4xl font-semibold text-card-foreground mb-2">Bienvenido</h2>
-              <p className="text-lg text-muted-foreground">Aplicación Progresiva para Exámenes Aduaneros</p>
+            <div className="flex flex-col items-center">
+                <PackageSearch className="h-32 w-32 text-white" aria-hidden="true" />
+                <p className="mt-4 text-3xl font-semibold text-white">Customs Ex-p</p>
+            </div>
           </main>
           <FooterContent />
         </div>
@@ -655,3 +645,4 @@ export default function CustomsPage() {
     
 
     
+
