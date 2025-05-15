@@ -347,7 +347,7 @@ export default function CustomsPage() {
   const commonDisabledCondition = !examInfo || !examInfo.examId || (products.length === 0 && !editingExamId && (userRole === USER_ROLES.INSPECTOR || (userRole === USER_ROLES.ADMIN && !editingExamId)));
   
   const FooterContent = () => (
-    <footer className="text-center p-4 text-sm text-muted-foreground border-t border-border/30 bg-transparent">
+    <footer className="text-center p-4 text-sm border-t border-border/30 bg-transparent">
       Stvaer © 2025 <em className="italic">for</em> ACONIC
     </footer>
   );
@@ -420,7 +420,7 @@ export default function CustomsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-destructive-foreground">{dbError}</p>
-                {!firebaseConfigured && <p className="text-sm text-muted-foreground mt-2">Por favor, siga las instrucciones en `src/lib/firebase.ts` para configurar su proyecto Firebase.</p>}
+                {!firebaseConfigured && <p className="text-sm mt-2">Por favor, siga las instrucciones en `src/lib/firebase.ts` para configurar su proyecto Firebase.</p>}
               </CardContent>
             </Card>
           )}
@@ -436,7 +436,7 @@ export default function CustomsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {savedExams.length === 0 && !dbError ? (
-                <p className="text-muted-foreground text-center py-8">No hay exámenes para mostrar.</p>
+                <p className="text-center py-8">No hay exámenes para mostrar.</p>
               ) : savedExams.length === 0 && dbError ? (
                  <p className="text-destructive text-center py-8">No se pudieron cargar los exámenes debido a un error.</p>
               ) : (
@@ -453,14 +453,14 @@ export default function CustomsPage() {
                     </CardHeader>
                     <CardContent className="flex-grow">
                       <p className="text-sm font-medium">Productos ({exam.products.length}):</p>
-                      <ul className="text-xs text-muted-foreground list-disc list-inside max-h-24 overflow-y-auto pr-2">
+                      <ul className="text-xs list-disc list-inside max-h-24 overflow-y-auto pr-2">
                         {exam.products.slice(0,5).map(p => <li key={p.id} className="truncate">{p.description} (Item: {p.itemNumber})</li>)}
                         {exam.products.length > 5 && <li className="italic">... y {exam.products.length - 5} más.</li>}
                          {exam.products.length === 0 && <li className="italic">Sin productos.</li>}
                       </ul>
                     </CardContent>
                     <div className="p-4 border-t mt-auto flex flex-col gap-2">
-                      <p className="text-xs text-muted-foreground">Guardado: {new Date(exam.timestamp).toLocaleString()}</p>
+                      <p className="text-xs">Guardado: {new Date(exam.timestamp).toLocaleString()}</p>
                       <div className="flex gap-2 items-center">
                         {(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER) && (
                            <Button variant="outline" size="sm" onClick={() => { setExamInfo(exam.examInfo); setProducts(exam.products.map(p => ({...initialProductFormData, ...p }))); setIsPreviewModalOpen(true); setEditingExamId(exam.id); } }>
@@ -523,7 +523,7 @@ export default function CustomsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-destructive-foreground">{dbError}</p>
-                 {!firebaseConfigured && <p className="text-sm text-muted-foreground mt-2">Por favor, siga las instrucciones en `src/lib/firebase.ts` para configurar su proyecto Firebase.</p>}
+                 {!firebaseConfigured && <p className="text-sm mt-2">Por favor, siga las instrucciones en `src/lib/firebase.ts` para configurar su proyecto Firebase.</p>}
               </CardContent>
             </Card>
           )}
@@ -555,7 +555,7 @@ export default function CustomsPage() {
           <section id="actions" className="py-6">
             <Card className="shadow-lg">
               <CardContent className="p-6 flex flex-col sm:flex-row flex-wrap justify-end items-center gap-4">
-                  <p className="text-sm text-muted-foreground mr-auto self-center">
+                  <p className="text-sm mr-auto self-center">
                       Productos Totales: {products.length}
                   </p>
                   {userRole === USER_ROLES.ADMIN && editingExamId && (
@@ -632,7 +632,7 @@ export default function CustomsPage() {
       <main className="flex-grow flex items-center justify-center p-4">
         <div>
             <p className="text-xl font-semibold text-destructive">Error: Estado de la aplicación no válido.</p>
-            <p className="text-muted-foreground">Ha ocurrido un problema con la vista actual. Intente volver a iniciar sesión.</p>
+            <p>Ha ocurrido un problema con la vista actual. Intente volver a iniciar sesión.</p>
             <Button onClick={handleLogout} className="mt-4">
                 <LogIn className="mr-2 h-4 w-4" /> Reintentar Login
             </Button>
@@ -645,4 +645,5 @@ export default function CustomsPage() {
     
 
     
+
 
