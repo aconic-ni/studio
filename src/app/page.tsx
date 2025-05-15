@@ -16,15 +16,6 @@ import {
   serverTimestamp,
   Timestamp
 } from 'firebase/firestore';
-// Assume db is exported from a firebase config file
-// IMPORTANT: You need to create/configure src/lib/firebase.ts and export 'db'
-// For example:
-// import { initializeApp } from 'firebase/app';
-// import { getFirestore } from 'firebase/firestore';
-// const firebaseConfig = { /* your config */ };
-// const app = initializeApp(firebaseConfig);
-// const db = getFirestore(app);
-// export { db };
 import { db } from '@/lib/firebase'; // Use alias for consistency
 
 import type { ExamInfo, Product, UserRole, SavedExam, ProductStatus } from '@/types';
@@ -39,7 +30,7 @@ import { AddProductModal } from '@/components/customs-ex-p/AddProductModal';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { generateTxtReport, generateExcelReport } from '@/lib/reportUtils';
-import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle, PackageSearch } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 const PASSWORDS: Record<string, UserRole> = {
@@ -75,7 +66,7 @@ const initialProductFormData: Omit<Product, 'id'> = {
 
 
 export default function CustomsPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false); // Retained for conceptual auth state, though primary control is currentView
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [currentView, setCurrentView] = useState<'welcome' | 'login' | 'form' | 'database'>('welcome');
   
@@ -90,9 +81,8 @@ export default function CustomsPage() {
   const [passwordError, setPasswordError] = useState('');
   const [dbError, setDbError] = useState<string | null>(null);
   const { toast } = useToast();
-  const firebaseConfigured = !!db; // Check if db is not null/undefined
+  const firebaseConfigured = !!db; 
 
-  // Firestore listener for exams
   useEffect(() => {
     if (!firebaseConfigured || !(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER)) {
       if (userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER) {
@@ -100,7 +90,7 @@ export default function CustomsPage() {
       }
       return;
     }
-    setDbError(null); // Clear error if db is available and role is correct
+    setDbError(null); 
     const examsCollectionRef = collection(db, "exams");
     const q = query(examsCollectionRef, orderBy("timestamp", "desc"));
 
@@ -122,7 +112,7 @@ export default function CustomsPage() {
       setDbError("Error al cargar datos. Verifique la configuración de Firebase y su conexión. Intente recargar la página.");
     });
 
-    return () => unsubscribe(); // Cleanup listener on component unmount
+    return () => unsubscribe(); 
   }, [userRole, toast, firebaseConfigured]);
 
 
@@ -142,7 +132,6 @@ export default function CustomsPage() {
       }
     } else {
       setPasswordError("Clave incorrecta. Intente de nuevo.");
-      // Keep currentView as 'login' so modal stays open
     }
   };
   
@@ -156,9 +145,9 @@ export default function CustomsPage() {
   const handleLogout = () => {
     setIsAuthenticated(false);
     setUserRole(null);
-    setCurrentView('welcome'); // Go back to welcome screen
+    setCurrentView('welcome'); 
     resetForm();
-    setDbError(null); // Clear DB error on logout
+    setDbError(null); 
     toast({ title: "Sesión Cerrada"});
   };
   
@@ -227,15 +216,15 @@ export default function CustomsPage() {
     const examDataToSave = {
       examInfo,
       products: productsWithIds,
-      timestamp: serverTimestamp(), // Use Firestore server timestamp
+      timestamp: serverTimestamp(), 
     };
 
     try {
-      if (editingExamId) { // Update existing exam
+      if (editingExamId) { 
         const examDocRef = doc(db, "exams", editingExamId);
         await updateDoc(examDocRef, examDataToSave);
         toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado en la base de datos." });
-      } else { // Save new exam
+      } else { 
         const docRef = await addDoc(collection(db, "exams"), examDataToSave);
         toast({ title: "Examen Guardado", description: `El examen ha sido guardado en la base de datos (ID: ${docRef.id}).` });
       }
@@ -261,7 +250,7 @@ export default function CustomsPage() {
       console.error("Error saving/updating exam to Firestore:", error);
       toast({ title: "Error de Base de Datos", description: "No se pudo guardar/actualizar el examen. Verifique la consola.", variant: "destructive" });
       setDbError("Error al guardar en la base de datos. Verifique la conexión e inténtelo de nuevo.");
-      return; // Stop further execution if save failed
+      return; 
     }
     
     setIsPreviewModalOpen(false); 
@@ -317,7 +306,6 @@ export default function CustomsPage() {
     const examToEdit = savedExams.find(ex => ex.id === examIdToEdit);
     if (examToEdit) {
       setExamInfo(examToEdit.examInfo);
-      // Ensure all product fields have defaults if not present in DB data
       const productsWithDefaults = examToEdit.products.map(p => ({ ...initialProductFormData, ...p }));
       setProducts(productsWithDefaults);
       setEditingExamId(examIdToEdit); 
@@ -359,22 +347,26 @@ export default function CustomsPage() {
   const commonDisabledCondition = !examInfo || !examInfo.examId || (products.length === 0 && !editingExamId && (userRole === USER_ROLES.INSPECTOR || (userRole === USER_ROLES.ADMIN && !editingExamId)));
   
   const FooterContent = () => (
-    <footer className="text-center p-4 text-sm text-muted-foreground border-t">
+    <footer className="text-center p-4 text-sm text-muted-foreground border-t border-border/30 bg-transparent">
       Stvaer © 2025 <em className="italic">for</em> ACONIC
     </footer>
   );
 
   if (currentView === 'welcome') {
     return (
-      <div className="min-h-screen flex flex-col bg-secondary/50">
+      <div className={`min-h-screen flex flex-col relative ${currentView === 'login' ? 'backdrop-blur-sm' : ''}`}>
+        <div className="absolute top-10 left-1/2 -translate-x-1/2 transform flex flex-col items-center gap-2 z-10">
+          <PackageSearch className="h-12 w-12 text-primary" />
+          <h1 className="text-3xl font-bold text-primary">Customs Ex-p</h1>
+        </div>
         <main className="flex-grow flex flex-col items-center justify-center p-4 text-center">
             <FileText 
-            className="w-24 h-24 text-primary mb-6 cursor-pointer hover:text-primary/80 transition-colors" 
-            onClick={() => setCurrentView('login')}
-            aria-label="Iniciar sesión"
-            role="button"
+              className="w-24 h-24 text-card-foreground mb-6 cursor-pointer hover:text-card-foreground/80 transition-colors" 
+              onClick={() => setCurrentView('login')}
+              aria-label="Iniciar sesión"
+              role="button"
             />
-            <h1 className="text-4xl font-bold text-primary mb-2">Customs Ex-p</h1>
+            <h2 className="text-4xl font-semibold text-card-foreground mb-2">Bienvenido</h2>
             <p className="text-lg text-muted-foreground">Aplicación Progresiva para Exámenes Aduaneros</p>
             <p className="text-sm text-muted-foreground mt-4">Haga clic en el icono para ingresar.</p>
         </main>
@@ -386,19 +378,21 @@ export default function CustomsPage() {
   if (currentView === 'login') {
      return (
       <>
-        <div className="min-h-screen flex flex-col bg-secondary/50 -z-10 opacity-50">
-            <main className="flex-grow flex flex-col items-center justify-center p-4 text-center">
-                <FileText 
-                className="w-24 h-24 text-primary mb-6" 
-                aria-hidden="true"
-                />
-                <h1 className="text-4xl font-bold text-primary mb-2">Customs Ex-p</h1>
-                <p className="text-lg text-muted-foreground">Aplicación Progresiva para Exámenes Aduaneros</p>
-            </main>
-             {/* Placeholder to keep footer at bottom when modal is open over this view */}
-            <footer className="text-center p-4 text-sm text-muted-foreground border-t invisible"> 
-               Stvaer © 2025 <em className="italic">for</em> ACONIC
-            </footer>
+        {/* Welcome screen content (blurred) */}
+        <div className="min-h-screen flex flex-col relative backdrop-blur-sm">
+          <div className="absolute top-10 left-1/2 -translate-x-1/2 transform flex flex-col items-center gap-2 z-10">
+            <PackageSearch className="h-12 w-12 text-primary" />
+            <h1 className="text-3xl font-bold text-primary">Customs Ex-p</h1>
+          </div>
+          <main className="flex-grow flex flex-col items-center justify-center p-4 text-center opacity-50">
+              <FileText 
+              className="w-24 h-24 text-card-foreground mb-6" 
+              aria-hidden="true"
+              />
+              <h2 className="text-4xl font-semibold text-card-foreground mb-2">Bienvenido</h2>
+              <p className="text-lg text-muted-foreground">Aplicación Progresiva para Exámenes Aduaneros</p>
+          </main>
+          <FooterContent />
         </div>
         <PasswordModal
             isOpen={true} 
@@ -424,7 +418,7 @@ export default function CustomsPage() {
 
   if (currentView === 'database' && (userRole === USER_ROLES.VIEWER || userRole === USER_ROLES.ADMIN)) {
     return (
-      <div className="min-h-screen flex flex-col bg-secondary/50">
+      <div className="min-h-screen flex flex-col">
         <Header onLogout={handleLogout} actions={headerActions} />
         <main className="flex-grow container mx-auto p-4 md:p-6 space-y-8">
           {dbError && (
@@ -479,7 +473,7 @@ export default function CustomsPage() {
                       <p className="text-xs text-muted-foreground">Guardado: {new Date(exam.timestamp).toLocaleString()}</p>
                       <div className="flex gap-2 items-center">
                         {(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER) && (
-                           <Button variant="outline" size="sm" onClick={() => { setExamInfo(exam.examInfo); setProducts(exam.products.map(p => ({...initialProductFormData, ...p }))); setIsPreviewModalOpen(true); setEditingExamId(exam.id); /* Pass ID for context if needed by modal */ } }>
+                           <Button variant="outline" size="sm" onClick={() => { setExamInfo(exam.examInfo); setProducts(exam.products.map(p => ({...initialProductFormData, ...p }))); setIsPreviewModalOpen(true); setEditingExamId(exam.id); } }>
                               <Eye className="mr-1 h-4 w-4" /> Ver Detalles
                             </Button>
                          )}
@@ -507,7 +501,7 @@ export default function CustomsPage() {
              <PreviewModal
                 isOpen={isPreviewModalOpen}
                 onClose={() => { setIsPreviewModalOpen(false); resetForm();}} 
-                onConfirm={() => { setIsPreviewModalOpen(false); resetForm();}} // Confirm is just close for viewer
+                onConfirm={() => { setIsPreviewModalOpen(false); resetForm();}} 
                 examInfo={examInfo}
                 products={products}
                 isViewerMode={true} 
@@ -520,12 +514,12 @@ export default function CustomsPage() {
   
   if (currentView === 'form' && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN) && examInfo) {
     return (
-      <div className="min-h-screen flex flex-col bg-secondary/50">
+      <div className="min-h-screen flex flex-col">
         <Header onLogout={handleLogout} actions={headerActions} />
         <main className="flex-grow container mx-auto p-4 md:p-6 space-y-8">
            {userRole === USER_ROLES.ADMIN && (
-            <div className={`flex justify-between items-center p-3 mb-6 rounded-md ${editingExamId ? 'bg-blue-100 dark:bg-blue-900 border border-blue-300 dark:border-blue-700' : 'bg-green-100 dark:bg-green-900 border border-green-300 dark:border-green-700'}`}>
-                <p className={`${editingExamId ? 'text-blue-700 dark:text-blue-200' : 'text-green-700 dark:text-green-200'} font-semibold`}>
+            <div className={`flex justify-between items-center p-3 mb-6 rounded-md shadow-sm ${editingExamId ? 'bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700/50' : 'bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700/50'}`}>
+                <p className={`font-semibold ${editingExamId ? 'text-blue-700 dark:text-blue-300' : 'text-green-700 dark:text-green-300'}`}>
                     {editingExamId ? `Modo Edición Administrador: Editando examen ID: ${examInfo?.examId || ''} (Firestore ID: ${editingExamId})` : 'Modo Administrador: Creando nuevo examen.'}
                 </p>
             </div>
@@ -610,7 +604,7 @@ export default function CustomsPage() {
                     onClick={handlePreview} 
                     size="lg" 
                     disabled={commonDisabledCondition || !firebaseConfigured}
-                    className="w-full sm:w-auto order-5 sm:order-none bg-blue-600 hover:bg-blue-700"
+                    className="w-full sm:w-auto order-5 sm:order-none bg-accent hover:bg-accent/90"
                   >
                     <Eye className="mr-2 h-5 w-5" />
                      Previsualizar y Finalizar
@@ -623,7 +617,7 @@ export default function CustomsPage() {
             <PreviewModal
               isOpen={isPreviewModalOpen}
               onClose={() => setIsPreviewModalOpen(false)}
-              onConfirm={() => handleSaveOrUpdateExamAndGenerateReports(true)} // Confirm from preview also saves
+              onConfirm={() => handleSaveOrUpdateExamAndGenerateReports(true)} 
               examInfo={examInfo}
               products={products}
               isEditing={!!editingExamId}
@@ -644,10 +638,15 @@ export default function CustomsPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-secondary/50">
-      <main className="flex-grow flex items-center justify-center">
-        <p>Error: Estado de la aplicación no válido o cargando...</p>
-        <Button onClick={handleLogout} className="ml-4">Reintentar Login</Button>
+    <div className="min-h-screen flex flex-col">
+      <main className="flex-grow flex items-center justify-center p-4">
+        <div>
+            <p className="text-xl font-semibold text-destructive">Error: Estado de la aplicación no válido.</p>
+            <p className="text-muted-foreground">Ha ocurrido un problema con la vista actual. Intente volver a iniciar sesión.</p>
+            <Button onClick={handleLogout} className="mt-4">
+                <LogIn className="mr-2 h-4 w-4" /> Reintentar Login
+            </Button>
+        </div>
       </main>
       <FooterContent />
     </div>

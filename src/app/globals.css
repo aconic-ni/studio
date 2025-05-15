@@ -2,87 +2,128 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+/* Define HSL values for the new blue and grid lines */
+:root {
+  --app-bg-blue-light: 202 78% 92%; /* Very light blue for page background */
+  --app-grid-line-light: 0 0% 100%; /* White for grid lines */
+  --app-text-on-blue-light: 202 30% 30%; /* Darker blue/gray text directly on page background */
+
+  /* Standard shadcn variables - these will be used by components */
+  --background: 0 0% 100%; /* Cards, modals etc., will be white */
+  --foreground: 202 25% 20%; /* Default text on cards, etc. (dark grayish blue) */
+  
+  --card: 0 0% 100%;
+  --card-foreground: 202 25% 20%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 202 25% 20%;
+  
+  --primary: 202 70% 50%; /* A clear, strong blue for primary actions */
+  --primary-foreground: 0 0% 100%; /* White */
+  
+  --secondary: 202 60% 96%; /* Lighter shade for secondary elements */
+  --secondary-foreground: 202 25% 25%;
+  
+  --muted: 202 60% 93%;
+  --muted-foreground: 202 25% 45%;
+  
+  --accent: 202 78% 66%; /* Original Accent Sky Blue - can be used for highlights */
+  --accent-foreground: 202 10% 15%; /* Darker text for accent backgrounds */
+  
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  
+  --border: 202 30% 88%;
+  --input: 202 30% 94%;
+  --ring: 202 70% 55%; /* Ring color related to primary */
+
+  --chart-1: 12 76% 61%;
+  --chart-2: 173 58% 39%;
+  --chart-3: 197 37% 24%;
+  --chart-4: 43 74% 66%;
+  --chart-5: 27 87% 67%;
+
+  --sidebar-background: 0 0% 98%; /* Keeping sidebar distinct for now */
+  --sidebar-foreground: 240 5.3% 26.1%;
+  --sidebar-primary: 240 5.9% 10%;
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 240 4.8% 95.9%;
+  --sidebar-accent-foreground: 240 5.9% 10%;
+  --sidebar-border: 220 13% 91%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
+
+  --radius: 0.5rem;
+}
+
+.dark {
+  --app-bg-blue-dark: 202 40% 15%;  /* Dark blue for dark mode page background */
+  --app-grid-line-dark: 202 25% 70%; /* Lighter gray/blue for dark mode grid lines */
+  --app-text-on-blue-dark: 202 30% 80%; /* Lighter blue/gray text directly on page background */
+
+  --background: 202 30% 10%; /* Dark background for cards in dark mode */
+  --foreground: 202 20% 88%; /* Light text for cards in dark mode */
+
+  --card: 202 30% 10%;
+  --card-foreground: 202 20% 88%;
+  --popover: 202 30% 10%;
+  --popover-foreground: 202 20% 88%;
+
+  --primary: 202 70% 60%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 202 30% 22%;
+  --secondary-foreground: 202 20% 88%;
+  
+  --muted: 202 30% 20%;
+  --muted-foreground: 202 20% 68%;
+  
+  --accent: 202 78% 55%;
+  --accent-foreground: 0 0% 100%;
+  
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  
+  --border: 202 30% 25%;
+  --input: 202 30% 20%;
+  --ring: 202 70% 60%;
+
+  --chart-1: 220 70% 50%;
+  --chart-2: 160 60% 45%;
+  --chart-3: 30 80% 55%;
+  --chart-4: 280 65% 60%;
+  --chart-5: 340 75% 55%;
+
+  --sidebar-background: 240 5.9% 10%;
+  --sidebar-foreground: 240 4.8% 95.9%;
+  --sidebar-primary: 224.3 76.3% 48%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 240 3.7% 15.9%;
+  --sidebar-accent-foreground: 240 4.8% 95.9%;
+  --sidebar-border: 240 3.7% 15.9%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
 }
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 202 78% 66%; /* Sky Blue */
-    --accent-foreground: 0 0% 3.9%; /* Dark foreground for contrast */
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 202 78% 50%; /* Ring color related to accent */
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    /* Apply blue background and grid directly to body */
+    background-color: hsl(var(--app-bg-blue-light));
+    background-image:
+      linear-gradient(hsla(var(--app-grid-line-light), 0.35) 1px, transparent 1px),
+      linear-gradient(90deg, hsla(var(--app-grid-line-light), 0.35) 1px, transparent 1px);
+    background-size: 28px 28px; /* Grid size */
+    color: hsl(var(--app-text-on-blue-light)); /* Default text color for the page if not on a card */
   }
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 202 78% 50%; /* Darker Sky Blue for dark mode */
-    --accent-foreground: 0 0% 98%; /* Light foreground for contrast */
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 202 78% 55%; /* Ring color related to accent for dark mode */
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-}
 
-@layer base {
+  .dark body {
+    background-color: hsl(var(--app-bg-blue-dark));
+    background-image:
+      linear-gradient(hsla(var(--app-grid-line-dark), 0.12) 1px, transparent 1px),
+      linear-gradient(90deg, hsla(var(--app-grid-line-dark), 0.12) 1px, transparent 1px);
+    color: hsl(var(--app-text-on-blue-dark)); /* Default text color for dark mode */
+  }
+
+  /* Shadcn components will use their --background & --foreground variables for their own context */
   * {
     @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
   }
 }
