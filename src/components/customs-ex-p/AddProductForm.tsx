@@ -6,19 +6,17 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-// Removed Button from here as it's now in modal footer
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import type { Product, ProductStatus } from '@/types'; // Product type not strictly needed here if we use ProductFormData
+import type { ProductStatus } from '@/types'; 
 import { PRODUCT_STATUS } from '@/types';
 import { 
     PackagePlus, X, ListOrdered, Archive, Boxes, ShoppingBasket, AlignLeft, Bookmark, ToyBrick, 
     Globe2, ShieldQuestion, Weight, Ruler, Barcode, MessageCircle, CheckCircle2 
 } from 'lucide-react';
 
-// Schema for form data, omits 'id'
 const productSchema = z.object({
   itemNumber: z.string().optional(),
   packageNumbers: z.string().optional(),
@@ -37,16 +35,14 @@ const productSchema = z.object({
   status: z.nativeEnum(PRODUCT_STATUS, { errorMap: () => ({ message: "Debe seleccionar un estado."}) }),
 });
 
-// This is the type the form will output
 export type ProductFormData = z.infer<typeof productSchema>;
 
 interface AddProductFormProps {
-  onSubmit: (data: ProductFormData) => void; // Changed from onAddProduct
-  initialData?: ProductFormData; // For editing
-  formId: string; // To link modal's submit button
+  onSubmit: (data: ProductFormData) => void; 
+  initialData?: ProductFormData; 
 }
 
-export const AddProductForm: FC<AddProductFormProps> = ({ onSubmit, initialData, formId }) => {
+export const AddProductForm: FC<AddProductFormProps> = ({ onSubmit, initialData }) => {
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: initialData || { 
@@ -69,7 +65,6 @@ export const AddProductForm: FC<AddProductFormProps> = ({ onSubmit, initialData,
   });
 
   useEffect(() => {
-    // Reset the form if initialData changes (e.g., when switching between editing different products or new product)
     form.reset(initialData || {
       itemNumber: '',
       packageNumbers: '',
@@ -89,16 +84,13 @@ export const AddProductForm: FC<AddProductFormProps> = ({ onSubmit, initialData,
     });
   }, [initialData, form]);
 
-  // The actual submit handler which calls the onSubmit prop
   const handleFormSubmit = (data: ProductFormData) => {
-    onSubmit(data); // Pass data up to the modal
-    // Form reset will be handled by modal closing or initialData change if needed
+    onSubmit(data); 
   };
 
   return (
     <Form {...form}>
-      {/* Added pt-4 and pb-4 for vertical padding within the scrollable area */}
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} id={formId} className="space-y-6 pt-4 pb-4">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} id="product-form-page" className="space-y-6 pt-4 pb-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <FormField
             control={form.control}
@@ -286,7 +278,6 @@ export const AddProductForm: FC<AddProductFormProps> = ({ onSubmit, initialData,
                     <FormControl>
                     <RadioGroup
                         onValueChange={field.onChange}
-                        // Use `value` instead of `defaultValue` to make it a controlled component with react-hook-form
                         value={field.value}
                         className="grid grid-cols-2 gap-2 md:grid-cols-2 lg:flex lg:flex-wrap lg:gap-x-4 lg:space-y-0"
                     >
@@ -321,7 +312,6 @@ export const AddProductForm: FC<AddProductFormProps> = ({ onSubmit, initialData,
             </FormItem>
           )}
         />
-        {/* Buttons are now in the modal footer */}
       </form>
     </Form>
   );

@@ -28,15 +28,15 @@ import { InitialExamForm } from '@/components/customs-ex-p/InitialExamForm';
 import { ProductsTable } from '@/components/customs-ex-p/ProductsTable';
 import { PreviewModal } from '@/components/customs-ex-p/PreviewModal';
 import { PasswordModal, type LoginCredentials } from '@/components/customs-ex-p/PasswordModal';
-import { AddProductModal } from '@/components/customs-ex-p/AddProductModal';
+// import { AddProductModal } from '@/components/customs-ex-p/AddProductModal'; // Removed
+import { AddProductForm } from '@/components/customs-ex-p/AddProductForm'; // Added for new view
 import { ManageGestoresModal } from '@/components/customs-ex-p/ManageGestoresModal';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { generateTxtReport, generateExcelReport } from '@/lib/reportUtils';
-import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle, PackageSearch, LogIn, ChevronRight, ChevronLeft, Info, DatabaseZap, WifiOff, Users, Bookmark } from 'lucide-react';
+import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle, PackageSearch, LogIn, ChevronRight, ChevronLeft, Info, DatabaseZap, WifiOff, Users, Bookmark, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
-// Static passwords for Admin and Viewer
 const STATIC_PASSWORDS: Record<string, UserRole> = {
   "viewer123": USER_ROLES.VIEWER,
   "admin123": USER_ROLES.ADMIN,
@@ -53,7 +53,7 @@ const initialExamData: ExamInfo = {
   date: new Date().toISOString().split('T')[0],
   inspectorName: '',
   location: '',
-  reference: '', // Added reference
+  reference: '',
 };
 
 const initialProductFormData: Omit<Product, 'id'> = {
@@ -78,7 +78,7 @@ const initialProductFormData: Omit<Product, 'id'> = {
 export default function CustomsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>(null);
-  const [currentView, setCurrentView] = useState<'welcome' | 'login' | 'form' | 'database'>('welcome');
+  const [currentView, setCurrentView] = useState<'welcome' | 'login' | 'form' | 'database' | 'productForm'>('welcome');
   const [inspectorStep, setInspectorStep] = useState<'examInfo' | 'products'>('examInfo');
   
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(initialExamData);
@@ -88,7 +88,7 @@ export default function CustomsPage() {
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
 
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
-  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  // const [showAddProductModal, setShowAddProductModal] = useState(false); // Removed
   const [passwordError, setPasswordError] = useState('');
   const [dbError, setDbError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -101,10 +101,10 @@ export default function CustomsPage() {
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
-      event.returnValue = ''; // Standard way to trigger browser's own dialog
+      event.returnValue = ''; 
     };
 
-    if (currentView === 'form' && isDirty) {
+    if ((currentView === 'form' || currentView === 'productForm') && isDirty) {
       window.addEventListener('beforeunload', handleBeforeUnload);
       return () => {
         window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -151,7 +151,6 @@ export default function CustomsPage() {
     const { username, password } = credentials;
     setPasswordError('');
 
-    // Check static Admin/Viewer passwords first (username can be empty or ignored)
     const staticRole = STATIC_PASSWORDS[password];
     if (staticRole && (!username || username.trim() === '')) {
       setIsAuthenticated(true);
@@ -161,22 +160,20 @@ export default function CustomsPage() {
       if (staticRole === USER_ROLES.VIEWER || staticRole === USER_ROLES.ADMIN) {
         setCurrentView('database');
       } else {
-        // This branch should not be hit with current STATIC_PASSWORDS
         setCurrentView('form');
         resetForm();
       }
-      setIsDirty(false); // Reset dirty state on successful login
+      setIsDirty(false); 
       return;
     }
 
-    // Check special local Gestor Aduanero account
     if (username && username.toLowerCase() === "localgestor" && password === "localpass123") {
       setIsAuthenticated(true);
       setUserRole(USER_ROLES.GESTOR_ADUANERO);
       setExamInfo({
         ...initialExamData,
         examId: `EXM-${Date.now().toString().slice(-6)}`,
-        inspectorName: "Gestor Aduanero (Local)", // Pre-filled name
+        inspectorName: "Gestor Aduanero (Local)", 
         date: new Date().toISOString().split('T')[0],
         location: '',
         reference: '',
@@ -191,7 +188,6 @@ export default function CustomsPage() {
       return;
     }
 
-    // Check managed Gestor Aduanero accounts from Firestore
     if (username && firebaseConfigured) {
       try {
         const gestorAccountsRef = collection(db, "gestorAccounts");
@@ -265,23 +261,27 @@ export default function CustomsPage() {
   };
   
   const handleExamInfoChange = (newData: ExamInfo) => {
-    if (JSON.stringify(examInfo) !== JSON.stringify(newData) && currentView === 'form') {
+    if (JSON.stringify(examInfo) !== JSON.stringify(newData) && (currentView === 'form' || currentView === 'productForm')) {
         setIsDirty(true);
     }
     setExamInfo(newData);
   };
 
-  const handleOpenAddProductModal = () => {
+  const navigateToProductFormForAdd = () => {
     setProductToEdit(null); 
-    setShowAddProductModal(true);
+    setCurrentView('productForm');
+    // isDirty will be set if the form itself is changed
   };
 
-  const handleOpenEditProductModal = (product: Product) => {
+  const navigateToProductFormForEdit = (product: Product) => {
     setProductToEdit(product);
-    setShowAddProductModal(true);
+    setCurrentView('productForm');
+    // isDirty will be set if the form itself is changed
   };
   
-  const handleSaveProduct = (productData: ProductFormData, editingProductId: string | null) => {
+  // This function handles the actual saving of product data from AddProductForm
+  const handleProductFormSubmit = (productData: ProductFormData) => {
+    const editingProductId = productToEdit ? productToEdit.id : null;
     if (editingProductId) { 
         const updatedProduct: Product = { ...initialProductFormData, ...productData, id: editingProductId };
         setProducts(prevProducts => prevProducts.map(p => p.id === editingProductId ? updatedProduct : p));
@@ -295,10 +295,16 @@ export default function CustomsPage() {
         setProducts(prevProducts => [...prevProducts, newProduct]);
         toast({ title: "Producto Agregado", description: `${newProduct.description} ha sido agregado.` });
     }
-    setShowAddProductModal(false); 
+    setCurrentView('form');
     setProductToEdit(null); 
-    setIsDirty(true);
+    setIsDirty(true); // Exam is now dirty because products list changed
   };
+
+  const handleCancelProductForm = () => {
+    setCurrentView('form');
+    setProductToEdit(null);
+    setIsDirty(false); // Or maintain based on examInfo changes if needed
+  }
 
   const handleRemoveProduct = (productId: string) => {
     setProducts((prevProducts) => prevProducts.filter(p => p.id !== productId));
@@ -583,6 +589,47 @@ export default function CustomsPage() {
     </>
   );
 
+  if (currentView === 'productForm' && (userRole === USER_ROLES.GESTOR_ADUANERO || userRole === USER_ROLES.ADMIN)) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <header className="py-4 px-4 md:px-6 border-b bg-card shadow-sm sticky top-0 z-50">
+          <div className="container mx-auto flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-primary flex items-center">
+              {productToEdit ? <Edit3 className="mr-2 h-5 w-5" /> : <PackagePlus className="mr-2 h-5 w-5" />}
+              {productToEdit ? 'Editar Producto' : 'Agregar Nuevo Producto'}
+            </h2>
+            {/* "Volver" button in header removed as "Cancelar" is in footer */}
+          </div>
+        </header>
+  
+        <main className="flex-grow container mx-auto p-4 md:p-6 space-y-6">
+          <Card>
+            <CardContent className="p-6">
+              <AddProductForm
+                key={productToEdit ? productToEdit.id : 'new-product-form'}
+                initialData={productToEdit || initialProductFormData}
+                onSubmit={handleProductFormSubmit}
+              />
+            </CardContent>
+          </Card>
+        </main>
+  
+        <footer className="p-4 border-t bg-card sticky bottom-0 z-10">
+          <div className="container mx-auto flex justify-end gap-4">
+            <Button variant="outline" onClick={handleCancelProductForm}>
+              <X className="mr-2 h-4 w-4" /> Cancelar
+            </Button>
+            <Button type="submit" form="product-form-page"> {/* This button submits the form */}
+              {productToEdit ? <Save className="mr-2 h-4 w-4" /> : <PackagePlus className="mr-2 h-4 w-4" />}
+              {productToEdit ? 'Actualizar Producto' : 'Agregar Producto'}
+            </Button>
+          </div>
+        </footer>
+        <FooterContent /> 
+      </div>
+    );
+  }
+
 
   if (currentView === 'database' && (userRole === USER_ROLES.VIEWER || userRole === USER_ROLES.ADMIN)) {
     return (
@@ -746,9 +793,9 @@ export default function CustomsPage() {
                 <ProductsTable 
                   products={products} 
                   onRemoveProduct={handleRemoveProduct}
-                  onEditProduct={handleOpenEditProductModal}
+                  onEditProduct={navigateToProductFormForEdit}
                   headerActions={
-                    <Button onClick={handleOpenAddProductModal} size="default">
+                    <Button onClick={navigateToProductFormForAdd} size="default">
                         <PackagePlus className="mr-2 h-5 w-5" /> Agregar Nuevo Producto
                     </Button>
                   }
@@ -818,13 +865,7 @@ export default function CustomsPage() {
             />
           )}
           
-          <AddProductModal
-            isOpen={showAddProductModal}
-            onClose={() => { setShowAddProductModal(false); setProductToEdit(null); }}
-            onSaveProduct={handleSaveProduct}
-            productToEdit={productToEdit}
-            initialProductData={initialProductFormData} 
-          />
+          {/* AddProductModal removed as it's now a separate view */}
         </main>
         <FooterContent />
       </div>
@@ -847,5 +888,4 @@ export default function CustomsPage() {
     </div>
   );
 }
-
     
