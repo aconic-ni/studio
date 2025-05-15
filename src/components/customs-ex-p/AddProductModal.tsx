@@ -20,26 +20,26 @@ interface AddProductModalProps {
   initialProductData: Omit<Product, 'id'>; // To reset form for new product
 }
 
-export const AddProductModal: FC<AddProductModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  onSaveProduct, 
+export const AddProductModal: FC<AddProductModalProps> = ({
+  isOpen,
+  onClose,
+  onSaveProduct,
   productToEdit,
   initialProductData
 }) => {
   const isEditing = !!productToEdit;
-  
+
   // This key forces re-render of AddProductForm when productToEdit changes, ensuring form resets
   const formKey = productToEdit ? productToEdit.id : 'new-product';
 
   const handleFormSubmit = (data: ProductFormData) => {
     onSaveProduct(data, productToEdit ? productToEdit.id : null);
-    onClose(); 
+    onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] md:max-w-[750px] lg:max-w-[900px] flex flex-col max-h-[90vh]">
+      <DialogContent className="sm:max-w-[600px] md:max-w-[750px] lg:max-w-[900px] flex flex-col max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
             <PackagePlus className="w-5 h-5 text-primary" />
@@ -50,11 +50,11 @@ export const AddProductModal: FC<AddProductModalProps> = ({
           </DialogDescription>
         </DialogHeader>
         {/* Ensure ScrollArea grows and can shrink, pr-2 -mr-4 for custom scrollbar aesthetics */}
-        <ScrollArea className="flex-grow min-h-0 pr-2 -mr-4"> 
+        <ScrollArea className="flex-grow min-h-0 pr-2 -mr-4">
           <AddProductForm
             key={formKey} // Ensures form re-initializes when productToEdit changes
             initialData={productToEdit || initialProductData}
-            onSubmit={handleFormSubmit} 
+            onSubmit={handleFormSubmit}
             formId="product-form" // ID for the form
           />
         </ScrollArea>
@@ -71,4 +71,3 @@ export const AddProductModal: FC<AddProductModalProps> = ({
     </Dialog>
   );
 };
-
