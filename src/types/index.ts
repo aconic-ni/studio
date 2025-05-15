@@ -1,6 +1,6 @@
 
 export const USER_ROLES = {
-  INSPECTOR: "gestorAduanero",
+  GESTOR_ADUANERO: "gestorAduanero", // Changed from INSPECTOR
   VIEWER: "viewer",
   ADMIN: "admin",
 } as const;
@@ -39,7 +39,8 @@ export interface ExamInfo {
   examId: string;
   date: string;
   inspectorName: string;
-  location: string;
+  location:string;
+  reference?: string; // Added optional reference field
 }
 
 export interface SavedExam {
@@ -55,3 +56,4 @@ export interface ManagedGestorAccount {
   password?: string; // Optional when displaying, required for saving
   gestorName: string;
 }
+

@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { FileText, Package, X, Eye } from 'lucide-react'; 
+import { FileText, Package, X, Eye, Bookmark } from 'lucide-react'; 
 
 interface PreviewModalProps {
   isOpen: boolean;
@@ -79,6 +79,7 @@ export const PreviewModal: FC<PreviewModalProps> = ({
                 <div><strong>Fecha:</strong></div><div>{examInfo.date}</div>
                 <div><strong>Gestor Aduanero:</strong></div><div>{examInfo.inspectorName}</div>
                 <div><strong>Ubicación:</strong></div><div>{examInfo.location}</div>
+                <div><strong>Referencia:</strong></div><div>{examInfo.reference || '-'}</div>
               </div>
             </div>
 
@@ -132,3 +133,4 @@ export const PreviewModal: FC<PreviewModalProps> = ({
     </Dialog>
   );
 };
+

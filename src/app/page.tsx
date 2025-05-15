@@ -33,7 +33,7 @@ import { ManageGestoresModal } from '@/components/customs-ex-p/ManageGestoresMod
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { generateTxtReport, generateExcelReport } from '@/lib/reportUtils';
-import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle, PackageSearch, LogIn, ChevronRight, ChevronLeft, Info, DatabaseZap, WifiOff, Users } from 'lucide-react';
+import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle, PackageSearch, LogIn, ChevronRight, ChevronLeft, Info, DatabaseZap, WifiOff, Users, Bookmark } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 // Static passwords for Admin and Viewer
@@ -53,6 +53,7 @@ const initialExamData: ExamInfo = {
   date: new Date().toISOString().split('T')[0],
   inspectorName: '',
   location: '',
+  reference: '', // Added reference
 };
 
 const initialProductFormData: Omit<Product, 'id'> = {
@@ -164,6 +165,7 @@ export default function CustomsPage() {
         setCurrentView('form');
         resetForm();
       }
+      setIsDirty(false); // Reset dirty state on successful login
       return;
     }
 
@@ -177,6 +179,7 @@ export default function CustomsPage() {
         inspectorName: "Gestor Aduanero (Local)", // Pre-filled name
         date: new Date().toISOString().split('T')[0],
         location: '',
+        reference: '',
       });
       setProducts([]);
       setEditingExamId(null);
@@ -204,11 +207,12 @@ export default function CustomsPage() {
             setUserRole(USER_ROLES.GESTOR_ADUANERO);
             setExamInfo(prev => ({
               ...initialExamData,
-              ...(prev && prev.examId ? { examId: prev.examId } : {} ), // Keep existing examId if any (e.g. from logout/login)
+              ...(prev && prev.examId ? { examId: prev.examId } : {} ), 
               examId: `EXM-${Date.now().toString().slice(-6)}`,
               inspectorName: gestorAccount.gestorName,
               date: new Date().toISOString().split('T')[0],
               location: '',
+              reference: '',
             }));
             setProducts([]);
             setEditingExamId(null);
@@ -261,9 +265,6 @@ export default function CustomsPage() {
   };
   
   const handleExamInfoChange = (newData: ExamInfo) => {
-    // Only set dirty if there's an actual change from the current state,
-    // and we are in a state where changes matter (e.g. form view).
-    // This prevents initial hydration/default calls from InitialExamForm from marking dirty.
     if (JSON.stringify(examInfo) !== JSON.stringify(newData) && currentView === 'form') {
         setIsDirty(true);
     }
@@ -616,7 +617,8 @@ export default function CustomsPage() {
                       <CardDescription>
                         Fecha: {exam.examInfo.date} <br />
                         Gestor Aduanero: {exam.examInfo.inspectorName} <br />
-                        Lugar: {exam.examInfo.location}
+                        Lugar: {exam.examInfo.location} <br />
+                        Referencia: {exam.examInfo.reference || '-'}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow">
@@ -734,6 +736,7 @@ export default function CustomsPage() {
                         <div><p><strong>Fecha:</strong> {examInfo.date}</p></div>
                         <div><p><strong>Gestor Aduanero:</strong> {examInfo.inspectorName}</p></div>
                         <div><p><strong>Ubicación:</strong> {examInfo.location}</p></div>
+                        <div><p><strong>Referencia:</strong> {examInfo.reference || '-'}</p></div>
                     </div>
                   </CardContent>
                 </Card>
