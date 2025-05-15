@@ -1,40 +1,32 @@
 
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getAnalytics, type Analytics } from "firebase/analytics";
 
-// IMPORTANT: This is a placeholder configuration.
-// You MUST replace these values with your actual Firebase project configuration for it to work.
-// See the Firebase documentation for how to initialize Firebase:
-// https://firebase.google.com/docs/web/setup
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCQC1mhHsl8_jd-z7gwSud4918rdAF-OU0",
+  authDomain: "customsex-p.firebaseapp.com",
+  projectId: "customsex-p",
+  storageBucket: "customsex-p.appspot.com", // Corrected from firebasestorage.app to .appspot.com
+  messagingSenderId: "1037782875421",
+  appId: "1:1037782875421:web:81d185a49efa176106f5f4",
+  measurementId: "G-JH6903HB5S"
 };
 
 // Initialize Firebase
-// This line initializes Firebase. If the firebaseConfig above still contains "YOUR_..." placeholders,
-// Firebase might initialize structurally but will not connect to your actual project.
-// The application's UI will show warnings if Firebase is not properly connected or if database operations fail.
 let app: FirebaseApp;
 let db: Firestore;
+let analytics: Analytics;
 
 try {
   app = initializeApp(firebaseConfig);
   db = getFirestore(app);
-  // A more specific warning for the console when this file is loaded:
-  if (firebaseConfig.apiKey === "YOUR_API_KEY" || firebaseConfig.projectId === "YOUR_PROJECT_ID") {
-    console.warn(
-      "Firebase has been initialized in src/lib/firebase.ts using PLACEHOLDER credentials. " +
-      "Please update 'firebaseConfig' in src/lib/firebase.ts with your actual Firebase project settings " +
-      "for database features to work correctly. The application UI will indicate if database operations are failing."
-    );
-  } else {
-    console.log("Firebase initialized using the configuration in src/lib/firebase.ts.");
+  // Only initialize analytics if in a browser environment
+  if (typeof window !== 'undefined') {
+    analytics = getAnalytics(app);
   }
+  console.log("Firebase initialized successfully with the provided configuration in src/lib/firebase.ts.");
 } catch (error) {
   console.error("CRITICAL ERROR initializing Firebase in src/lib/firebase.ts:", error);
   console.error(
@@ -42,7 +34,7 @@ try {
     "Database-dependent features will NOT work. Please check your Firebase setup."
   );
   // Ensure db is null if initialization fails, so the app's firebaseConfigured check works.
-  db = null as unknown as Firestore;
+  db = null as unknown as Firestore; // Type assertion to satisfy Firestore type when it's null
 }
 
 export { db };
