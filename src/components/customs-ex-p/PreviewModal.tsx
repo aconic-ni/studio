@@ -3,7 +3,7 @@
 
 import type { FC } from 'react';
 import type { ExamInfo, Product, ProductStatus } from '@/types';
-import { PRODUCT_STATUS } from '@/types'; // Keep for getStatusBadgeVariant
+import { PRODUCT_STATUS } from '@/types'; 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { FileText, Package, X, Eye } from 'lucide-react'; // Removed Save, CheckCircle
+import { FileText, Package, X, Eye } from 'lucide-react'; 
 
 interface PreviewModalProps {
   isOpen: boolean;
@@ -77,7 +77,7 @@ export const PreviewModal: FC<PreviewModalProps> = ({
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm p-4 bg-muted/50 rounded-md">
                 <div><strong>ID Examen:</strong></div><div>{examInfo.examId}</div>
                 <div><strong>Fecha:</strong></div><div>{examInfo.date}</div>
-                <div><strong>Inspector:</strong></div><div>{examInfo.inspectorName}</div>
+                <div><strong>Gestor Aduanero:</strong></div><div>{examInfo.inspectorName}</div>
                 <div><strong>Ubicación:</strong></div><div>{examInfo.location}</div>
               </div>
             </div>
@@ -97,15 +97,15 @@ export const PreviewModal: FC<PreviewModalProps> = ({
                         </Badge>
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                        <div><strong>Item N°:</strong> {product.itemNumber}</div>
-                        <div><strong>Cant. Unidades:</strong> {product.unitQuantity} {product.measurementUnit}</div>
+                        <div><strong>Item N°:</strong> {product.itemNumber || '-'}</div>
+                        <div><strong>Cant. Unidades:</strong> {product.unitQuantity || 0} {product.measurementUnit || ''}</div>
                         <div><strong>Marca:</strong> {product.brand || '-'}</div>
                         <div><strong>Modelo:</strong> {product.model || '-'}</div>
-                        <div><strong>Origen:</strong> {product.origin}</div>
+                        <div><strong>Origen:</strong> {product.origin || '-'}</div>
                         <div><strong>Estado Merc.:</strong> {product.merchandiseState || '-'}</div>
-                        <div><strong>Peso:</strong> {product.weightValue && product.weightUnit ? `${product.weightValue} ${product.weightUnit}` : '-'}</div>
+                        <div><strong>Peso:</strong> {product.weightValue && product.weightUnit ? `${product.weightValue} ${product.weightUnit}` : (product.weightValue ? String(product.weightValue) : '-') }</div>
                         <div><strong>Serie:</strong> {product.serialNumber || '-'}</div>
-                        <div><strong>Cant. Bultos:</strong> {product.packageQuantity}</div>
+                        <div><strong>Cant. Bultos:</strong> {product.packageQuantity || 0}</div>
                         <div className="md:col-span-1"><strong>Num. Bultos:</strong> {product.packageNumbers || '-'}</div>
                       </div>
                       {product.observation && (

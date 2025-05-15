@@ -34,10 +34,17 @@ import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText,
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 const PASSWORDS: Record<string, UserRole> = {
-  "inspector123": USER_ROLES.INSPECTOR,
+  "inspector123": USER_ROLES.INSPECTOR, // Clave para Gestor Aduanero
   "viewer123": USER_ROLES.VIEWER,
   "admin123": USER_ROLES.ADMIN,
 };
+
+const ROLE_DISPLAY_NAMES: Record<NonNullable<UserRole>, string> = {
+  [USER_ROLES.INSPECTOR]: "Gestor Aduanero",
+  [USER_ROLES.VIEWER]: "Visualizador",
+  [USER_ROLES.ADMIN]: "Administrador",
+};
+
 
 const initialExamData: ExamInfo = {
   examId: '',
@@ -125,10 +132,11 @@ export default function CustomsPage() {
       setIsAuthenticated(true);
       setUserRole(role);
       setPasswordError('');
-      toast({ title: "Acceso Concedido", description: `Bienvenido como ${role}.` });
+      const roleName = ROLE_DISPLAY_NAMES[role] || role;
+      toast({ title: "Acceso Concedido", description: `Bienvenido como ${roleName}.` });
       if (role === USER_ROLES.VIEWER || role === USER_ROLES.ADMIN) {
         setCurrentView('database');
-      } else { // Inspector
+      } else { // Gestor Aduanero
         setCurrentView('form');
         resetForm(); 
       }
@@ -196,7 +204,6 @@ export default function CustomsPage() {
        toast({ title: "Falta Información del Examen", description: "Complete todos los campos del formulario de Información del Examen.", variant: "destructive" });
       return;
     }
-    // No need to check for products length for preview-only
     setIsPreviewModalOpen(true);
   };
 
@@ -210,8 +217,8 @@ export default function CustomsPage() {
         toast({ title: "Error", description: "Información del examen incompleta.", variant: "destructive" });
         return;
     }
-    const isNewExamByInspectorOrAdmin = !editingExamId && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN);
-    if (products.length === 0 && isNewExamByInspectorOrAdmin) { 
+    const isNewExamByCreator = !editingExamId && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN);
+    if (products.length === 0 && isNewExamByCreator) { 
         toast({ title: "Sin Productos", description: "Agregue al menos un producto para guardar el examen.", variant: "destructive" });
         return;
     }
@@ -316,7 +323,7 @@ export default function CustomsPage() {
       setProducts(productsWithDefaults);
       setEditingExamId(examIdToEdit); 
       setCurrentView('form');
-      if (userRole === USER_ROLES.INSPECTOR) setInspectorStep('products'); // Should not happen based on roles, but safe
+      if (userRole === USER_ROLES.INSPECTOR) setInspectorStep('products'); 
       setDbError(null); // Clear db errors when starting an edit
     } else {
       toast({ title: "Error", description: "No se encontró el examen para editar.", variant: "destructive" });
@@ -358,7 +365,7 @@ export default function CustomsPage() {
   const commonDisabledConditionForActions = !isExamInfoComplete || (products.length === 0 && isNewExamByCreator);
   
   const FooterContent = () => (
-    <footer className="text-center p-4 text-sm border-t border-border/30 bg-transparent text-app-text-on-page-bg">
+    <footer className="text-center p-4 text-sm border-t border-border/30 bg-transparent text-white">
       Stvaer © 2025 <em className="italic">for</em> ACONIC
     </footer>
   );
@@ -482,7 +489,7 @@ export default function CustomsPage() {
                       <CardTitle className="text-lg">ID: {exam.examInfo.examId}</CardTitle>
                       <CardDescription>
                         Fecha: {exam.examInfo.date} <br />
-                        Inspector: {exam.examInfo.inspectorName} <br />
+                        Gestor Aduanero: {exam.examInfo.inspectorName} <br />
                         Lugar: {exam.examInfo.location}
                       </CardDescription>
                     </CardHeader>
@@ -534,7 +541,7 @@ export default function CustomsPage() {
     );
   }
   
-  // Form View for Inspector or Admin
+  // Form View for Gestor Aduanero or Admin
   if (currentView === 'form' && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN) && examInfo) {
     const isInspectorCreatingNew = userRole === USER_ROLES.INSPECTOR && !editingExamId;
 
@@ -583,7 +590,7 @@ export default function CustomsPage() {
                         <Info className="w-5 h-5 text-primary"/>
                         Información del Examen Ingresada
                       </CardTitle>
-                      <CardDescription>Verifique los datos antes de añadir productos.</CardDescription>
+                      <CardDescription>Verifique los datos antes de añadir productos. (Gestor Aduanero)</CardDescription>
                     </div>
                     <Button variant="outline" onClick={() => setInspectorStep('examInfo')} size="sm">
                       <ChevronLeft className="mr-2 h-4 w-4" /> Retroceder
@@ -592,7 +599,7 @@ export default function CustomsPage() {
                   <CardContent className="text-sm space-y-1">
                     <p><strong>ID Examen:</strong> {examInfo.examId}</p>
                     <p><strong>Fecha:</strong> {examInfo.date}</p>
-                    <p><strong>Inspector:</strong> {examInfo.inspectorName}</p>
+                    <p><strong>Gestor Aduanero:</strong> {examInfo.inspectorName}</p>
                     <p><strong>Ubicación:</strong> {examInfo.location}</p>
                   </CardContent>
                 </Card>
@@ -656,9 +663,10 @@ export default function CustomsPage() {
                       </Button>
                       <Button 
                         onClick={handlePreview} 
+                        variant="outline"
                         size="lg" 
                         disabled={commonDisabledConditionForActions} 
-                        className="w-full sm:w-auto order-5 sm:order-none bg-accent hover:bg-accent/90 text-accent-foreground"
+                        className="w-full sm:w-auto order-5 sm:order-none"
                       >
                         <Eye className="mr-2 h-5 w-5" />
                          Previsualizar
@@ -708,8 +716,3 @@ export default function CustomsPage() {
     </div>
   );
 }
-    
-
-    
-
-

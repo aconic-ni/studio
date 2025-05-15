@@ -24,7 +24,7 @@ export const generateTxtReport = (examInfo: ExamInfo, products: Product[]): void
   reportContent += "Exam Information:\n";
   reportContent += `  Exam ID: ${examInfo.examId}\n`;
   reportContent += `  Date: ${examInfo.date}\n`;
-  reportContent += `  Inspector: ${examInfo.inspectorName}\n`;
+  reportContent += `  Gestor Aduanero: ${examInfo.inspectorName}\n`;
   reportContent += `  Location: ${examInfo.location}\n\n`;
   reportContent += "Products:\n";
   reportContent += "==========================\n";
@@ -65,7 +65,6 @@ const mapProductStatusToText = (status: ProductStatus): string => {
     case PRODUCT_STATUS.AVERIA:
       return 'Se encontró avería';
     default:
-      // This case should ideally not be reached if status is always one of the enum values
       return status || 'Sin estado específico';
   }
 };
@@ -76,15 +75,15 @@ export const generateExcelReport = (examInfo: ExamInfo, products: Product[]): vo
 
   const excelData: (string | number | undefined | null)[][] = [
     ['EXAMEN PREVIO AGENCIA ACONIC - CustomsEX-p'],
-    [], // Empty row
+    [], 
     ['INFORMACIÓN GENERAL:'],
-    [], // Empty row
+    [], 
     [`Fecha y hora de generación: ${fechaHora}`],
     [`ID Examen (NE): ${examInfo.examId}`],
     [`Fecha del Examen: ${examInfo.date}`],
-    [`Inspector: ${examInfo.inspectorName}`],
+    [`Gestor Aduanero: ${examInfo.inspectorName}`],
     [`Ubicación: ${examInfo.location}`],
-    [], // Empty row
+    [], 
     ['PRODUCTOS:'],
     [
       'Número de Item',
@@ -135,13 +134,7 @@ export const generateExcelReport = (examInfo: ExamInfo, products: Product[]): vo
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(excelData);
 
-  // Set column widths (optional, but often helpful)
-  // Example: First column width 20, second 30, etc.
-  // ws['!cols'] = [ {wch:20}, {wch:30}, ... ];
-  // For now, let's keep it simple as per the user's example.
-  // Auto-width could be complex to implement perfectly here.
-  // Let's at least give some basic widths for headers
-  const productHeaders = excelData[11]; // Assuming headers are at index 11
+  const productHeaders = excelData[11]; 
   if (productHeaders && productHeaders.length > 0) {
     ws['!cols'] = productHeaders.map(header => ({ wch: String(header).length + 5 }));
   }

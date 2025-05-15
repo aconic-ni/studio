@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { FC } from 'react';
@@ -13,8 +14,8 @@ import { Calendar as CalendarIcon, User, MapPin, FileText } from 'lucide-react';
 
 const examInfoSchema = z.object({
   examId: z.string().min(1, "ID de Examen es requerido"),
-  date: z.string().min(1, "Fecha es requerida"), // Consider z.date() if using a date picker that returns Date object
-  inspectorName: z.string().min(1, "Nombre del Inspector es requerido"),
+  date: z.string().min(1, "Fecha es requerida"), 
+  inspectorName: z.string().min(1, "Nombre del Gestor Aduanero es requerido"),
   location: z.string().min(1, "Ubicación es requerida"),
 });
 
@@ -22,7 +23,7 @@ type ExamInfoFormData = z.infer<typeof examInfoSchema>;
 
 interface InitialExamFormProps {
   onExamInfoSubmit: (data: ExamInfo) => void;
-  initialData?: ExamInfo | null; // Allow null for initial state
+  initialData?: ExamInfo | null; 
 }
 
 export const InitialExamForm: FC<InitialExamFormProps> = ({ onExamInfoSubmit, initialData }) => {
@@ -36,7 +37,6 @@ export const InitialExamForm: FC<InitialExamFormProps> = ({ onExamInfoSubmit, in
     },
   });
 
-  // Update form with initialData if it changes (e.g., after auth)
   useEffect(() => {
     if (initialData) {
       form.reset(initialData);
@@ -45,11 +45,9 @@ export const InitialExamForm: FC<InitialExamFormProps> = ({ onExamInfoSubmit, in
 
   const watchedValues = form.watch();
   useEffect(() => {
-    // Debounce or make this less aggressive if performance is an issue
     const debouncedSubmit = setTimeout(() => {
       form.trigger().then(isValid => {
         if (isValid) {
-          // Ensure all fields are present, even if empty, matching ExamInfo type
           const currentValues = form.getValues();
           onExamInfoSubmit({
             examId: currentValues.examId || '',
@@ -57,9 +55,17 @@ export const InitialExamForm: FC<InitialExamFormProps> = ({ onExamInfoSubmit, in
             inspectorName: currentValues.inspectorName || '',
             location: currentValues.location || '',
           });
+        } else { // If not valid, still submit the current (potentially invalid) values to allow UI updates
+            const currentValues = form.getValues();
+             onExamInfoSubmit({
+                examId: currentValues.examId || '',
+                date: currentValues.date || new Date().toISOString().split('T')[0],
+                inspectorName: currentValues.inspectorName || '',
+                location: currentValues.location || '',
+            });
         }
       });
-    }, 300); // Debounce by 300ms
+    }, 300); 
 
     return () => clearTimeout(debouncedSubmit);
   }, [watchedValues, form, onExamInfoSubmit]);
@@ -75,7 +81,6 @@ export const InitialExamForm: FC<InitialExamFormProps> = ({ onExamInfoSubmit, in
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          {/* No <form> tag needed here as react-hook-form handles it with FormProvider */}
           <div className="space-y-6">
             <FormField
               control={form.control}
@@ -108,7 +113,7 @@ export const InitialExamForm: FC<InitialExamFormProps> = ({ onExamInfoSubmit, in
               name="inspectorName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-2"><User className="w-4 h-4" />Nombre del Inspector</FormLabel>
+                  <FormLabel className="flex items-center gap-2"><User className="w-4 h-4" />Nombre del Gestor Aduanero</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., Juan Pérez" {...field} />
                   </FormControl>

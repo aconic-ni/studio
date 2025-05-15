@@ -1,6 +1,6 @@
 
 export const USER_ROLES = {
-  INSPECTOR: "inspector",
+  INSPECTOR: "gestorAduanero", // Valor cambiado
   VIEWER: "viewer",
   ADMIN: "admin",
 } as const;
@@ -38,7 +38,7 @@ export interface Product {
 export interface ExamInfo {
   examId: string;
   date: string;
-  inspectorName: string;
+  inspectorName: string; // El nombre del campo sigue igual, la etiqueta cambiará
   location: string;
 }
 
