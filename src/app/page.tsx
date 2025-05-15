@@ -699,11 +699,13 @@ export default function CustomsPage() {
                       <ChevronLeft className="mr-2 h-4 w-4" /> Retroceder
                     </Button>
                   </CardHeader>
-                  <CardContent className="text-sm space-y-1">
-                    <p><strong>ID Examen:</strong> {examInfo.examId}</p>
-                    <p><strong>Fecha:</strong> {examInfo.date}</p>
-                    <p><strong>Gestor Aduanero:</strong> {examInfo.inspectorName}</p>
-                    <p><strong>Ubicación:</strong> {examInfo.location}</p>
+                  <CardContent className="text-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2">
+                        <div><p><strong>ID Examen:</strong> {examInfo.examId}</p></div>
+                        <div><p><strong>Fecha:</strong> {examInfo.date}</p></div>
+                        <div><p><strong>Gestor Aduanero:</strong> {examInfo.inspectorName}</p></div>
+                        <div><p><strong>Ubicación:</strong> {examInfo.location}</p></div>
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -817,3 +819,4 @@ export default function CustomsPage() {
     
 
     
+
