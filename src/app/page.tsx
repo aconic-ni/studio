@@ -82,7 +82,7 @@ export default function CustomsPage() {
   const [passwordError, setPasswordError] = useState('');
   const [dbError, setDbError] = useState<string | null>(null);
   const { toast } = useToast();
-  const firebaseConfigured = db !== null; // Check if db is not the placeholder null
+  const firebaseConfigured = db !== null; 
 
   useEffect(() => {
     if (!firebaseConfigured || !(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER)) {
@@ -568,7 +568,7 @@ export default function CustomsPage() {
                     variant="outline"
                     onClick={() => setInspectorStep('products')}
                     disabled={!isExamInfoComplete}
-                    className="text-primary border-primary hover:bg-primary/10 hover:text-primary focus-visible:ring-primary"
+                    className="text-primary border-primary hover:bg-accent hover:text-primary focus-visible:ring-primary"
                   >
                     Continuar <ChevronRight className="ml-2 h-5 w-5" />
                   </Button>
@@ -717,3 +717,4 @@ export default function CustomsPage() {
     
 
     
+
