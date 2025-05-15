@@ -3,7 +3,7 @@
 
 import type { FC } from 'react';
 import type { ExamInfo, Product, ProductStatus } from '@/types';
-import { PRODUCT_STATUS } from '@/types';
+import { PRODUCT_STATUS } from '@/types'; // Keep for getStatusBadgeVariant
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -16,16 +16,13 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, FileText, Package, DownloadCloud, X, Save, Eye } from 'lucide-react';
+import { FileText, Package, X, Eye } from 'lucide-react'; // Removed Save, CheckCircle
 
 interface PreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void; // For 'form' view, this will trigger save. For 'database' view (viewer), it's just a close.
   examInfo: ExamInfo | null;
   products: Product[];
-  isEditing?: boolean; 
-  isViewerMode?: boolean; // True if opened from database view by a viewer or admin just to see details
 }
 
 const getStatusBadgeVariant = (status: ProductStatus): string => {
@@ -56,51 +53,24 @@ const getStatusDisplayName = (status: ProductStatus): string => {
 export const PreviewModal: FC<PreviewModalProps> = ({ 
   isOpen, 
   onClose, 
-  onConfirm, 
   examInfo, 
   products, 
-  isEditing = false, // Is the exam being edited (relevant for 'form' view)
-  isViewerMode = false // Is the modal opened in a read-only context (from 'database' view)
 }) => {
   if (!examInfo) return null;
 
-  const confirmButtonText = isViewerMode 
-    ? "Cerrar Vista" 
-    : isEditing 
-      ? "Confirmar Actualización y Generar" 
-      : "Confirmar y Generar Reportes";
-  
-  const confirmButtonIcon = isViewerMode 
-    ? <X className="mr-2 h-4 w-4" /> 
-    : <Save className="mr-2 h-4 w-4" /> ; 
-
-  const titleText = isViewerMode
-    ? "Detalles del Examen"
-    : isEditing
-      ? "Confirmar Actualización del Examen"
-      : "Confirmar Detalles de la Examinación";
-
-  const titleIcon = isViewerMode 
-    ? <Eye className="w-6 h-6 text-foreground" /> // Changed from text-primary
-    : <CheckCircle className="w-6 h-6 text-green-500" />;
-
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] md:max-w-[800px] max-h-[90vh] flex flex-col text-foreground">
+      <DialogContent className="sm:max-w-[700px] md:max-w-[800px] max-h-[90vh] flex flex-col text-foreground overflow-hidden">
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
-            {titleIcon}
-            {titleText}
+            <Eye className="w-6 h-6 text-foreground" />
+            Detalles del Examen
           </DialogTitle>
           <DialogDescription>
-            {isViewerMode 
-              ? `Visualizando los detalles del examen ID: ${examInfo.examId}. ${isEditing ? '(Este examen está siendo o fue editado recientemente)' : ''}`
-              : "Revise toda la información ingresada antes de continuar."
-            }
+            Visualizando los detalles del examen ID: {examInfo.examId}.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-grow pr-6 -mr-6"> 
+        <ScrollArea className="flex-grow min-h-0 pr-2 -mr-4"> 
           <div className="space-y-6 py-4">
             <div>
               <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><FileText className="w-5 h-5 text-foreground" />Información del Examen</h3>
@@ -155,18 +125,8 @@ export const PreviewModal: FC<PreviewModalProps> = ({
         </ScrollArea>
         <DialogFooter className="mt-auto pt-4 border-t sticky bottom-0 bg-background pb-6 px-6">
           <Button variant="outline" onClick={onClose}>
-            <X className="mr-2 h-4 w-4" /> {isViewerMode ? "Cerrar" : "Cancelar"}
+            <X className="mr-2 h-4 w-4" /> Cerrar
           </Button>
-          {!isViewerMode && (
-            <Button onClick={onConfirm} className={isEditing ? "" : "bg-green-600 hover:bg-green-700"}>
-              {confirmButtonIcon} {confirmButtonText}
-            </Button>
-          )}
-           {isViewerMode && (
-             <Button onClick={onConfirm} > 
-              {confirmButtonIcon} {confirmButtonText}
-            </Button>
-          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
