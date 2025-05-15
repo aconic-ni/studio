@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { FC } from 'react';
@@ -13,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, FileText, Package, DownloadCloud, X } from 'lucide-react';
+import { CheckCircle, FileText, Package, DownloadCloud, X, Save, Eye } from 'lucide-react';
 
 interface PreviewModalProps {
   isOpen: boolean;
@@ -21,24 +22,60 @@ interface PreviewModalProps {
   onConfirm: () => void;
   examInfo: ExamInfo | null;
   products: Product[];
+  isEditing?: boolean; // For admin editing an existing exam
+  isViewerMode?: boolean; // For viewer role just viewing details from database list
 }
 
-export const PreviewModal: FC<PreviewModalProps> = ({ isOpen, onClose, onConfirm, examInfo, products }) => {
+export const PreviewModal: FC<PreviewModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  examInfo, 
+  products, 
+  isEditing = false,
+  isViewerMode = false 
+}) => {
   if (!examInfo) return null;
+
+  const confirmButtonText = isViewerMode 
+    ? "Cerrar Vista" 
+    : isEditing 
+      ? "Confirmar Actualización y Generar" 
+      : "Confirmar y Generar Reportes";
+  
+  const confirmButtonIcon = isViewerMode 
+    ? <X className="mr-2 h-4 w-4" /> 
+    : isEditing 
+      ? <Save className="mr-2 h-4 w-4" /> 
+      : <DownloadCloud className="mr-2 h-4 w-4" />;
+
+  const titleText = isViewerMode
+    ? "Detalles del Examen"
+    : isEditing
+      ? "Confirmar Actualización del Examen"
+      : "Confirmar Detalles de la Examinación";
+
+  const titleIcon = isViewerMode 
+    ? <Eye className="w-6 h-6 text-primary" />
+    : <CheckCircle className="w-6 h-6 text-green-500" />;
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
-            <CheckCircle className="w-6 h-6 text-green-500" />
-            Confirmar Detalles de la Examinación
+            {titleIcon}
+            {titleText}
           </DialogTitle>
           <DialogDescription>
-            Revise toda la información ingresada antes de generar los reportes.
+            {isViewerMode 
+              ? "Visualizando los detalles del examen seleccionado."
+              : "Revise toda la información ingresada antes de continuar."
+            }
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-grow pr-6 -mr-6">
+        <ScrollArea className="flex-grow pr-6 -mr-6"> {/* Ensure scroll area takes space */}
           <div className="space-y-6 py-4">
             <div>
               <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><FileText className="w-5 h-5 text-primary" />Información del Examen</h3>
@@ -69,18 +106,26 @@ export const PreviewModal: FC<PreviewModalProps> = ({ isOpen, onClose, onConfirm
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-muted-foreground">No se han agregado productos a esta examinación.</p>
+                <p className="text-sm text-muted-foreground p-4 bg-muted/50 rounded-md">No se han agregado productos a esta examinación.</p>
               )}
             </div>
           </div>
         </ScrollArea>
-        <DialogFooter className="mt-auto pt-4 border-t">
+        <DialogFooter className="mt-auto pt-4 border-t sticky bottom-0 bg-background pb-6 px-6"> {/* Make footer sticky */}
           <Button variant="outline" onClick={onClose}>
-            <X className="mr-2 h-4 w-4" /> Cancelar
+            <X className="mr-2 h-4 w-4" /> {isViewerMode ? "Cerrar" : "Cancelar"}
           </Button>
-          <Button onClick={onConfirm} className="bg-green-600 hover:bg-green-700">
-            <DownloadCloud className="mr-2 h-4 w-4" /> Confirmar y Generar Reportes
-          </Button>
+          {/* Viewer mode has a single button that effectively acts as 'close' via onConfirm prop */}
+          {/* Non-viewer modes (create/edit) show the actual confirm button */}
+          {(isViewerMode) ? (
+             <Button onClick={onConfirm} > 
+              {confirmButtonIcon} {confirmButtonText}
+            </Button>
+          ) : (
+            <Button onClick={onConfirm} className={isEditing ? "" : "bg-green-600 hover:bg-green-700"}>
+              {confirmButtonIcon} {confirmButtonText}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
