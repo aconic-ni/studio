@@ -134,9 +134,9 @@ export default function CustomsPage() {
     const { username, password } = credentials;
     setPasswordError('');
 
-    // Check static Admin/Viewer passwords first
+    // Check static Admin/Viewer passwords first (username can be empty or ignored)
     const staticRole = STATIC_PASSWORDS[password];
-    if (staticRole && !username) { // Static roles don't need a username
+    if (staticRole && (!username || username.trim() === '')) {
       setIsAuthenticated(true);
       setUserRole(staticRole);
       const roleName = ROLE_DISPLAY_NAMES[staticRole] || staticRole;
@@ -144,9 +144,30 @@ export default function CustomsPage() {
       if (staticRole === USER_ROLES.VIEWER || staticRole === USER_ROLES.ADMIN) {
         setCurrentView('database');
       } else {
+        // This branch should not be hit with current STATIC_PASSWORDS
         setCurrentView('form');
         resetForm();
       }
+      return;
+    }
+
+    // Check special local Gestor Aduanero account
+    if (username && username.toLowerCase() === "localgestor" && password === "localpass123") {
+      setIsAuthenticated(true);
+      setUserRole(USER_ROLES.GESTOR_ADUANERO);
+      setExamInfo({
+        ...initialExamData,
+        examId: `EXM-${Date.now().toString().slice(-6)}`,
+        inspectorName: "Gestor Aduanero (Local)", // Pre-filled name
+        date: new Date().toISOString().split('T')[0],
+        location: '',
+      });
+      setProducts([]);
+      setEditingExamId(null);
+      setProductToEdit(null);
+      setInspectorStep('examInfo');
+      toast({ title: "Acceso Concedido", description: `Bienvenido Gestor Aduanero (Local).` });
+      setCurrentView('form');
       return;
     }
 
@@ -166,7 +187,7 @@ export default function CustomsPage() {
             setUserRole(USER_ROLES.GESTOR_ADUANERO);
             setExamInfo(prev => ({
               ...initialExamData,
-              ...(prev && prev.examId ? { examId: prev.examId } : {} ),
+              ...(prev && prev.examId ? { examId: prev.examId } : {} ), // Keep existing examId if any (e.g. from logout/login)
               examId: `EXM-${Date.now().toString().slice(-6)}`,
               inspectorName: gestorAccount.gestorName,
               date: new Date().toISOString().split('T')[0],
@@ -177,7 +198,7 @@ export default function CustomsPage() {
             setProductToEdit(null);
             setInspectorStep('examInfo');
 
-            toast({ title: "Acceso Concedido", description: `Bienvenido Gestor: ${gestorAccount.gestorName}.` });
+            toast({ title: "Acceso Concedido", description: `Bienvenido Gestor Aduanero: ${gestorAccount.gestorName}.` });
             setCurrentView('form');
             return;
           }
@@ -381,7 +402,9 @@ export default function CustomsPage() {
       setProducts(productsWithDefaults);
       setEditingExamId(examIdToEdit); 
       setCurrentView('form');
-      if (userRole === USER_ROLES.GESTOR_ADUANERO) setInspectorStep('products'); 
+      // For Admin, they see full form directly. For Gestor, this path isn't typically taken for editing,
+      // but if it were, we'd ensure inspectorStep is set appropriately.
+      // if (userRole === USER_ROLES.GESTOR_ADUANERO) setInspectorStep('products'); 
       setDbError(null);
     } else {
       toast({ title: "Error", description: "No se encontró el examen para editar.", variant: "destructive" });
@@ -794,5 +817,7 @@ export default function CustomsPage() {
     </div>
   );
 }
+
+    
 
     
