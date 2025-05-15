@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { FirebaseApp } from 'firebase/app';
 import { 
   getFirestore, 
@@ -95,6 +95,22 @@ export default function CustomsPage() {
   const firebaseConfigured = db !== null; 
 
   const [showManageGestoresModal, setShowManageGestoresModal] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = ''; // Standard way to trigger browser's own dialog
+    };
+
+    if (currentView === 'form' && isDirty) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+    }
+  }, [currentView, isDirty]);
+
 
   useEffect(() => {
     if (!firebaseConfigured || !(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER)) {
@@ -166,6 +182,7 @@ export default function CustomsPage() {
       setEditingExamId(null);
       setProductToEdit(null);
       setInspectorStep('examInfo');
+      setIsDirty(false);
       toast({ title: "Acceso Concedido", description: `Bienvenido Gestor Aduanero (Local).` });
       setCurrentView('form');
       return;
@@ -197,7 +214,7 @@ export default function CustomsPage() {
             setEditingExamId(null);
             setProductToEdit(null);
             setInspectorStep('examInfo');
-
+            setIsDirty(false);
             toast({ title: "Acceso Concedido", description: `Bienvenido Gestor Aduanero: ${gestorAccount.gestorName}.` });
             setCurrentView('form');
             return;
@@ -229,6 +246,7 @@ export default function CustomsPage() {
     setEditingExamId(null);
     setProductToEdit(null);
     setInspectorStep('examInfo'); 
+    setIsDirty(false);
   }, [userRole, examInfo?.inspectorName]);
 
   const handleLogout = () => {
@@ -238,11 +256,18 @@ export default function CustomsPage() {
     resetForm(); 
     setDbError(null); 
     setExamInfo(initialExamData); 
+    setIsDirty(false);
     toast({ title: "Sesión Cerrada"});
   };
   
-  const handleExamInfoChange = (data: ExamInfo) => {
-    setExamInfo(data);
+  const handleExamInfoChange = (newData: ExamInfo) => {
+    // Only set dirty if there's an actual change from the current state,
+    // and we are in a state where changes matter (e.g. form view).
+    // This prevents initial hydration/default calls from InitialExamForm from marking dirty.
+    if (JSON.stringify(examInfo) !== JSON.stringify(newData) && currentView === 'form') {
+        setIsDirty(true);
+    }
+    setExamInfo(newData);
   };
 
   const handleOpenAddProductModal = () => {
@@ -271,11 +296,13 @@ export default function CustomsPage() {
     }
     setShowAddProductModal(false); 
     setProductToEdit(null); 
+    setIsDirty(true);
   };
 
   const handleRemoveProduct = (productId: string) => {
     setProducts((prevProducts) => prevProducts.filter(p => p.id !== productId));
     toast({ title: "Producto Eliminado", variant: "destructive" });
+    setIsDirty(true);
   };
 
   const handlePreview = () => {
@@ -318,6 +345,7 @@ export default function CustomsPage() {
         const docRef = await addDoc(collection(db, "exams"), examDataToSave);
       }
       setDbError(null);
+      setIsDirty(false);
 
       toast({ 
         title: "Operación Guardada Exitosamente", 
@@ -405,10 +433,8 @@ export default function CustomsPage() {
       setProducts(productsWithDefaults);
       setEditingExamId(examIdToEdit); 
       setCurrentView('form');
-      // For Admin, they see full form directly. For Gestor, this path isn't typically taken for editing,
-      // but if it were, we'd ensure inspectorStep is set appropriately.
-      // if (userRole === USER_ROLES.GESTOR_ADUANERO) setInspectorStep('products'); 
       setDbError(null);
+      setIsDirty(false); 
     } else {
       toast({ title: "Error", description: "No se encontró el examen para editar.", variant: "destructive" });
     }
@@ -605,7 +631,7 @@ export default function CustomsPage() {
                       <p className="text-xs text-muted-foreground">Guardado: {new Date(exam.timestamp).toLocaleString()}</p>
                       <div className="flex gap-2 items-center">
                         {(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER) && (
-                           <Button variant="outline" size="sm" onClick={() => { setExamInfo(exam.examInfo); setProducts(exam.products.map(p => ({...initialProductFormData, ...p }))); setEditingExamId(exam.id); setIsPreviewModalOpen(true); } }>
+                           <Button variant="outline" size="sm" onClick={() => { setIsDirty(false); setExamInfo(exam.examInfo); setProducts(exam.products.map(p => ({...initialProductFormData, ...p }))); setEditingExamId(exam.id); setIsPreviewModalOpen(true); } }>
                               <Eye className="mr-1 h-4 w-4" /> Ver Detalles
                             </Button>
                          )}
@@ -632,7 +658,7 @@ export default function CustomsPage() {
         {isPreviewModalOpen && examInfo && (
              <PreviewModal
                 isOpen={isPreviewModalOpen}
-                onClose={() => { setIsPreviewModalOpen(false); resetForm();}} 
+                onClose={() => { setIsPreviewModalOpen(false); if (currentView === 'database') resetForm();}} 
                 examInfo={examInfo}
                 products={products}
             />
@@ -674,7 +700,7 @@ export default function CustomsPage() {
                 <div className="mt-6 flex justify-end">
                   <Button 
                     size="lg"
-                    onClick={() => setInspectorStep('products')}
+                    onClick={() => { if(isExamInfoComplete) { setIsDirty(false); setInspectorStep('products');} }}
                     disabled={!isExamInfoComplete}
                     variant="outline"
                     className="text-primary border-primary hover:bg-accent hover:text-primary focus-visible:ring-primary"
@@ -820,7 +846,3 @@ export default function CustomsPage() {
 }
 
     
-
-    
-
-
