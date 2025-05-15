@@ -5,19 +5,20 @@ import { getAnalytics, type Analytics } from "firebase/analytics";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCQC1mhHsl8_jd-z7gwSud4918rdAF-OU0",
-  authDomain: "customsex-p.firebaseapp.com",
-  projectId: "customsex-p",
-  storageBucket: "customsex-p.appspot.com", // Corrected from firebasestorage.app to .appspot.com
-  messagingSenderId: "1037782875421",
-  appId: "1:1037782875421:web:81d185a49efa176106f5f4",
-  measurementId: "G-JH6903HB5S"
+  apiKey: "AIzaSyBcGYgGUGwj85OljFBnOXZodXty_A7lYxw",
+  authDomain: "customs-ex-p.firebaseapp.com",
+  projectId: "customs-ex-p",
+  storageBucket: "customs-ex-p.firebasestorage.app", // Using the bucket name you provided
+  messagingSenderId: "826985934088",
+  appId: "1:826985934088:web:ac258c65c60ed0e99d90bd"
+  // measurementId is optional and was not in your latest snippet, so it's omitted here.
+  // If you have one and need it, it can be added back.
 };
 
 // Initialize Firebase
 let app: FirebaseApp;
 let db: Firestore;
-let analytics: Analytics;
+let analytics: Analytics | undefined; // Analytics can be undefined if not in browser
 
 try {
   app = initializeApp(firebaseConfig);
@@ -37,4 +38,4 @@ try {
   db = null as unknown as Firestore; // Type assertion to satisfy Firestore type when it's null
 }
 
-export { db };
+export { db, analytics };
