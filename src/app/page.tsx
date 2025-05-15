@@ -82,12 +82,12 @@ export default function CustomsPage() {
   const [passwordError, setPasswordError] = useState('');
   const [dbError, setDbError] = useState<string | null>(null);
   const { toast } = useToast();
-  const firebaseConfigured = !!db; 
+  const firebaseConfigured = db !== null; // Check if db is not the placeholder null
 
   useEffect(() => {
     if (!firebaseConfigured || !(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER)) {
       if (userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER) {
-         if (!firebaseConfigured) setDbError("Error de conexión con la base de datos. Verifique la configuración de Firebase en src/lib/firebase.ts.");
+         if (!firebaseConfigured) setDbError("Error de configuración: Firebase no está configurado. Por favor, revise src/lib/firebase.ts.");
       }
       return;
     }
@@ -110,7 +110,7 @@ export default function CustomsPage() {
     }, (error) => {
       console.error("Error fetching exams from Firestore:", error);
       toast({ title: "Error de Base de Datos", description: "No se pudieron cargar los exámenes guardados. Verifique la consola para más detalles.", variant: "destructive" });
-      setDbError("Error al cargar datos. Verifique la configuración de Firebase y su conexión. Intente recargar la página.");
+      setDbError("Error al cargar datos de Firestore. Verifique la configuración de Firebase, sus reglas de seguridad y su conexión a internet. Intente recargar la página.");
     });
 
     return () => unsubscribe(); 
@@ -128,7 +128,7 @@ export default function CustomsPage() {
         setCurrentView('database');
       } else { // Inspector
         setCurrentView('form');
-        resetForm(); // Ensures inspectorStep is 'examInfo' and new examId
+        resetForm(); 
       }
     } else {
       setPasswordError("Clave incorrecta. Intente de nuevo.");
@@ -140,7 +140,7 @@ export default function CustomsPage() {
     setProducts([]);
     setEditingExamId(null);
     setProductToEdit(null);
-    setInspectorStep('examInfo'); // Reset inspector step
+    setInspectorStep('examInfo'); 
   }, []);
 
   const handleLogout = () => {
@@ -194,7 +194,6 @@ export default function CustomsPage() {
        toast({ title: "Falta Información del Examen", description: "Complete todos los campos del formulario de Información del Examen.", variant: "destructive" });
       return;
     }
-    // For new exams (not editing), products are required for previewing/saving
     const isNewExamByInspectorOrAdmin = !editingExamId && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN);
     if (products.length === 0 && isNewExamByInspectorOrAdmin) { 
         toast({ title: "Sin Productos", description: "Agregue al menos un producto para guardar el examen.", variant: "destructive" });
@@ -218,7 +217,6 @@ export default function CustomsPage() {
         toast({ title: "Sin Productos", description: "Agregue al menos un producto para guardar el examen.", variant: "destructive" });
         return;
     }
-
 
     const productsWithIds = products.map(p => p.id ? p : {...p, id: crypto.randomUUID()});
     
@@ -257,21 +255,21 @@ export default function CustomsPage() {
       }
     } catch (error) {
       console.error("Error saving/updating exam to Firestore:", error);
-      toast({ title: "Error de Base de Datos", description: "No se pudo guardar/actualizar el examen. Verifique la consola.", variant: "destructive" });
-      setDbError("Error al guardar en la base de datos. Verifique la conexión e inténtelo de nuevo.");
+      toast({ title: "Error de Base de Datos", description: "No se pudo guardar/actualizar el examen. Verifique la consola y su configuración de Firestore.", variant: "destructive" });
+      setDbError("Error al guardar en Firestore. Verifique la configuración, reglas de seguridad y conexión.");
       return; 
     }
     
     setIsPreviewModalOpen(false); 
     
     if (userRole === USER_ROLES.INSPECTOR) {
-      resetForm(); // This will also reset inspectorStep to 'examInfo'
+      resetForm(); 
     } else if (userRole === USER_ROLES.ADMIN && editingExamId) {
       setCurrentView('database'); 
       resetForm();
     } else if (userRole === USER_ROLES.ADMIN && !editingExamId) { 
         resetForm(); 
-        setCurrentView('form'); // Admin stays in form view for new exam creation
+        setCurrentView('form'); 
     }
   };
 
@@ -280,8 +278,8 @@ export default function CustomsPage() {
       toast({ title: "Falta Información", description: "Complete la información del examen.", variant: "destructive" });
       return;
     }
-    const isNewExamByInspectorOrAdmin = !editingExamId && (userRole === USER_ROLES.INSPECTOR || (userRole === USER_ROLES.ADMIN && !editingExamId));
-    if (products.length === 0 && isNewExamByInspectorOrAdmin) { 
+    const isNewExamByCreator = !editingExamId && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN);
+    if (products.length === 0 && isNewExamByCreator) { 
         toast({ title: "Sin Productos", description: "Agregue al menos un producto.", variant: "destructive" });
         return;
     }
@@ -299,8 +297,8 @@ export default function CustomsPage() {
       toast({ title: "Falta Información", description: "Complete la información del examen.", variant: "destructive" });
       return;
     }
-    const isNewExamByInspectorOrAdmin = !editingExamId && (userRole === USER_ROLES.INSPECTOR || (userRole === USER_ROLES.ADMIN && !editingExamId));
-    if (products.length === 0 && isNewExamByInspectorOrAdmin) {
+    const isNewExamByCreator = !editingExamId && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN);
+    if (products.length === 0 && isNewExamByCreator) {
         toast({ title: "Sin Productos", description: "Agregue al menos un producto.", variant: "destructive" });
         return;
     }
@@ -321,8 +319,7 @@ export default function CustomsPage() {
       setProducts(productsWithDefaults);
       setEditingExamId(examIdToEdit); 
       setCurrentView('form');
-      // Inspector step is not relevant for editing by Admin
-      if (userRole === USER_ROLES.INSPECTOR) setInspectorStep('products'); // Or 'examInfo' if we want them to re-verify
+      if (userRole === USER_ROLES.INSPECTOR) setInspectorStep('products'); 
     } else {
       toast({ title: "Error", description: "No se encontró el examen para editar.", variant: "destructive" });
     }
@@ -340,7 +337,7 @@ export default function CustomsPage() {
     } catch (error) {
       console.error("Error deleting exam from Firestore:", error);
       toast({ title: "Error de Base de Datos", description: "No se pudo eliminar el examen.", variant: "destructive" });
-      setDbError("Error al eliminar de la base de datos.");
+      setDbError("Error al eliminar de Firestore.");
     }
   };
   
@@ -350,7 +347,6 @@ export default function CustomsPage() {
   };
 
   useEffect(() => {
-    // Auto-generate examId for new exams when form view is entered
     if (currentView === 'form' && !editingExamId && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN)) {
         if (!examInfo?.examId || examInfo.examId === initialExamData.examId) { 
              setExamInfo(prev => ({...initialExamData, ...prev!, examId: `EXM-${Date.now().toString().slice(-6)}`}));
@@ -359,8 +355,8 @@ export default function CustomsPage() {
   }, [currentView, editingExamId, userRole, examInfo?.examId]);
 
   const isExamInfoComplete = !!(examInfo && examInfo.examId && examInfo.date && examInfo.inspectorName && examInfo.location);
-  const isNewExamByInspectorOrAdmin = !editingExamId && (userRole === USER_ROLES.INSPECTOR || (userRole === USER_ROLES.ADMIN && !editingExamId));
-  const commonDisabledCondition = !isExamInfoComplete || (products.length === 0 && isNewExamByInspectorOrAdmin);
+  const isNewExamByCreator = !editingExamId && (userRole === USER_ROLES.INSPECTOR || (userRole === USER_ROLES.ADMIN && !editingExamId));
+  const commonDisabledConditionForActions = !isExamInfoComplete || (products.length === 0 && isNewExamByCreator);
   
   const FooterContent = () => (
     <footer className="text-center p-4 text-sm border-t border-border/30 bg-transparent text-app-text-on-page-bg">
@@ -475,7 +471,7 @@ export default function CustomsPage() {
                       </ul>
                     </CardContent>
                     <div className="p-4 border-t mt-auto flex flex-col gap-2">
-                      <p className="text-xs">Guardado: {new Date(exam.timestamp).toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">Guardado: {new Date(exam.timestamp).toLocaleString()}</p>
                       <div className="flex gap-2 items-center">
                         {(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER) && (
                            <Button variant="outline" size="sm" onClick={() => { setExamInfo(exam.examInfo); setProducts(exam.products.map(p => ({...initialProductFormData, ...p }))); setIsPreviewModalOpen(true); setEditingExamId(exam.id); } }>
@@ -532,19 +528,32 @@ export default function CustomsPage() {
                 </p>
             </div>
           )}
-          {dbError && ( 
+          {dbError && !firebaseConfigured && ( 
             <Card className="bg-destructive/10 border-destructive shadow-md">
               <CardHeader>
                 <CardTitle className="text-destructive flex items-center"><AlertTriangle className="mr-2 h-5 w-5" />
-                 {firebaseConfigured ? "Error de Base de Datos" : "Error de Configuración de Firebase"}
+                  Error de Configuración de Firebase
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-destructive-foreground">{dbError}</p>
-                 {!firebaseConfigured && <p className="text-sm mt-2">Por favor, siga las instrucciones en `src/lib/firebase.ts` para configurar su proyecto Firebase.</p>}
+                <p className="text-sm mt-2">Por favor, siga las instrucciones en `src/lib/firebase.ts` para configurar su proyecto Firebase.</p>
               </CardContent>
             </Card>
           )}
+          {dbError && firebaseConfigured && (
+             <Card className="bg-destructive/10 border-destructive shadow-md">
+              <CardHeader>
+                <CardTitle className="text-destructive flex items-center"><AlertTriangle className="mr-2 h-5 w-5" />
+                  Error de Base de Datos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-destructive-foreground">{dbError}</p>
+              </CardContent>
+            </Card>
+          )}
+
 
           {(!isInspectorCreatingNew || (isInspectorCreatingNew && inspectorStep === 'examInfo')) && (
             <section id="exam-info">
@@ -556,8 +565,10 @@ export default function CustomsPage() {
                 <div className="mt-6 flex justify-end">
                   <Button 
                     size="lg"
+                    variant="outline"
                     onClick={() => setInspectorStep('products')}
                     disabled={!isExamInfoComplete}
+                    className="text-primary border-primary hover:bg-primary/10 hover:text-primary focus-visible:ring-primary"
                   >
                     Continuar <ChevronRight className="ml-2 h-5 w-5" />
                   </Button>
@@ -612,7 +623,7 @@ export default function CustomsPage() {
               <section id="actions" className="py-6">
                 <Card className="shadow-lg">
                   <CardContent className="p-6 flex flex-col sm:flex-row flex-wrap justify-end items-center gap-4">
-                      <p className="text-sm mr-auto self-center">
+                      <p className="text-sm mr-auto self-center text-card-foreground">
                           Productos Totales: {products.length}
                       </p>
                       {userRole === USER_ROLES.ADMIN && editingExamId && (
@@ -624,7 +635,7 @@ export default function CustomsPage() {
                         onClick={handleDirectDownloadTXT}
                         variant="outline" 
                         size="lg" 
-                        disabled={!isExamInfoComplete || (products.length === 0 && isNewExamByInspectorOrAdmin) }
+                        disabled={commonDisabledConditionForActions}
                         className="w-full sm:w-auto order-2 sm:order-none"
                       >
                         <FileText className="mr-2 h-5 w-5" /> Descargar TXT
@@ -633,7 +644,7 @@ export default function CustomsPage() {
                         onClick={handleDirectDownloadExcel}
                         variant="outline" 
                         size="lg" 
-                        disabled={!isExamInfoComplete || (products.length === 0 && isNewExamByInspectorOrAdmin) }
+                        disabled={commonDisabledConditionForActions}
                         className="w-full sm:w-auto order-3 sm:order-none"
                       >
                         <FileSpreadsheet className="mr-2 h-5 w-5" /> Descargar Excel
@@ -641,7 +652,7 @@ export default function CustomsPage() {
                       <Button 
                         onClick={() => handleSaveOrUpdateExamAndGenerateReports(true)}
                         size="lg" 
-                        disabled={commonDisabledCondition || !firebaseConfigured}
+                        disabled={commonDisabledConditionForActions || !firebaseConfigured}
                         className="w-full sm:w-auto order-4 sm:order-none"
                       >
                         <Save className="mr-2 h-5 w-5" /> 
@@ -650,8 +661,8 @@ export default function CustomsPage() {
                       <Button 
                         onClick={handlePreview} 
                         size="lg" 
-                        disabled={commonDisabledCondition || !firebaseConfigured}
-                        className="w-full sm:w-auto order-5 sm:order-none bg-accent hover:bg-accent/90"
+                        disabled={commonDisabledConditionForActions || !firebaseConfigured}
+                        className="w-full sm:w-auto order-5 sm:order-none bg-accent hover:bg-accent/90 text-accent-foreground"
                       >
                         <Eye className="mr-2 h-5 w-5" />
                          Previsualizar y Finalizar
@@ -690,10 +701,11 @@ export default function CustomsPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-grow flex items-center justify-center p-4">
-        <div>
+        <div className="bg-card text-card-foreground p-8 rounded-lg shadow-xl text-center">
+            <AlertTriangle className="mx-auto h-12 w-12 text-destructive mb-4" />
             <p className="text-xl font-semibold text-destructive">Error: Estado de la aplicación no válido.</p>
-            <p>Ha ocurrido un problema con la vista actual. Intente volver a iniciar sesión.</p>
-            <Button onClick={handleLogout} className="mt-4">
+            <p className="mt-2">Ha ocurrido un problema con la vista actual. Intente volver a iniciar sesión.</p>
+            <Button onClick={handleLogout} className="mt-6">
                 <LogIn className="mr-2 h-4 w-4" /> Reintentar Login
             </Button>
         </div>
