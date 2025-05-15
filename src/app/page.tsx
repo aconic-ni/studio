@@ -95,11 +95,12 @@ export default function CustomsPage() {
   useEffect(() => {
     if (!db || !(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER)) {
       if (userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER) {
-         setDbError("Error de conexión con la base de datos. Verifique la configuración de Firebase en src/lib/firebase.ts.");
+         // Only set DB error if db itself is null but we expect to use it.
+         if (!db) setDbError("Error de conexión con la base de datos. Verifique la configuración de Firebase en src/lib/firebase.ts.");
       }
       return;
     }
-    setDbError(null);
+    setDbError(null); // Clear error if db is available and role is correct
     const examsCollectionRef = collection(db, "exams");
     const q = query(examsCollectionRef, orderBy("timestamp", "desc"));
 
@@ -177,11 +178,12 @@ export default function CustomsPage() {
   
   const handleSaveProduct = (productData: ProductFormData, editingProductId: string | null) => {
     if (editingProductId) { 
-        const updatedProduct: Product = { ...productData, id: editingProductId };
+        const updatedProduct: Product = { ...initialProductFormData, ...productData, id: editingProductId };
         setProducts(prevProducts => prevProducts.map(p => p.id === editingProductId ? updatedProduct : p));
         toast({ title: "Producto Actualizado", description: `${updatedProduct.description} ha sido actualizado.` });
     } else { 
         const newProduct: Product = {
+            ...initialProductFormData,
             ...productData,
             id: crypto.randomUUID(),
         };
@@ -280,7 +282,7 @@ export default function CustomsPage() {
       toast({ title: "Falta Información", description: "Complete la información del examen.", variant: "destructive" });
       return;
     }
-     if (products.length === 0 && !editingExamId) {
+     if (products.length === 0 && !editingExamId && userRole !== USER_ROLES.ADMIN) { // Admin can download empty if editing
         toast({ title: "Sin Productos", description: "Agregue al menos un producto.", variant: "destructive" });
         return;
     }
@@ -298,7 +300,7 @@ export default function CustomsPage() {
       toast({ title: "Falta Información", description: "Complete la información del examen.", variant: "destructive" });
       return;
     }
-    if (products.length === 0 && !editingExamId) {
+    if (products.length === 0 && !editingExamId && userRole !== USER_ROLES.ADMIN) { // Admin can download empty if editing
         toast({ title: "Sin Productos", description: "Agregue al menos un producto.", variant: "destructive" });
         return;
     }
@@ -315,6 +317,7 @@ export default function CustomsPage() {
     const examToEdit = savedExams.find(ex => ex.id === examIdToEdit);
     if (examToEdit) {
       setExamInfo(examToEdit.examInfo);
+      // Ensure all product fields have defaults if not present in DB data
       const productsWithDefaults = examToEdit.products.map(p => ({ ...initialProductFormData, ...p }));
       setProducts(productsWithDefaults);
       setEditingExamId(examIdToEdit); 
@@ -353,7 +356,9 @@ export default function CustomsPage() {
     }
   }, [currentView, editingExamId, userRole, examInfo?.examId]);
 
-  const commonDisabledCondition = !examInfo || !examInfo.examId || (products.length === 0 && !editingExamId && userRole !== USER_ROLES.ADMIN);
+  const commonDisabledCondition = !examInfo || !examInfo.examId || (products.length === 0 && !editingExamId && userRole !== USER_ROLES.ADMIN && userRole !== USER_ROLES.INSPECTOR);
+  const firebaseConfigured = !!db;
+
 
   if (currentView === 'welcome') {
     return (
@@ -371,9 +376,6 @@ export default function CustomsPage() {
     );
   }
 
-  // PasswordModal is rendered conditionally but outside the main view switch if currentView is 'login'
-  // This allows other content (like welcome screen) to be potentially visible behind it,
-  // though Dialog component typically overlays everything.
   if (currentView === 'login') {
      return (
       <>
@@ -386,10 +388,10 @@ export default function CustomsPage() {
             <p className="text-lg text-muted-foreground">Aplicación Progresiva para Exámenes Aduaneros</p>
         </div>
         <PasswordModal
-            isOpen={true} // Modal is open if currentView is 'login'
+            isOpen={true} 
             onSubmit={handlePasswordSubmit}
             error={passwordError}
-            onClose={() => setCurrentView('welcome')} // Allow closing modal to go back to welcome
+            onClose={() => setCurrentView('welcome')} 
         />
       </>
     );
@@ -415,11 +417,13 @@ export default function CustomsPage() {
           {dbError && (
             <Card className="bg-destructive/10 border-destructive shadow-md">
               <CardHeader>
-                <CardTitle className="text-destructive flex items-center"><AlertTriangle className="mr-2 h-5 w-5" />Error de Base de Datos</CardTitle>
+                <CardTitle className="text-destructive flex items-center"><AlertTriangle className="mr-2 h-5 w-5" />
+                {firebaseConfigured ? "Error de Base de Datos" : "Error de Configuración de Firebase"}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-destructive-foreground">{dbError}</p>
-                <p className="text-sm text-muted-foreground mt-2">Asegúrese de que Firebase esté configurado correctamente en `src/lib/firebase.ts` y que su conexión a Internet esté activa. Es posible que deba recargar la página después de la configuración.</p>
+                {!firebaseConfigured && <p className="text-sm text-muted-foreground mt-2">Por favor, siga las instrucciones en `src/lib/firebase.ts` para configurar su proyecto Firebase.</p>}
               </CardContent>
             </Card>
           )}
@@ -496,7 +500,7 @@ export default function CustomsPage() {
                 examInfo={examInfo}
                 products={products}
                 isViewerMode={true} 
-                isEditing={!!editingExamId} // Pass editingExamId to know if it's an existing exam being viewed
+                isEditing={!!editingExamId} 
             />
         )}
       </div>
@@ -515,24 +519,16 @@ export default function CustomsPage() {
                 </p>
             </div>
           )}
-          {dbError && !db && ( // Show specific Firebase config error if db is null
+          {dbError && ( 
             <Card className="bg-destructive/10 border-destructive shadow-md">
               <CardHeader>
-                <CardTitle className="text-destructive flex items-center"><AlertTriangle className="mr-2 h-5 w-5" />Error de Configuración de Firebase</CardTitle>
+                <CardTitle className="text-destructive flex items-center"><AlertTriangle className="mr-2 h-5 w-5" />
+                 {firebaseConfigured ? "Error de Base de Datos" : "Error de Configuración de Firebase"}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-destructive-foreground">{dbError}</p>
-                <p className="text-sm text-muted-foreground mt-2">Por favor, siga las instrucciones en `src/lib/firebase.ts` para configurar su proyecto Firebase.</p>
-              </CardContent>
-            </Card>
-          )}
-           {dbError && db && ( // Generic DB error if db is configured but other issues occur
-            <Card className="bg-destructive/10 border-destructive shadow-md">
-              <CardHeader>
-                <CardTitle className="text-destructive flex items-center"><AlertTriangle className="mr-2 h-5 w-5" />Error de Base de Datos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-destructive-foreground">{dbError}</p>
+                 {!firebaseConfigured && <p className="text-sm text-muted-foreground mt-2">Por favor, siga las instrucciones en `src/lib/firebase.ts` para configurar su proyecto Firebase.</p>}
               </CardContent>
             </Card>
           )}
@@ -576,7 +572,7 @@ export default function CustomsPage() {
                     onClick={handleDirectDownloadTXT}
                     variant="outline" 
                     size="lg" 
-                    disabled={commonDisabledCondition || (!!dbError && !db)}
+                    disabled={commonDisabledCondition}
                     className="w-full sm:w-auto order-2 sm:order-none"
                   >
                     <FileText className="mr-2 h-5 w-5" /> Descargar TXT
@@ -585,7 +581,7 @@ export default function CustomsPage() {
                     onClick={handleDirectDownloadExcel}
                     variant="outline" 
                     size="lg" 
-                    disabled={commonDisabledCondition || (!!dbError && !db)}
+                    disabled={commonDisabledCondition}
                     className="w-full sm:w-auto order-3 sm:order-none"
                   >
                     <FileSpreadsheet className="mr-2 h-5 w-5" /> Descargar Excel
@@ -593,7 +589,7 @@ export default function CustomsPage() {
                   <Button 
                     onClick={() => handleSaveOrUpdateExamAndGenerateReports(true)}
                     size="lg" 
-                    disabled={commonDisabledCondition || (!!dbError && !db) || !db}
+                    disabled={commonDisabledCondition || !firebaseConfigured}
                     className="w-full sm:w-auto order-4 sm:order-none"
                   >
                     <Save className="mr-2 h-5 w-5" /> 
@@ -602,7 +598,7 @@ export default function CustomsPage() {
                   <Button 
                     onClick={handlePreview} 
                     size="lg" 
-                    disabled={commonDisabledCondition || (!!dbError && !db)}
+                    disabled={commonDisabledCondition || !firebaseConfigured}
                     className="w-full sm:w-auto order-5 sm:order-none bg-blue-600 hover:bg-blue-700"
                   >
                     <Eye className="mr-2 h-5 w-5" />
@@ -645,5 +641,7 @@ export default function CustomsPage() {
     </div>
   );
 }
+
+    
 
     
