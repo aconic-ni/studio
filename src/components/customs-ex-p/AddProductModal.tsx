@@ -49,16 +49,10 @@ export const AddProductModal: FC<AddProductModalProps> = ({
             {isEditing ? 'Modifique los detalles del producto.' : 'Especifique las características del producto para agregarlo a la lista.'}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-grow pr-2 -mr-4 my-4"> {/* Added my-4 for spacing, adjusted padding for scrollbar */}
+        {/* Ensure ScrollArea grows and can shrink, pr-2 -mr-4 for custom scrollbar aesthetics */}
+        <ScrollArea className="flex-grow min-h-0 pr-2 -mr-4"> 
           <AddProductForm
             key={formKey} // Ensures form re-initializes when productToEdit changes
-            // The form component itself will handle its submission and pass data via this callback
-            // The actual "submit" button is now in the modal's footer.
-            // So we need a way for the modal's submit button to trigger the form's internal submit.
-            // This is typically done by giving the form an ID and referencing it in the button,
-            // or by lifting the form's submit handler. We'll use react-hook-form's capabilities.
-            // For simplicity, AddProductForm will need a prop that it calls on successful submit.
-            // The submit button in the footer will trigger the form's submission.
             initialData={productToEdit || initialProductData}
             onSubmit={handleFormSubmit} 
             formId="product-form" // ID for the form
@@ -77,3 +71,4 @@ export const AddProductModal: FC<AddProductModalProps> = ({
     </Dialog>
   );
 };
+

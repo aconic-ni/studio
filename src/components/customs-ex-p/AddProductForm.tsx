@@ -97,7 +97,8 @@ export const AddProductForm: FC<AddProductFormProps> = ({ onSubmit, initialData,
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} id={formId} className="space-y-6 pt-4">
+      {/* Added pt-4 and pb-4 for vertical padding within the scrollable area */}
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} id={formId} className="space-y-6 pt-4 pb-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <FormField
             control={form.control}
@@ -325,3 +326,4 @@ export const AddProductForm: FC<AddProductFormProps> = ({ onSubmit, initialData,
     </Form>
   );
 };
+
