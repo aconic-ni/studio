@@ -39,8 +39,17 @@ export const AddProductModal: FC<AddProductModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
+      {/*
+        DialogContent classes:
+        - sm:max-w-[600px] md:max-w-[750px] lg:max-w-[900px]: Responsive width.
+        - flex flex-col: Enables flex layout for header, scrollarea, footer.
+        - max-h-[90vh]: Critical for limiting modal height.
+        - overflow-hidden: Ensures content outside max-h is clipped, necessary for ScrollArea to work.
+        - text-foreground: Sets default text color.
+        - Default ShadCN DialogContent also includes p-6 for overall padding.
+      */}
       <DialogContent className="sm:max-w-[600px] md:max-w-[750px] lg:max-w-[900px] flex flex-col max-h-[90vh] overflow-hidden text-foreground">
-        <DialogHeader>
+        <DialogHeader> {/* Standard header, takes its natural height */}
           <DialogTitle className="text-xl flex items-center gap-2">
             <PackagePlus className="w-5 h-5 text-foreground" />
             {isEditing ? 'Editar Producto' : 'Agregar Nuevo Producto'}
@@ -49,19 +58,25 @@ export const AddProductModal: FC<AddProductModalProps> = ({
             {isEditing ? 'Modifique los detalles del producto.' : 'Especifique las características del producto para agregarlo a la lista.'}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-grow min-h-0"> {/* Eliminadas clases pr-2 -mr-4 */}
+        {/*
+          ScrollArea classes:
+          - flex-grow: Allows it to take up the available vertical space.
+          - min-h-0: Crucial in flex context to prevent content from defining parent size before scroll.
+        */}
+        <ScrollArea className="flex-grow min-h-0">
+          {/* AddProductForm is the content that will scroll. It has its own internal padding. */}
           <AddProductForm
-            key={formKey} // Ensures form re-initializes when productToEdit changes
+            key={formKey}
             initialData={productToEdit || initialProductData}
             onSubmit={handleFormSubmit}
-            formId="product-form" // ID for the form
+            formId="product-form"
           />
         </ScrollArea>
-        <DialogFooter className="pt-4 border-t">
+        <DialogFooter className="pt-4 border-t"> {/* Standard footer, takes its natural height */}
           <Button type="button" variant="outline" onClick={onClose}>
             <X className="mr-2 h-4 w-4" /> Cancelar
           </Button>
-          <Button type="submit" form="product-form"> {/* This button submits the AddProductForm */}
+          <Button type="submit" form="product-form">
             {isEditing ? <Save className="mr-2 h-4 w-4" /> : <PackagePlus className="mr-2 h-4 w-4" />}
             {isEditing ? 'Actualizar Producto' : 'Agregar Producto'}
           </Button>
