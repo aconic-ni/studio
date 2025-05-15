@@ -15,11 +15,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Trash2, ListChecks } from 'lucide-react';
+import { Trash2, ListChecks, Edit3 } from 'lucide-react'; // Added Edit3
 
 interface ProductsTableProps {
   products: Product[];
   onRemoveProduct: (productId: string) => void;
+  onEditProduct: (product: Product) => void; // New prop for editing
 }
 
 const getStatusBadgeVariant = (status: ProductStatus): string => {
@@ -47,7 +48,7 @@ const getStatusDisplayName = (status: ProductStatus): string => {
     }
 }
 
-export const ProductsTable: FC<ProductsTableProps> = ({ products, onRemoveProduct }) => {
+export const ProductsTable: FC<ProductsTableProps> = ({ products, onRemoveProduct, onEditProduct }) => {
   if (products.length === 0) {
     return (
       <Card className="mt-8 shadow-md">
@@ -115,15 +116,23 @@ export const ProductsTable: FC<ProductsTableProps> = ({ products, onRemoveProduc
                             {getStatusDisplayName(product.status)}
                         </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                    <Button
+                    <TableCell className="text-right space-x-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onEditProduct(product)}
+                        aria-label={`Editar ${product.description}`}
+                      >
+                        <Edit3 className="h-4 w-4 text-blue-600" />
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => onRemoveProduct(product.id)}
                         aria-label={`Eliminar ${product.description}`}
-                    >
+                      >
                         <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                      </Button>
                     </TableCell>
                 </TableRow>
                 ))}

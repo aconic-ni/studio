@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { ExamInfo, Product, UserRole, SavedExam, ProductStatus } from '@/types';
+import type { ProductFormData } from '@/components/customs-ex-p/AddProductForm'; // Import ProductFormData
 import { USER_ROLES, PRODUCT_STATUS } from '@/types';
 import { Header } from '@/components/Header';
 import { InitialExamForm } from '@/components/customs-ex-p/InitialExamForm';
@@ -22,7 +23,7 @@ const PASSWORDS: Record<string, UserRole> = {
   "admin123": USER_ROLES.ADMIN,
 };
 
-const LOCAL_STORAGE_KEY_EXAMS = "customsExamsData_v2"; // Changed key to avoid conflicts with old structure
+const LOCAL_STORAGE_KEY_EXAMS = "customsExamsData_v2";
 
 const initialExamData: ExamInfo = {
   examId: '',
@@ -31,7 +32,8 @@ const initialExamData: ExamInfo = {
   location: '',
 };
 
-const initialProductData: Omit<Product, 'id'> = {
+// This is used for resetting the AddProductForm for a NEW product
+const initialProductFormData: Omit<Product, 'id'> = {
   itemNumber: '',
   packageNumbers: '',
   packageQuantity: 0,
@@ -58,7 +60,8 @@ export default function CustomsPage() {
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(initialExamData);
   const [products, setProducts] = useState<Product[]>([]);
   const [savedExams, setSavedExams] = useState<SavedExam[]>([]);
-  const [editingExamId, setEditingExamId] = useState<string | null>(null);
+  const [editingExamId, setEditingExamId] = useState<string | null>(null); // For the exam being edited
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null); // For the product being edited/added
 
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
@@ -110,6 +113,7 @@ export default function CustomsPage() {
     setExamInfo({...initialExamData, examId: userRole === USER_ROLES.INSPECTOR ? `EXM-${Date.now().toString().slice(-6)}` : '' });
     setProducts([]);
     setEditingExamId(null);
+    setProductToEdit(null);
   }, [userRole]);
 
   const handleLogout = () => {
@@ -124,14 +128,31 @@ export default function CustomsPage() {
     setExamInfo(data);
   };
 
-  const handleAddProduct = (productData: Omit<Product, 'id'>) => {
-     const newProduct: Product = {
-        ...initialProductData, // ensures all fields are present even if not in form's default (though they should be)
-        ...productData,
-        id: crypto.randomUUID(),
-     };
-    setProducts((prevProducts) => [...prevProducts, newProduct]);
-    toast({ title: "Producto Agregado", description: `${newProduct.description} ha sido agregado.` });
+  const handleOpenAddProductModal = () => {
+    setProductToEdit(null); // Ensure we're adding a new product
+    setShowAddProductModal(true);
+  };
+
+  const handleOpenEditProductModal = (product: Product) => {
+    setProductToEdit(product);
+    setShowAddProductModal(true);
+  };
+  
+  const handleSaveProduct = (productData: ProductFormData, editingProductId: string | null) => {
+    if (editingProductId) { // Editing existing product
+        const updatedProduct: Product = { ...productData, id: editingProductId };
+        setProducts(prevProducts => prevProducts.map(p => p.id === editingProductId ? updatedProduct : p));
+        toast({ title: "Producto Actualizado", description: `${updatedProduct.description} ha sido actualizado.` });
+    } else { // Adding new product
+        const newProduct: Product = {
+            ...productData,
+            id: crypto.randomUUID(),
+        };
+        setProducts(prevProducts => [...prevProducts, newProduct]);
+        toast({ title: "Producto Agregado", description: `${newProduct.description} ha sido agregado.` });
+    }
+    setShowAddProductModal(false); // Close modal after save
+    setProductToEdit(null); // Reset editing state
   };
 
   const handleRemoveProduct = (productId: string) => {
@@ -155,22 +176,28 @@ export default function CustomsPage() {
     if (!examInfo) return;
 
     const currentExamData: SavedExam = {
-      id: editingExamId || crypto.randomUUID(),
+      id: editingExamId || examInfo.examId, // Use examInfo.examId if not editing an existing saved exam
       examInfo,
       products,
       timestamp: new Date().toISOString(),
     };
+    
+    // Make sure all products have an ID. This should be guaranteed by handleSaveProduct.
+    const productsWithIds = products.map(p => p.id ? p : {...p, id: crypto.randomUUID()});
 
-    if (editingExamId) { 
-      setSavedExams(prev => prev.map(ex => ex.id === editingExamId ? currentExamData : ex));
+    const finalExamData: SavedExam = { ...currentExamData, products: productsWithIds };
+
+
+    if (savedExams.some(ex => ex.id === finalExamData.id)) { 
+      setSavedExams(prev => prev.map(ex => ex.id === finalExamData.id ? finalExamData : ex));
       toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado y los reportes generados." });
     } else { 
-      setSavedExams(prev => [...prev, currentExamData]);
+      setSavedExams(prev => [...prev, finalExamData]);
       toast({ title: "Examen Guardado", description: "El examen ha sido guardado y los reportes generados." });
     }
     
     try {
-      generateTxtReport(examInfo, products);
+      generateTxtReport(finalExamData.examInfo, finalExamData.products);
       toast({ title: "Reporte TXT Generado" });
     } catch (error) {
       console.error("Error generando reporte TXT:", error);
@@ -178,7 +205,7 @@ export default function CustomsPage() {
     }
 
     try {
-      generateExcelReport(examInfo, products);
+      generateExcelReport(finalExamData.examInfo, finalExamData.products);
       toast({ title: "Reporte Excel Generado" });
     } catch (error) {
       console.error("Error generando reporte Excel:", error);
@@ -191,9 +218,9 @@ export default function CustomsPage() {
     } else if (userRole === USER_ROLES.ADMIN && editingExamId) {
       setCurrentView('database'); 
       resetForm();
-    } else if (userRole === USER_ROLES.ADMIN && !editingExamId) { // Admin creating new exam
-        resetForm(); // Reset for another new one or go to DB
-        setCurrentView('form'); // Or 'database' if preferred after admin creates one
+    } else if (userRole === USER_ROLES.ADMIN && !editingExamId) { 
+        resetForm(); 
+        setCurrentView('form'); 
     }
   };
 
@@ -201,10 +228,9 @@ export default function CustomsPage() {
     const examToEdit = savedExams.find(ex => ex.id === examId);
     if (examToEdit) {
       setExamInfo(examToEdit.examInfo);
-      // Ensure products loaded for editing have all fields, defaulting if necessary
-      const productsWithDefaults = examToEdit.products.map(p => ({ ...initialProductData, ...p }));
+      const productsWithDefaults = examToEdit.products.map(p => ({ ...initialProductFormData, ...p }));
       setProducts(productsWithDefaults);
-      setEditingExamId(examId);
+      setEditingExamId(examId); // This is the ID of the *SavedExam* entry
       setCurrentView('form');
     }
   };
@@ -219,11 +245,10 @@ export default function CustomsPage() {
     setCurrentView('database');
   };
 
-  // Auto-generate Exam ID for new exams by Inspector or Admin (if not editing)
   useEffect(() => {
     if (currentView === 'form' && !editingExamId && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN)) {
-        if (!examInfo?.examId) { // Only set if not already set (e.g. by admin clicking "New Exam" and form resetting)
-             setExamInfo(prev => ({...prev!, examId: `EXM-${Date.now().toString().slice(-6)}`}));
+        if (!examInfo?.examId || examInfo.examId === initialExamData.examId) { 
+             setExamInfo(prev => ({...initialExamData, ...prev!, examId: `EXM-${Date.now().toString().slice(-6)}`}));
         }
     }
   }, [currentView, editingExamId, userRole, examInfo?.examId]);
@@ -298,7 +323,7 @@ export default function CustomsPage() {
                       <p className="text-xs text-muted-foreground">Guardado: {new Date(exam.timestamp).toLocaleString()}</p>
                       <div className="flex gap-2 items-center">
                         {(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER) && (
-                           <Button variant="outline" size="sm" onClick={() => { setExamInfo(exam.examInfo); setProducts(exam.products.map(p => ({...initialProductData, ...p }))); setIsPreviewModalOpen(true); } }>
+                           <Button variant="outline" size="sm" onClick={() => { setExamInfo(exam.examInfo); setProducts(exam.products.map(p => ({...initialProductFormData, ...p }))); setIsPreviewModalOpen(true); } }>
                               <Eye className="mr-1 h-4 w-4" /> Ver Detalles
                             </Button>
                          )}
@@ -328,7 +353,7 @@ export default function CustomsPage() {
              <PreviewModal
                 isOpen={isPreviewModalOpen}
                 onClose={() => { setIsPreviewModalOpen(false); resetForm();}} 
-                onConfirm={() => { setIsPreviewModalOpen(false); resetForm();}}
+                onConfirm={() => { setIsPreviewModalOpen(false); resetForm();}} // For viewer, confirm is just close
                 examInfo={examInfo}
                 products={products}
                 isViewerMode={true} 
@@ -363,12 +388,16 @@ export default function CustomsPage() {
                   <CardTitle className="text-xl">Gestión de Productos</CardTitle>
               </CardHeader>
               <CardContent>
-                  <Button onClick={() => setShowAddProductModal(true)} size="lg" className="w-full sm:w-auto">
+                  <Button onClick={handleOpenAddProductModal} size="lg" className="w-full sm:w-auto">
                       <PackagePlus className="mr-2 h-5 w-5" /> Agregar Nuevo Producto
                   </Button>
               </CardContent>
             </Card>
-            <ProductsTable products={products} onRemoveProduct={handleRemoveProduct} />
+            <ProductsTable 
+              products={products} 
+              onRemoveProduct={handleRemoveProduct}
+              onEditProduct={handleOpenEditProductModal} 
+            />
           </section>
           
           <section id="actions" className="py-6">
@@ -408,8 +437,10 @@ export default function CustomsPage() {
           
           <AddProductModal
             isOpen={showAddProductModal}
-            onClose={() => setShowAddProductModal(false)}
-            onAddProduct={handleAddProduct}
+            onClose={() => { setShowAddProductModal(false); setProductToEdit(null); }}
+            onSaveProduct={handleSaveProduct}
+            productToEdit={productToEdit}
+            initialProductData={initialProductFormData} // Pass initial empty data for new products
           />
         </main>
         <footer className="text-center p-4 text-sm text-muted-foreground border-t">
