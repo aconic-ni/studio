@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Trash2, PackageSearch } from 'lucide-react';
+import { Trash2, ListChecks } from 'lucide-react';
 
 interface ProductsTableProps {
   products: Product[];
@@ -25,12 +25,12 @@ export const ProductsTable: FC<ProductsTableProps> = ({ products, onRemoveProduc
       <Card className="mt-8 shadow-md">
         <CardHeader>
             <CardTitle className="text-xl flex items-center gap-2">
-                <PackageSearch className="w-5 h-5 text-primary" />
-                Product List
+                <ListChecks className="w-5 h-5 text-primary" />
+                Listado de Productos
             </CardTitle>
         </CardHeader>
         <CardContent>
-            <p className="text-muted-foreground text-center py-8">No products added yet. Use the form above to add products.</p>
+            <p className="text-muted-foreground text-center py-8">Aún no se han agregado productos. Use el botón de "Agregar Nuevo Producto" para comenzar.</p>
         </CardContent>
       </Card>
     );
@@ -40,21 +40,21 @@ export const ProductsTable: FC<ProductsTableProps> = ({ products, onRemoveProduc
     <Card className="mt-8 shadow-lg">
         <CardHeader>
             <CardTitle className="text-xl flex items-center gap-2">
-                <PackageSearch className="w-5 h-5 text-primary" />
-                Product List
+                <ListChecks className="w-5 h-5 text-primary" />
+                Listado de Productos
             </CardTitle>
-            <CardDescription>Overview of all products added to this examination.</CardDescription>
+            <CardDescription>Resumen de todos los productos agregados a esta examinación.</CardDescription>
         </CardHeader>
         <CardContent className="overflow-x-auto">
             <Table>
             <TableHeader>
                 <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>HS Code</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
-                <TableHead className="text-right">Value</TableHead>
-                <TableHead>Country of Origin</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Código HS</TableHead>
+                <TableHead className="text-right">Cantidad</TableHead>
+                <TableHead className="text-right">Valor (unidad)</TableHead>
+                <TableHead>País de Origen</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -70,7 +70,7 @@ export const ProductsTable: FC<ProductsTableProps> = ({ products, onRemoveProduc
                         variant="ghost"
                         size="icon"
                         onClick={() => onRemoveProduct(product.id)}
-                        aria-label={`Remove ${product.name}`}
+                        aria-label={`Eliminar ${product.name}`}
                     >
                         <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
