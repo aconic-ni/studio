@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -149,18 +150,18 @@ const FormMessage = React.forwardRef<
   const { error, formMessageId } = useFormField()
   const body = error ? String(error?.message ?? "") : children
 
-  if (!body) {
-    return null
-  }
-
   return (
     <p
       ref={ref}
       id={formMessageId}
-      className={cn("text-sm font-medium text-destructive", className)}
+      className={cn(
+        "text-sm font-medium min-h-[1.25rem]", // Ensures the paragraph always takes up about one line of space
+        body ? "text-destructive" : "text-transparent", // Text is destructive red if error, otherwise transparent
+        className
+      )}
       {...props}
     >
-      {body}
+      {body ? body : <>&nbsp;</>} {/* Render a non-breaking space if no body to maintain height */}
     </p>
   )
 })
