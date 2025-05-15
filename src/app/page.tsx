@@ -30,7 +30,7 @@ import { AddProductModal } from '@/components/customs-ex-p/AddProductModal';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { generateTxtReport, generateExcelReport } from '@/lib/reportUtils';
-import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle, PackageSearch, LogIn } from 'lucide-react';
+import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle, PackageSearch, LogIn, ChevronRight, ChevronLeft, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 const PASSWORDS: Record<string, UserRole> = {
@@ -69,6 +69,7 @@ export default function CustomsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [currentView, setCurrentView] = useState<'welcome' | 'login' | 'form' | 'database'>('welcome');
+  const [inspectorStep, setInspectorStep] = useState<'examInfo' | 'products'>('examInfo');
   
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(initialExamData);
   const [products, setProducts] = useState<Product[]>([]);
@@ -125,10 +126,9 @@ export default function CustomsPage() {
       toast({ title: "Acceso Concedido", description: `Bienvenido como ${role}.` });
       if (role === USER_ROLES.VIEWER || role === USER_ROLES.ADMIN) {
         setCurrentView('database');
-      } else {
+      } else { // Inspector
         setCurrentView('form');
-        setExamInfo({...initialExamData, examId: `EXM-${Date.now().toString().slice(-6)}`}); 
-        setProducts([]);
+        resetForm(); // Ensures inspectorStep is 'examInfo' and new examId
       }
     } else {
       setPasswordError("Clave incorrecta. Intente de nuevo.");
@@ -136,11 +136,12 @@ export default function CustomsPage() {
   };
   
   const resetForm = useCallback(() => {
-    setExamInfo({...initialExamData, examId: userRole === USER_ROLES.INSPECTOR ? `EXM-${Date.now().toString().slice(-6)}` : '' });
+    setExamInfo({...initialExamData, examId: `EXM-${Date.now().toString().slice(-6)}` });
     setProducts([]);
     setEditingExamId(null);
     setProductToEdit(null);
-  }, [userRole]);
+    setInspectorStep('examInfo'); // Reset inspector step
+  }, []);
 
   const handleLogout = () => {
     setIsAuthenticated(false);
@@ -151,7 +152,7 @@ export default function CustomsPage() {
     toast({ title: "Sesión Cerrada"});
   };
   
-  const handleExamInfoSubmit = (data: ExamInfo) => {
+  const handleExamInfoChange = (data: ExamInfo) => {
     setExamInfo(data);
   };
 
@@ -189,11 +190,13 @@ export default function CustomsPage() {
   };
 
   const handlePreview = () => {
-    if (!examInfo || !examInfo.examId) {
-       toast({ title: "Falta Información del Examen", description: "Complete el formulario de Información del Examen.", variant: "destructive" });
+    if (!examInfo || !examInfo.examId || !examInfo.date || !examInfo.inspectorName || !examInfo.location) {
+       toast({ title: "Falta Información del Examen", description: "Complete todos los campos del formulario de Información del Examen.", variant: "destructive" });
       return;
     }
-    if (products.length === 0 && userRole === USER_ROLES.INSPECTOR && !editingExamId) { 
+    // For new exams (not editing), products are required for previewing/saving
+    const isNewExamByInspectorOrAdmin = !editingExamId && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN);
+    if (products.length === 0 && isNewExamByInspectorOrAdmin) { 
         toast({ title: "Sin Productos", description: "Agregue al menos un producto para guardar el examen.", variant: "destructive" });
         return;
     }
@@ -206,10 +209,16 @@ export default function CustomsPage() {
         setDbError("Firebase no configurado. Siga las instrucciones en src/lib/firebase.ts.");
         return;
     }
-    if (!examInfo) {
-        toast({ title: "Error", description: "Información del examen no disponible.", variant: "destructive" });
+    if (!examInfo || !examInfo.examId || !examInfo.date || !examInfo.inspectorName || !examInfo.location) {
+        toast({ title: "Error", description: "Información del examen incompleta.", variant: "destructive" });
         return;
     }
+    const isNewExamByInspectorOrAdmin = !editingExamId && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN);
+    if (products.length === 0 && isNewExamByInspectorOrAdmin) { 
+        toast({ title: "Sin Productos", description: "Agregue al menos un producto para guardar el examen.", variant: "destructive" });
+        return;
+    }
+
 
     const productsWithIds = products.map(p => p.id ? p : {...p, id: crypto.randomUUID()});
     
@@ -256,22 +265,23 @@ export default function CustomsPage() {
     setIsPreviewModalOpen(false); 
     
     if (userRole === USER_ROLES.INSPECTOR) {
-      resetForm(); 
+      resetForm(); // This will also reset inspectorStep to 'examInfo'
     } else if (userRole === USER_ROLES.ADMIN && editingExamId) {
       setCurrentView('database'); 
       resetForm();
     } else if (userRole === USER_ROLES.ADMIN && !editingExamId) { 
         resetForm(); 
-        setCurrentView('form'); 
+        setCurrentView('form'); // Admin stays in form view for new exam creation
     }
   };
 
   const handleDirectDownloadTXT = () => {
-    if (!examInfo || !examInfo.examId) {
+    if (!examInfo || !examInfo.examId || !examInfo.date || !examInfo.inspectorName || !examInfo.location) {
       toast({ title: "Falta Información", description: "Complete la información del examen.", variant: "destructive" });
       return;
     }
-     if (products.length === 0 && !editingExamId && (userRole === USER_ROLES.INSPECTOR || (userRole === USER_ROLES.ADMIN && !editingExamId)) ) { 
+    const isNewExamByInspectorOrAdmin = !editingExamId && (userRole === USER_ROLES.INSPECTOR || (userRole === USER_ROLES.ADMIN && !editingExamId));
+    if (products.length === 0 && isNewExamByInspectorOrAdmin) { 
         toast({ title: "Sin Productos", description: "Agregue al menos un producto.", variant: "destructive" });
         return;
     }
@@ -285,11 +295,12 @@ export default function CustomsPage() {
   };
 
   const handleDirectDownloadExcel = () => {
-     if (!examInfo || !examInfo.examId) {
+     if (!examInfo || !examInfo.examId || !examInfo.date || !examInfo.inspectorName || !examInfo.location) {
       toast({ title: "Falta Información", description: "Complete la información del examen.", variant: "destructive" });
       return;
     }
-    if (products.length === 0 && !editingExamId && (userRole === USER_ROLES.INSPECTOR || (userRole === USER_ROLES.ADMIN && !editingExamId))) {
+    const isNewExamByInspectorOrAdmin = !editingExamId && (userRole === USER_ROLES.INSPECTOR || (userRole === USER_ROLES.ADMIN && !editingExamId));
+    if (products.length === 0 && isNewExamByInspectorOrAdmin) {
         toast({ title: "Sin Productos", description: "Agregue al menos un producto.", variant: "destructive" });
         return;
     }
@@ -310,6 +321,8 @@ export default function CustomsPage() {
       setProducts(productsWithDefaults);
       setEditingExamId(examIdToEdit); 
       setCurrentView('form');
+      // Inspector step is not relevant for editing by Admin
+      if (userRole === USER_ROLES.INSPECTOR) setInspectorStep('products'); // Or 'examInfo' if we want them to re-verify
     } else {
       toast({ title: "Error", description: "No se encontró el examen para editar.", variant: "destructive" });
     }
@@ -331,12 +344,13 @@ export default function CustomsPage() {
     }
   };
   
-  const handleCancelEdit = () => {
+  const handleAdminCancelEdit = () => {
     resetForm();
     setCurrentView('database');
   };
 
   useEffect(() => {
+    // Auto-generate examId for new exams when form view is entered
     if (currentView === 'form' && !editingExamId && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN)) {
         if (!examInfo?.examId || examInfo.examId === initialExamData.examId) { 
              setExamInfo(prev => ({...initialExamData, ...prev!, examId: `EXM-${Date.now().toString().slice(-6)}`}));
@@ -344,13 +358,16 @@ export default function CustomsPage() {
     }
   }, [currentView, editingExamId, userRole, examInfo?.examId]);
 
-  const commonDisabledCondition = !examInfo || !examInfo.examId || (products.length === 0 && !editingExamId && (userRole === USER_ROLES.INSPECTOR || (userRole === USER_ROLES.ADMIN && !editingExamId)));
+  const isExamInfoComplete = !!(examInfo && examInfo.examId && examInfo.date && examInfo.inspectorName && examInfo.location);
+  const isNewExamByInspectorOrAdmin = !editingExamId && (userRole === USER_ROLES.INSPECTOR || (userRole === USER_ROLES.ADMIN && !editingExamId));
+  const commonDisabledCondition = !isExamInfoComplete || (products.length === 0 && isNewExamByInspectorOrAdmin);
   
   const FooterContent = () => (
-    <footer className="text-center p-4 text-sm border-t border-border/30 bg-transparent">
+    <footer className="text-center p-4 text-sm border-t border-border/30 bg-transparent text-app-text-on-page-bg">
       Stvaer © 2025 <em className="italic">for</em> ACONIC
     </footer>
   );
+
 
   if (currentView === 'welcome') {
     return (
@@ -374,7 +391,6 @@ export default function CustomsPage() {
   if (currentView === 'login') {
      return (
       <>
-        {/* Welcome screen content (blurred) */}
         <div className="min-h-screen flex flex-col relative backdrop-blur-sm">
           <main className="flex-grow flex flex-col items-center justify-center p-4 text-center opacity-50">
             <div className="flex flex-col items-center">
@@ -394,9 +410,8 @@ export default function CustomsPage() {
     );
   }
 
-
   const headerActions = userRole === USER_ROLES.ADMIN && currentView === 'form' && editingExamId ? (
-      <Button variant="outline" onClick={handleCancelEdit} size="sm">
+      <Button variant="outline" onClick={handleAdminCancelEdit} size="sm">
           <ArrowLeftToLine className="mr-2 h-4 w-4" /> Volver a Base de Datos
       </Button>
   ) : userRole === USER_ROLES.ADMIN && currentView === 'database' ? (
@@ -502,7 +517,10 @@ export default function CustomsPage() {
     );
   }
   
+  // Form View for Inspector or Admin
   if (currentView === 'form' && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN) && examInfo) {
+    const isInspectorCreatingNew = userRole === USER_ROLES.INSPECTOR && !editingExamId;
+
     return (
       <div className="min-h-screen flex flex-col">
         <Header onLogout={handleLogout} actions={headerActions} />
@@ -527,81 +545,122 @@ export default function CustomsPage() {
               </CardContent>
             </Card>
           )}
-          <section id="exam-info">
-            <InitialExamForm 
-              onExamInfoSubmit={handleExamInfoSubmit} 
-              initialData={examInfo} 
-            />
-          </section>
 
-          <section id="products" className="space-y-6">
-            <Card className="shadow-md">
-              <CardHeader>
-                  <CardTitle className="text-xl">Gestión de Productos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                  <Button onClick={handleOpenAddProductModal} size="lg" className="w-full sm:w-auto">
-                      <PackagePlus className="mr-2 h-5 w-5" /> Agregar Nuevo Producto
+          {(!isInspectorCreatingNew || (isInspectorCreatingNew && inspectorStep === 'examInfo')) && (
+            <section id="exam-info">
+              <InitialExamForm 
+                onExamInfoSubmit={handleExamInfoChange} 
+                initialData={examInfo} 
+              />
+              {isInspectorCreatingNew && inspectorStep === 'examInfo' && (
+                <div className="mt-6 flex justify-end">
+                  <Button 
+                    size="lg"
+                    onClick={() => setInspectorStep('products')}
+                    disabled={!isExamInfoComplete}
+                  >
+                    Continuar <ChevronRight className="ml-2 h-5 w-5" />
                   </Button>
-              </CardContent>
-            </Card>
-            <ProductsTable 
-              products={products} 
-              onRemoveProduct={handleRemoveProduct}
-              onEditProduct={handleOpenEditProductModal} 
-            />
-          </section>
-          
-          <section id="actions" className="py-6">
-            <Card className="shadow-lg">
-              <CardContent className="p-6 flex flex-col sm:flex-row flex-wrap justify-end items-center gap-4">
-                  <p className="text-sm mr-auto self-center">
-                      Productos Totales: {products.length}
-                  </p>
-                  {userRole === USER_ROLES.ADMIN && editingExamId && (
-                    <Button variant="outline" onClick={handleCancelEdit} size="lg" className="w-full sm:w-auto order-1 sm:order-none">
-                      <ArrowLeftToLine className="mr-2 h-5 w-5" /> Cancelar Edición
+                </div>
+              )}
+            </section>
+          )}
+
+          {(!isInspectorCreatingNew || (isInspectorCreatingNew && inspectorStep === 'products')) && (
+            <>
+              {isInspectorCreatingNew && inspectorStep === 'products' && examInfo && (
+                <Card className="shadow-md my-6">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl flex items-center gap-2">
+                        <Info className="w-5 h-5 text-primary"/>
+                        Información del Examen Ingresada
+                      </CardTitle>
+                      <CardDescription>Verifique los datos antes de añadir productos.</CardDescription>
+                    </div>
+                    <Button variant="outline" onClick={() => setInspectorStep('examInfo')} size="sm">
+                      <ChevronLeft className="mr-2 h-4 w-4" /> Retroceder
                     </Button>
-                  )}
-                  <Button 
-                    onClick={handleDirectDownloadTXT}
-                    variant="outline" 
-                    size="lg" 
-                    disabled={commonDisabledCondition}
-                    className="w-full sm:w-auto order-2 sm:order-none"
-                  >
-                    <FileText className="mr-2 h-5 w-5" /> Descargar TXT
-                  </Button>
-                   <Button 
-                    onClick={handleDirectDownloadExcel}
-                    variant="outline" 
-                    size="lg" 
-                    disabled={commonDisabledCondition}
-                    className="w-full sm:w-auto order-3 sm:order-none"
-                  >
-                    <FileSpreadsheet className="mr-2 h-5 w-5" /> Descargar Excel
-                  </Button>
-                  <Button 
-                    onClick={() => handleSaveOrUpdateExamAndGenerateReports(true)}
-                    size="lg" 
-                    disabled={commonDisabledCondition || !firebaseConfigured}
-                    className="w-full sm:w-auto order-4 sm:order-none"
-                  >
-                    <Save className="mr-2 h-5 w-5" /> 
-                    {editingExamId ? "Actualizar y Generar" : "Guardar y Generar"}
-                  </Button>
-                  <Button 
-                    onClick={handlePreview} 
-                    size="lg" 
-                    disabled={commonDisabledCondition || !firebaseConfigured}
-                    className="w-full sm:w-auto order-5 sm:order-none bg-accent hover:bg-accent/90"
-                  >
-                    <Eye className="mr-2 h-5 w-5" />
-                     Previsualizar y Finalizar
-                  </Button>
-              </CardContent>
-            </Card>
-          </section>
+                  </CardHeader>
+                  <CardContent className="text-sm space-y-1">
+                    <p><strong>ID Examen:</strong> {examInfo.examId}</p>
+                    <p><strong>Fecha:</strong> {examInfo.date}</p>
+                    <p><strong>Inspector:</strong> {examInfo.inspectorName}</p>
+                    <p><strong>Ubicación:</strong> {examInfo.location}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              <section id="products" className="space-y-6">
+                <Card className="shadow-md">
+                  <CardHeader>
+                      <CardTitle className="text-xl">Gestión de Productos</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                      <Button onClick={handleOpenAddProductModal} size="lg" className="w-full sm:w-auto">
+                          <PackagePlus className="mr-2 h-5 w-5" /> Agregar Nuevo Producto
+                      </Button>
+                  </CardContent>
+                </Card>
+                <ProductsTable 
+                  products={products} 
+                  onRemoveProduct={handleRemoveProduct}
+                  onEditProduct={handleOpenEditProductModal} 
+                />
+              </section>
+              
+              <section id="actions" className="py-6">
+                <Card className="shadow-lg">
+                  <CardContent className="p-6 flex flex-col sm:flex-row flex-wrap justify-end items-center gap-4">
+                      <p className="text-sm mr-auto self-center">
+                          Productos Totales: {products.length}
+                      </p>
+                      {userRole === USER_ROLES.ADMIN && editingExamId && (
+                        <Button variant="outline" onClick={handleAdminCancelEdit} size="lg" className="w-full sm:w-auto order-1 sm:order-none">
+                          <ArrowLeftToLine className="mr-2 h-5 w-5" /> Cancelar Edición
+                        </Button>
+                      )}
+                      <Button 
+                        onClick={handleDirectDownloadTXT}
+                        variant="outline" 
+                        size="lg" 
+                        disabled={!isExamInfoComplete || (products.length === 0 && isNewExamByInspectorOrAdmin) }
+                        className="w-full sm:w-auto order-2 sm:order-none"
+                      >
+                        <FileText className="mr-2 h-5 w-5" /> Descargar TXT
+                      </Button>
+                       <Button 
+                        onClick={handleDirectDownloadExcel}
+                        variant="outline" 
+                        size="lg" 
+                        disabled={!isExamInfoComplete || (products.length === 0 && isNewExamByInspectorOrAdmin) }
+                        className="w-full sm:w-auto order-3 sm:order-none"
+                      >
+                        <FileSpreadsheet className="mr-2 h-5 w-5" /> Descargar Excel
+                      </Button>
+                      <Button 
+                        onClick={() => handleSaveOrUpdateExamAndGenerateReports(true)}
+                        size="lg" 
+                        disabled={commonDisabledCondition || !firebaseConfigured}
+                        className="w-full sm:w-auto order-4 sm:order-none"
+                      >
+                        <Save className="mr-2 h-5 w-5" /> 
+                        {editingExamId ? "Actualizar y Generar" : "Guardar y Generar"}
+                      </Button>
+                      <Button 
+                        onClick={handlePreview} 
+                        size="lg" 
+                        disabled={commonDisabledCondition || !firebaseConfigured}
+                        className="w-full sm:w-auto order-5 sm:order-none bg-accent hover:bg-accent/90"
+                      >
+                        <Eye className="mr-2 h-5 w-5" />
+                         Previsualizar y Finalizar
+                      </Button>
+                  </CardContent>
+                </Card>
+              </section>
+            </>
+          )}
 
           {isPreviewModalOpen && examInfo && currentView === 'form' && (
             <PreviewModal
@@ -627,6 +686,7 @@ export default function CustomsPage() {
     );
   }
 
+  // Fallback for invalid state
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-grow flex items-center justify-center p-4">
@@ -645,5 +705,3 @@ export default function CustomsPage() {
     
 
     
-
-
