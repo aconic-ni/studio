@@ -1,11 +1,38 @@
 
+export const USER_ROLES = {
+  INSPECTOR: "inspector",
+  VIEWER: "viewer",
+  ADMIN: "admin",
+} as const;
+
+export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES] | null;
+
+export const PRODUCT_STATUS = {
+  CONFORME: "Todo conforme",
+  EXCEDENTE: "Notificar Excedente",
+  FALTANTE: "Notificar Faltante",
+  AVERIA: "Notificar Avería",
+} as const;
+
+export type ProductStatus = typeof PRODUCT_STATUS[keyof typeof PRODUCT_STATUS];
+
 export interface Product {
   id: string;
-  name: string;
-  hsCode: string;
-  quantity: number;
-  value: number;
-  countryOfOrigin: string;
+  itemNumber: string;
+  packageNumbers?: string;
+  packageQuantity: number;
+  unitQuantity: number;
+  description: string;
+  brand?: string;
+  model?: string;
+  origin: string;
+  merchandiseState?: string; // e.g., "Nuevo", "Usado", "Dañado leve"
+  weightValue?: number;
+  weightUnit?: string; // e.g., "kg", "lb", "g"
+  measurementUnit: string; // e.g., "unidades", "pares", "docenas"
+  serialNumber?: string;
+  observation?: string;
+  status: ProductStatus;
 }
 
 export interface ExamInfo {
@@ -14,14 +41,6 @@ export interface ExamInfo {
   inspectorName: string;
   location: string;
 }
-
-export const USER_ROLES = {
-  INSPECTOR: "inspector",
-  VIEWER: "viewer",
-  ADMIN: "admin",
-} as const;
-
-export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES] | null;
 
 export interface SavedExam {
   id: string; // Unique ID for the saved exam

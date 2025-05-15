@@ -1,3 +1,4 @@
+
 import type { ExamInfo, Product } from '@/types';
 import * as XLSX from 'xlsx';
 
@@ -30,12 +31,19 @@ export const generateTxtReport = (examInfo: ExamInfo, products: Product[]): void
     reportContent += "  No products listed.\n";
   } else {
     products.forEach((product, index) => {
-      reportContent += `Product ${index + 1}:\n`;
-      reportContent += `  Name: ${product.name}\n`;
-      reportContent += `  HS Code: ${product.hsCode}\n`;
-      reportContent += `  Quantity: ${product.quantity}\n`;
-      reportContent += `  Value: ${product.value}\n`;
-      reportContent += `  Country of Origin: ${product.countryOfOrigin}\n\n`;
+      reportContent += `Product ${index + 1} (Item N°: ${product.itemNumber}):\n`;
+      reportContent += `  Description: ${product.description}\n`;
+      reportContent += `  Brand: ${product.brand || '-'}\n`;
+      reportContent += `  Model: ${product.model || '-'}\n`;
+      reportContent += `  Serial Number: ${product.serialNumber || '-'}\n`;
+      reportContent += `  Origin: ${product.origin}\n`;
+      reportContent += `  Unit Quantity: ${product.unitQuantity} ${product.measurementUnit}\n`;
+      reportContent += `  Package Quantity: ${product.packageQuantity}\n`;
+      reportContent += `  Package Numbers: ${product.packageNumbers || '-'}\n`;
+      reportContent += `  Weight: ${product.weightValue || '-'} ${product.weightUnit || ''}\n`;
+      reportContent += `  Merchandise State: ${product.merchandiseState || '-'}\n`;
+      reportContent += `  Status: ${product.status}\n`;
+      reportContent += `  Observation: ${product.observation || '-'}\n\n`;
     });
   }
   reportContent += "==========================\n";
@@ -59,20 +67,31 @@ export const generateExcelReport = (examInfo: ExamInfo, products: Product[]): vo
   XLSX.utils.book_append_sheet(wb, wsExam, "Exam Information");
 
   // Sheet 2: Products
-  const productHeaders = ["Product Name", "HS Code", "Quantity", "Value", "Country of Origin"];
-  const productRows = products.map(p => [p.name, p.hsCode, p.quantity, p.value, p.countryOfOrigin]);
+  const productHeaders = [
+    "Item N°", "Descripción", "Marca", "Modelo", "Serie", "Origen", 
+    "Cant. Unidades", "Unidad Medida (Cant.)", 
+    "Cant. Bultos", "Numeración Bultos",
+    "Peso Valor", "Peso Unidad", 
+    "Estado Mercancía", "Estado", "Observación"
+  ];
+  const productRows = products.map(p => [
+    p.itemNumber, p.description, p.brand, p.model, p.serialNumber, p.origin,
+    p.unitQuantity, p.measurementUnit,
+    p.packageQuantity, p.packageNumbers,
+    p.weightValue, p.weightUnit,
+    p.merchandiseState, p.status, p.observation
+  ]);
   
   const wsProductsData = products.length > 0 ? [productHeaders, ...productRows] : [productHeaders, ["No products listed."]];
   const wsProducts = XLSX.utils.aoa_to_sheet(wsProductsData);
 
-  // Auto-size columns for products sheet
   if (products.length > 0) {
     const colsWidths = productHeaders.map((header, i) => ({
         wch: Math.max(header.length, ...productRows.map(row => row[i] ? String(row[i]).length : 0)) + 2
     }));
     wsProducts['!cols'] = colsWidths;
   } else {
-     wsProducts['!cols'] = [{wch: 50}]; // Default width for "No products" message
+     wsProducts['!cols'] = [{wch: 50}]; 
   }
   
   XLSX.utils.book_append_sheet(wb, wsProducts, "Products");

@@ -1,7 +1,9 @@
+
 "use client";
 
 import type { FC } from 'react';
-import type { Product } from '@/types';
+import type { Product, ProductStatus } from '@/types';
+import { PRODUCT_STATUS } from '@/types';
 import {
   Table,
   TableBody,
@@ -11,12 +13,38 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Trash2, ListChecks } from 'lucide-react';
 
 interface ProductsTableProps {
   products: Product[];
   onRemoveProduct: (productId: string) => void;
+}
+
+const getStatusBadgeVariant = (status: ProductStatus): string => {
+  switch (status) {
+    case PRODUCT_STATUS.CONFORME:
+      return "bg-green-100 text-green-700 border-green-300 hover:bg-green-200 dark:bg-green-700/30 dark:text-green-300 dark:border-green-600";
+    case PRODUCT_STATUS.EXCEDENTE:
+      return "bg-red-100 text-red-700 border-red-300 hover:bg-red-200 dark:bg-red-700/30 dark:text-red-300 dark:border-red-600";
+    case PRODUCT_STATUS.FALTANTE:
+      return "bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200 dark:bg-yellow-700/30 dark:text-yellow-300 dark:border-yellow-600";
+    case PRODUCT_STATUS.AVERIA:
+      return "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200 dark:bg-gray-600/30 dark:text-gray-300 dark:border-gray-500";
+    default:
+      return "bg-secondary text-secondary-foreground hover:bg-secondary/80";
+  }
+};
+
+const getStatusDisplayName = (status: ProductStatus): string => {
+    switch (status) {
+        case PRODUCT_STATUS.CONFORME: return "Conforme";
+        case PRODUCT_STATUS.EXCEDENTE: return "Excedente";
+        case PRODUCT_STATUS.FALTANTE: return "Faltante";
+        case PRODUCT_STATUS.AVERIA: return "Avería";
+        default: return status;
+    }
 }
 
 export const ProductsTable: FC<ProductsTableProps> = ({ products, onRemoveProduct }) => {
@@ -49,28 +77,50 @@ export const ProductsTable: FC<ProductsTableProps> = ({ products, onRemoveProduc
             <Table>
             <TableHeader>
                 <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Código HS</TableHead>
-                <TableHead className="text-right">Cantidad</TableHead>
-                <TableHead className="text-right">Valor (unidad)</TableHead>
-                <TableHead>País de Origen</TableHead>
+                <TableHead>Item</TableHead>
+                <TableHead>Descripción</TableHead>
+                <TableHead>Cant. Unid.</TableHead>
+                <TableHead>Unid. Medida</TableHead>
+                <TableHead>Marca</TableHead>
+                <TableHead>Modelo</TableHead>
+                <TableHead>Origen</TableHead>
+                <TableHead>Estado Merc.</TableHead>
+                <TableHead>Peso</TableHead>
+                <TableHead>Serie</TableHead>
+                <TableHead>Cant. Bultos</TableHead>
+                <TableHead>Num. Bultos</TableHead>
+                <TableHead>Observación</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {products.map((product) => (
                 <TableRow key={product.id}>
-                    <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell>{product.hsCode}</TableCell>
-                    <TableCell className="text-right">{product.quantity}</TableCell>
-                    <TableCell className="text-right">{product.value.toFixed(2)}</TableCell>
-                    <TableCell>{product.countryOfOrigin}</TableCell>
+                    <TableCell className="font-medium">{product.itemNumber}</TableCell>
+                    <TableCell>{product.description}</TableCell>
+                    <TableCell className="text-right">{product.unitQuantity}</TableCell>
+                    <TableCell>{product.measurementUnit}</TableCell>
+                    <TableCell>{product.brand || '-'}</TableCell>
+                    <TableCell>{product.model || '-'}</TableCell>
+                    <TableCell>{product.origin}</TableCell>
+                    <TableCell>{product.merchandiseState || '-'}</TableCell>
+                    <TableCell className="text-right">{product.weightValue && product.weightUnit ? `${product.weightValue} ${product.weightUnit}` : '-'}</TableCell>
+                    <TableCell>{product.serialNumber || '-'}</TableCell>
+                    <TableCell className="text-right">{product.packageQuantity}</TableCell>
+                    <TableCell>{product.packageNumbers || '-'}</TableCell>
+                    <TableCell className="max-w-xs truncate" title={product.observation}>{product.observation ? (product.observation.length > 30 ? product.observation.substring(0, 27) + '...' : product.observation) : '-'}</TableCell>
+                    <TableCell>
+                        <Badge variant="outline" className={`font-semibold ${getStatusBadgeVariant(product.status)}`}>
+                            {getStatusDisplayName(product.status)}
+                        </Badge>
+                    </TableCell>
                     <TableCell className="text-right">
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => onRemoveProduct(product.id)}
-                        aria-label={`Eliminar ${product.name}`}
+                        aria-label={`Eliminar ${product.description}`}
                     >
                         <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>

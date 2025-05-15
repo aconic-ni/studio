@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { FC } from 'react';
@@ -20,7 +21,7 @@ export const AddProductModal: FC<AddProductModalProps> = ({ isOpen, onClose, onA
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px]">
+      <DialogContent className="sm:max-w-[600px] md:max-w-[750px] lg:max-w-[900px]">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
             <PackagePlus className="w-5 h-5 text-primary" />

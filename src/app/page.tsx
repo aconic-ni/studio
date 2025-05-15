@@ -2,8 +2,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import type { ExamInfo, Product, UserRole, SavedExam } from '@/types';
-import { USER_ROLES } from '@/types';
+import type { ExamInfo, Product, UserRole, SavedExam, ProductStatus } from '@/types';
+import { USER_ROLES, PRODUCT_STATUS } from '@/types';
 import { Header } from '@/components/Header';
 import { InitialExamForm } from '@/components/customs-ex-p/InitialExamForm';
 import { ProductsTable } from '@/components/customs-ex-p/ProductsTable';
@@ -15,7 +15,6 @@ import { useToast } from '@/hooks/use-toast';
 import { generateTxtReport, generateExcelReport } from '@/lib/reportUtils';
 import { Eye, PackagePlus, List, Edit3, Trash2, LogOut, ArrowLeftToLine, Save } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 
 const PASSWORDS: Record<string, UserRole> = {
   "inspector123": USER_ROLES.INSPECTOR,
@@ -23,7 +22,7 @@ const PASSWORDS: Record<string, UserRole> = {
   "admin123": USER_ROLES.ADMIN,
 };
 
-const LOCAL_STORAGE_KEY_EXAMS = "customsExamsData";
+const LOCAL_STORAGE_KEY_EXAMS = "customsExamsData_v2"; // Changed key to avoid conflicts with old structure
 
 const initialExamData: ExamInfo = {
   examId: '',
@@ -31,6 +30,25 @@ const initialExamData: ExamInfo = {
   inspectorName: '',
   location: '',
 };
+
+const initialProductData: Omit<Product, 'id'> = {
+  itemNumber: '',
+  packageNumbers: '',
+  packageQuantity: 0,
+  unitQuantity: 1,
+  description: '',
+  brand: '',
+  model: '',
+  origin: '',
+  merchandiseState: '',
+  weightValue: 0,
+  weightUnit: 'kg',
+  measurementUnit: 'unidades',
+  serialNumber: '',
+  observation: '',
+  status: PRODUCT_STATUS.CONFORME,
+};
+
 
 export default function CustomsPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -47,7 +65,6 @@ export default function CustomsPage() {
   const [passwordError, setPasswordError] = useState('');
   const { toast } = useToast();
 
-  // Load saved exams from localStorage on mount
   useEffect(() => {
     try {
       const storedExams = localStorage.getItem(LOCAL_STORAGE_KEY_EXAMS);
@@ -60,7 +77,6 @@ export default function CustomsPage() {
     }
   }, [toast]);
 
-  // Save exams to localStorage whenever savedExams changes
   useEffect(() => {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY_EXAMS, JSON.stringify(savedExams));
@@ -82,7 +98,7 @@ export default function CustomsPage() {
         setCurrentView('database');
       } else {
         setCurrentView('form');
-        setExamInfo(initialExamData); // Reset form for new inspector session
+        setExamInfo({...initialExamData, examId: `EXM-${Date.now().toString().slice(-6)}`}); 
         setProducts([]);
       }
     } else {
@@ -91,10 +107,10 @@ export default function CustomsPage() {
   };
   
   const resetForm = useCallback(() => {
-    setExamInfo(initialExamData);
+    setExamInfo({...initialExamData, examId: userRole === USER_ROLES.INSPECTOR ? `EXM-${Date.now().toString().slice(-6)}` : '' });
     setProducts([]);
     setEditingExamId(null);
-  }, []);
+  }, [userRole]);
 
   const handleLogout = () => {
     setIsAuthenticated(false);
@@ -108,9 +124,14 @@ export default function CustomsPage() {
     setExamInfo(data);
   };
 
-  const handleAddProduct = (product: Product) => {
-    setProducts((prevProducts) => [...prevProducts, product]);
-    toast({ title: "Producto Agregado", description: `${product.name} ha sido agregado.` });
+  const handleAddProduct = (productData: Omit<Product, 'id'>) => {
+     const newProduct: Product = {
+        ...initialProductData, // ensures all fields are present even if not in form's default (though they should be)
+        ...productData,
+        id: crypto.randomUUID(),
+     };
+    setProducts((prevProducts) => [...prevProducts, newProduct]);
+    toast({ title: "Producto Agregado", description: `${newProduct.description} ha sido agregado.` });
   };
 
   const handleRemoveProduct = (productId: string) => {
@@ -123,7 +144,7 @@ export default function CustomsPage() {
        toast({ title: "Falta Información del Examen", description: "Complete el formulario de Información del Examen.", variant: "destructive" });
       return;
     }
-    if (products.length === 0 && userRole === USER_ROLES.INSPECTOR && !editingExamId) { // Don't block admin edit if products are zero
+    if (products.length === 0 && userRole === USER_ROLES.INSPECTOR && !editingExamId) { 
         toast({ title: "Sin Productos", description: "Agregue al menos un producto para guardar el examen.", variant: "destructive" });
         return;
     }
@@ -140,10 +161,10 @@ export default function CustomsPage() {
       timestamp: new Date().toISOString(),
     };
 
-    if (editingExamId) { // Updating existing exam
+    if (editingExamId) { 
       setSavedExams(prev => prev.map(ex => ex.id === editingExamId ? currentExamData : ex));
       toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado y los reportes generados." });
-    } else { // Saving new exam
+    } else { 
       setSavedExams(prev => [...prev, currentExamData]);
       toast({ title: "Examen Guardado", description: "El examen ha sido guardado y los reportes generados." });
     }
@@ -166,10 +187,13 @@ export default function CustomsPage() {
     
     setIsPreviewModalOpen(false);
     if (userRole === USER_ROLES.INSPECTOR) {
-      resetForm(); // Reset form for next new exam
+      resetForm(); 
     } else if (userRole === USER_ROLES.ADMIN && editingExamId) {
-      setCurrentView('database'); // Go back to database view after admin edit
+      setCurrentView('database'); 
       resetForm();
+    } else if (userRole === USER_ROLES.ADMIN && !editingExamId) { // Admin creating new exam
+        resetForm(); // Reset for another new one or go to DB
+        setCurrentView('form'); // Or 'database' if preferred after admin creates one
     }
   };
 
@@ -177,7 +201,9 @@ export default function CustomsPage() {
     const examToEdit = savedExams.find(ex => ex.id === examId);
     if (examToEdit) {
       setExamInfo(examToEdit.examInfo);
-      setProducts(examToEdit.products);
+      // Ensure products loaded for editing have all fields, defaulting if necessary
+      const productsWithDefaults = examToEdit.products.map(p => ({ ...initialProductData, ...p }));
+      setProducts(productsWithDefaults);
       setEditingExamId(examId);
       setCurrentView('form');
     }
@@ -193,11 +219,21 @@ export default function CustomsPage() {
     setCurrentView('database');
   };
 
+  // Auto-generate Exam ID for new exams by Inspector or Admin (if not editing)
+  useEffect(() => {
+    if (currentView === 'form' && !editingExamId && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN)) {
+        if (!examInfo?.examId) { // Only set if not already set (e.g. by admin clicking "New Exam" and form resetting)
+             setExamInfo(prev => ({...prev!, examId: `EXM-${Date.now().toString().slice(-6)}`}));
+        }
+    }
+  }, [currentView, editingExamId, userRole, examInfo?.examId]);
+
+
   if (currentView === 'login') {
     return (
       <div className="min-h-screen flex flex-col bg-secondary/50 items-center justify-center p-4">
         <PasswordModal
-          isOpen={true} // Always open when in login view
+          isOpen={true}
           onSubmit={handlePasswordSubmit}
           error={passwordError}
         />
@@ -209,7 +245,6 @@ export default function CustomsPage() {
     );
   }
 
-  // Common header for authenticated views
   const headerActions = userRole === USER_ROLES.ADMIN && currentView === 'form' && editingExamId ? (
       <Button variant="outline" onClick={handleCancelEdit} size="sm">
           <ArrowLeftToLine className="mr-2 h-4 w-4" /> Volver a Base de Datos
@@ -221,7 +256,6 @@ export default function CustomsPage() {
   ) : null;
 
 
-  // DATABASE VIEW (for Viewer and Admin)
   if (currentView === 'database' && (userRole === USER_ROLES.VIEWER || userRole === USER_ROLES.ADMIN)) {
     return (
       <div className="min-h-screen flex flex-col bg-secondary/50">
@@ -242,7 +276,7 @@ export default function CustomsPage() {
                 <p className="text-muted-foreground text-center py-8">No hay exámenes para mostrar.</p>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {savedExams.slice().sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map(exam => ( // Show newest first
+                {savedExams.slice().sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map(exam => ( 
                   <Card key={exam.id} className="flex flex-col shadow-md hover:shadow-lg transition-shadow">
                     <CardHeader>
                       <CardTitle className="text-lg">ID: {exam.examInfo.examId}</CardTitle>
@@ -255,7 +289,7 @@ export default function CustomsPage() {
                     <CardContent className="flex-grow">
                       <p className="text-sm font-medium">Productos ({exam.products.length}):</p>
                       <ul className="text-xs text-muted-foreground list-disc list-inside max-h-24 overflow-y-auto pr-2">
-                        {exam.products.slice(0,5).map(p => <li key={p.id} className="truncate">{p.name}</li>)}
+                        {exam.products.slice(0,5).map(p => <li key={p.id} className="truncate">{p.description} (Item: {p.itemNumber})</li>)}
                         {exam.products.length > 5 && <li className="italic">... y {exam.products.length - 5} más.</li>}
                          {exam.products.length === 0 && <li className="italic">Sin productos.</li>}
                       </ul>
@@ -264,7 +298,7 @@ export default function CustomsPage() {
                       <p className="text-xs text-muted-foreground">Guardado: {new Date(exam.timestamp).toLocaleString()}</p>
                       <div className="flex gap-2 items-center">
                         {(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER) && (
-                           <Button variant="outline" size="sm" onClick={() => { setExamInfo(exam.examInfo); setProducts(exam.products); setIsPreviewModalOpen(true); } }>
+                           <Button variant="outline" size="sm" onClick={() => { setExamInfo(exam.examInfo); setProducts(exam.products.map(p => ({...initialProductData, ...p }))); setIsPreviewModalOpen(true); } }>
                               <Eye className="mr-1 h-4 w-4" /> Ver Detalles
                             </Button>
                          )}
@@ -290,25 +324,21 @@ export default function CustomsPage() {
         <footer className="text-center p-4 text-sm text-muted-foreground border-t">
           © {new Date().getFullYear()} Customs Ex-p. Todos los derechos reservados.
         </footer>
-        {/* Modal for Viewer/Admin to see details from database view */}
         {isPreviewModalOpen && examInfo && (currentView === 'database') && (
              <PreviewModal
                 isOpen={isPreviewModalOpen}
-                onClose={() => { setIsPreviewModalOpen(false); resetForm();}} // resetForm clears examInfo for next use
+                onClose={() => { setIsPreviewModalOpen(false); resetForm();}} 
                 onConfirm={() => { setIsPreviewModalOpen(false); resetForm();}}
                 examInfo={examInfo}
                 products={products}
-                isViewerMode={true} // This indicates it's for viewing, not confirming a new/edit action
+                isViewerMode={true} 
             />
         )}
       </div>
     );
   }
   
-
-  // FORM VIEW (for Inspector or Admin editing/creating)
   if (currentView === 'form' && (userRole === USER_ROLES.INSPECTOR || userRole === USER_ROLES.ADMIN) && examInfo) {
-    const formTitle = editingExamId && userRole === USER_ROLES.ADMIN ? "Editando Examen" : "Nuevo Examen";
     return (
       <div className="min-h-screen flex flex-col bg-secondary/50">
         <Header onLogout={handleLogout} actions={headerActions} />
@@ -323,7 +353,7 @@ export default function CustomsPage() {
           <section id="exam-info">
             <InitialExamForm 
               onExamInfoSubmit={handleExamInfoSubmit} 
-              initialData={examInfo} // examInfo is already set correctly for new or edit
+              initialData={examInfo} 
             />
           </section>
 
@@ -355,7 +385,7 @@ export default function CustomsPage() {
                   <Button 
                     onClick={handlePreview} 
                     size="lg" 
-                    disabled={!examInfo || !examInfo.examId || (products.length === 0 && !editingExamId)} 
+                    disabled={!examInfo || !examInfo.examId || (products.length === 0 && !editingExamId && userRole !== USER_ROLES.ADMIN)} 
                     className="w-full sm:w-auto"
                   >
                     {editingExamId ? <Save className="mr-2 h-5 w-5" /> : <Eye className="mr-2 h-5 w-5" />}
@@ -365,7 +395,6 @@ export default function CustomsPage() {
             </Card>
           </section>
 
-          {/* Modal for Inspector or Admin (editing/creating) to preview before save/update */}
           {isPreviewModalOpen && examInfo && currentView === 'form' && (
             <PreviewModal
               isOpen={isPreviewModalOpen}
@@ -397,4 +426,3 @@ export default function CustomsPage() {
     </div>
   );
 }
-
