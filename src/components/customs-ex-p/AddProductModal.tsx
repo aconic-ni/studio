@@ -49,7 +49,7 @@ export const AddProductModal: FC<AddProductModalProps> = ({
             {isEditing ? 'Modifique los detalles del producto.' : 'Especifique las características del producto para agregarlo a la lista.'}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-grow min-h-0 pr-2 -mr-4">
+        <ScrollArea className="flex-grow min-h-0"> {/* Eliminadas clases pr-2 -mr-4 */}
           <AddProductForm
             key={formKey} // Ensures form re-initializes when productToEdit changes
             initialData={productToEdit || initialProductData}
