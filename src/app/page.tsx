@@ -116,7 +116,7 @@ export default function CustomsPage() {
   useEffect(() => {
     if (!firebaseConfigured || !(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER)) {
       if (userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER) {
-         if (!firebaseConfigured) setDbError("Error de configuración: Firebase no está configurado. Por favor, revise src/lib/firebase.ts.");
+         if (!firebaseConfigured) setDbError("Error de configuración: Firebase no está configurado. Por favor, revise src/lib/firebase.ts y asegúrese de que la base de datos esté habilitada en su proyecto Firebase.");
       }
       return;
     }
@@ -137,10 +137,10 @@ export default function CustomsPage() {
       });
       setSavedExams(examsFromDb);
       setDbError(null);
-    }, (error) => {
+    }, (error: any) => {
       console.error("Error fetching exams from Firestore:", error);
-      toast({ title: "Error de Base de Datos", description: "No se pudieron cargar los exámenes guardados. Verifique la consola para más detalles.", variant: "destructive" });
-      setDbError("Error al cargar datos de Firestore. Verifique la configuración de Firebase, sus reglas de seguridad y su conexión a internet. Intente recargar la página.");
+      toast({ title: "Error de Base de Datos", description: `No se pudieron cargar los exámenes guardados. Código: ${error.code || 'N/A'}.`, variant: "destructive" });
+      setDbError(`Error al cargar datos de Firestore. Código: ${error.code || 'N/A'}. Verifique la configuración de Firebase, sus reglas de seguridad y su conexión a internet. Intente recargar la página.`);
     });
 
     return () => unsubscribe(); 
@@ -220,10 +220,10 @@ export default function CustomsPage() {
             return;
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error verifying Gestor Aduanero account:", error);
-        setPasswordError("Error al verificar cuenta. Intente más tarde.");
-        toast({ title: "Error de Autenticación", description: "No se pudo verificar la cuenta del gestor.", variant: "destructive" });
+        setPasswordError(`Error al verificar cuenta. Código: ${error.code || 'N/A'}. Intente más tarde.`);
+        toast({ title: "Error de Autenticación", description: `No se pudo verificar la cuenta del gestor. Código: ${error.code || 'N/A'}.`, variant: "destructive" });
         return;
       }
     } else if (username && !firebaseConfigured) {
@@ -240,7 +240,8 @@ export default function CustomsPage() {
     setExamInfo({
         ...initialExamData, 
         examId: `EXM-${Date.now().toString().slice(-6)}`,
-        inspectorName: currentGestorName 
+        inspectorName: currentGestorName,
+        reference: '',
     });
     setProducts([]);
     setEditingExamId(null);
@@ -303,7 +304,7 @@ export default function CustomsPage() {
   const handleCancelProductForm = () => {
     setCurrentView('form');
     setProductToEdit(null);
-    setIsDirty(false); // Or maintain based on examInfo changes if needed
+    // setIsDirty(false); // Or maintain based on examInfo changes if needed. If form had changes, isDirty should remain true.
   }
 
   const handleRemoveProduct = (productId: string) => {
@@ -345,11 +346,14 @@ export default function CustomsPage() {
     };
 
     try {
+      console.log("Attempting to save/update exam. EditingExamId:", editingExamId, "Data:", JSON.stringify(examDataToSave, null, 2));
       if (editingExamId) { 
         const examDocRef = doc(db, "exams", editingExamId);
         await updateDoc(examDocRef, examDataToSave);
+        console.log("Exam updated successfully, ID:", editingExamId);
       } else { 
         const docRef = await addDoc(collection(db, "exams"), examDataToSave);
+        console.log("Exam added successfully, new ID:", docRef.id);
       }
       setDbError(null);
       setIsDirty(false);
@@ -376,10 +380,19 @@ export default function CustomsPage() {
           toast({ title: "Error en Reporte Excel", variant: "destructive" });
         }
       }
-    } catch (error) {
-      console.error("Error saving/updating exam to Firestore:", error);
-      toast({ title: "Error de Base de Datos", description: "No se pudo guardar/actualizar el examen. Verifique la consola y su configuración de Firestore.", variant: "destructive" });
-      setDbError("Error al guardar en Firestore. Verifique la configuración, reglas de seguridad y conexión.");
+    } catch (error: any) {
+      console.error("Firestore save/update error in handleSaveOrUpdateExamAndGenerateReports:", error);
+      console.error("Error name:", error.name);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
+      // console.error("Error details:", error.details); // May not be present or useful
+      // console.error("Error stack:", error.stack);
+      toast({ 
+        title: "Error de Base de Datos", 
+        description: `No se pudo guardar/actualizar el examen. Código: ${error.code || 'N/A'}. Mensaje: ${error.message || 'Verifique consola.'}`, 
+        variant: "destructive" 
+      });
+      setDbError(`Error al guardar en Firestore. Código: ${error.code || 'N/A'}. Verifique la configuración, reglas de seguridad y conexión.`);
       return; 
     }
         
@@ -454,13 +467,17 @@ export default function CustomsPage() {
       return;
     }
     try {
+      console.log("Attempting to delete exam, ID:", examIdToDelete);
       await deleteDoc(doc(db, "exams", examIdToDelete));
+      console.log("Exam deleted successfully, ID:", examIdToDelete);
       toast({ title: "Examen Eliminado", description: "El examen ha sido eliminado de la base de datos.", variant: "destructive"});
       setDbError(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting exam from Firestore:", error);
-      toast({ title: "Error de Base de Datos", description: "No se pudo eliminar el examen.", variant: "destructive" });
-      setDbError("Error al eliminar de Firestore.");
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
+      toast({ title: "Error de Base de Datos", description: `No se pudo eliminar el examen. Código: ${error.code || 'N/A'}.`, variant: "destructive" });
+      setDbError(`Error al eliminar de Firestore. Código: ${error.code || 'N/A'}.`);
     }
   };
   
@@ -497,8 +514,9 @@ export default function CustomsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-destructive-foreground">Firebase no está configurado. La funcionalidad de base de datos (guardar, cargar, editar, eliminar exámenes y gestionar cuentas de gestor) está desactivada.</p>
-            <p className="text-sm mt-2">Por favor, siga las instrucciones en <code className="bg-muted text-muted-foreground px-1 rounded-sm">src/lib/firebase.ts</code> para configurar su proyecto Firebase.</p>
+            <p className="text-destructive-foreground">Firebase no está configurado correctamente o no se puede acceder. La funcionalidad de base de datos (guardar, cargar, editar, eliminar exámenes y gestionar cuentas de gestor) está desactivada.</p>
+            <p className="text-sm mt-2">Por favor, siga las instrucciones en <code className="bg-muted text-muted-foreground px-1 rounded-sm">src/lib/firebase.ts</code> para configurar su proyecto Firebase y asegúrese de que Firestore esté habilitado en su consola de Firebase con las reglas de seguridad adecuadas.</p>
+            <p className="text-sm mt-1">Verifique también su conexión a internet.</p>
           </CardContent>
         </Card>
       );
@@ -513,7 +531,7 @@ export default function CustomsPage() {
           </CardHeader>
           <CardContent>
             <p className="text-destructive-foreground">{dbError}</p>
-            <p className="text-sm mt-2">Verifique su conexión a internet y las reglas de seguridad de Firestore. Puede ser necesario recargar la página.</p>
+            <p className="text-sm mt-2">Verifique su conexión a internet y las reglas de seguridad de Firestore. Puede ser necesario recargar la página. Revise la consola del navegador para más detalles técnicos.</p>
           </CardContent>
         </Card>
       );
@@ -643,18 +661,18 @@ export default function CustomsPage() {
                 <span className="flex items-center"><DatabaseZap className="inline mr-2 h-6 w-6" />Base de Datos de Exámenes</span>
               </CardTitle>
               <CardDescription>
-                {savedExams.length > 0 ? `Mostrando ${savedExams.length} exámenes guardados.` : "No hay exámenes guardados."}
+                {firebaseConfigured && savedExams.length > 0 ? `Mostrando ${savedExams.length} exámenes guardados.` : firebaseConfigured && savedExams.length === 0 && !dbError ? "No hay exámenes guardados." : ""}
                 {userRole === USER_ROLES.VIEWER && " (Modo Solo Lectura)"}
-                {!firebaseConfigured && " (Funcionalidad limitada sin conexión a base de datos)"}
+                {!firebaseConfigured && " (Funcionalidad de base de datos limitada sin conexión Firebase)"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {firebaseConfigured && savedExams.length === 0 && !dbError ? (
-                <p className="text-center py-8">No hay exámenes para mostrar.</p>
+                <p className="text-center py-8 text-card-foreground">No hay exámenes para mostrar.</p>
               ) : savedExams.length === 0 && dbError ? (
                  <p className="text-destructive text-center py-8">No se pudieron cargar los exámenes debido a un error.</p>
               ) : !firebaseConfigured && savedExams.length === 0 ? (
-                 <p className="text-center py-8">Configure Firebase para ver o guardar exámenes.</p>
+                 <p className="text-center py-8 text-card-foreground">Configure Firebase para ver o guardar exámenes.</p>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {savedExams.map(exam => ( 
@@ -865,7 +883,6 @@ export default function CustomsPage() {
             />
           )}
           
-          {/* AddProductModal removed as it's now a separate view */}
         </main>
         <FooterContent />
       </div>

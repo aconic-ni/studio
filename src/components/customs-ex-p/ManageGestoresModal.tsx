@@ -19,7 +19,7 @@ import { db } from '@/lib/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDocs, writeBatch } from 'firebase/firestore';
 
 const gestorAccountSchema = z.object({
-  username: z.string().min(3, "Nombre de usuario debe tener al menos 3 caracteres."),
+  username: z.string().min(3, "Nombre de usuario debe tener al menos 3 caracteres.").toLowerCase(),
   password: z.string().min(6, "Clave debe tener al menos 6 caracteres.").optional(), 
   gestorName: z.string().min(1, "Nombre del Gestor es requerido."),
 });
@@ -45,8 +45,9 @@ const GestorAccountForm: FC<GestorAccountFormProps> = ({ onSubmit, onCancel, ini
         message: "Clave es requerida y debe tener al menos 6 caracteres.",
         path: ["password"],
     }).refine(data => {
-      if (isEditing && initialData?.username.toLowerCase() === data.username.toLowerCase()) return true;
-      return !existingUsernames.includes(data.username.toLowerCase());
+      const currentUsername = data.username.toLowerCase();
+      if (isEditing && initialData?.username.toLowerCase() === currentUsername) return true;
+      return !existingUsernames.includes(currentUsername);
     }, {
       message: "Este nombre de usuario ya existe.",
       path: ["username"],
@@ -119,7 +120,6 @@ const GestorAccountForm: FC<GestorAccountFormProps> = ({ onSubmit, onCancel, ini
 interface ManageGestoresModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // accounts and onSaveAccounts are removed as we'll use Firestore directly
 }
 
 export const ManageGestoresModal: FC<ManageGestoresModalProps> = ({ isOpen, onClose }) => {
@@ -133,7 +133,7 @@ export const ManageGestoresModal: FC<ManageGestoresModalProps> = ({ isOpen, onCl
 
   useEffect(() => {
     if (!isOpen || !firebaseConfigured) {
-      setAccounts([]); // Clear accounts if modal is closed or Firebase not configured
+      setAccounts([]); 
       return;
     }
     setIsLoading(true);
@@ -143,11 +143,11 @@ export const ManageGestoresModal: FC<ManageGestoresModalProps> = ({ isOpen, onCl
       snapshot.forEach(doc => {
         fetchedAccounts.push({ id: doc.id, ...doc.data() } as ManagedGestorAccount);
       });
-      setAccounts(fetchedAccounts);
+      setAccounts(fetchedAccounts.sort((a, b) => a.username.localeCompare(b.username))); // Sort alphabetically
       setIsLoading(false);
-    }, (error) => {
+    }, (error: any) => {
       console.error("Error fetching gestor accounts:", error);
-      toast({ title: "Error de Carga", description: "No se pudieron cargar las cuentas de gestores.", variant: "destructive" });
+      toast({ title: "Error de Carga", description: `No se pudieron cargar las cuentas de gestores. Código: ${error.code || 'N/A'}.`, variant: "destructive" });
       setIsLoading(false);
     });
 
@@ -161,31 +161,39 @@ export const ManageGestoresModal: FC<ManageGestoresModalProps> = ({ isOpen, onCl
     }
     setIsSaving(true);
     try {
-      if (accountId) { // Editing
+      if (accountId) { 
         const accountRef = doc(db, "gestorAccounts", accountId);
-        const accountToUpdate: Partial<ManagedGestorAccount> = { 
-            username: data.username, 
+        const accountToUpdate: Partial<Omit<ManagedGestorAccount, 'id' | 'username'>> & { username?: string } = { 
             gestorName: data.gestorName 
         };
-        if (data.password) { // Only update password if provided
+        if (data.password) { 
             accountToUpdate.password = data.password;
         }
+        // Username is not updated after creation to keep it simple
+        // accountToUpdate.username = data.username.toLowerCase(); 
+        console.log("Attempting to update gestor account. ID:", accountId, "Data:", JSON.stringify(accountToUpdate, null, 2));
         await updateDoc(accountRef, accountToUpdate);
+        console.log("Gestor account updated successfully, ID:", accountId);
         toast({ title: "Cuenta Actualizada", description: `La cuenta para ${data.username} ha sido actualizada.` });
-      } else { // Adding new
+      } else { 
         const newAccountData: Omit<ManagedGestorAccount, 'id'> = {
-          username: data.username.toLowerCase(), // Store username in lowercase for case-insensitive query
+          username: data.username.toLowerCase(),
           password: data.password!, 
           gestorName: data.gestorName,
         };
-        await addDoc(collection(db, "gestorAccounts"), newAccountData);
+        console.log("Attempting to add new gestor account. Data:", JSON.stringify(newAccountData, null, 2));
+        const docRef = await addDoc(collection(db, "gestorAccounts"), newAccountData);
+        console.log("Gestor account added successfully, new ID:", docRef.id);
         toast({ title: "Cuenta Creada", description: `La cuenta para ${data.username} ha sido creada.` });
       }
       setShowForm(false);
       setEditingAccount(null);
-    } catch (error) {
-      console.error("Error saving gestor account:", error);
-      toast({ title: "Error al Guardar", description: "No se pudo guardar la cuenta del gestor.", variant: "destructive"});
+    } catch (error: any) {
+      console.error("Firestore save/update error in handleAddOrUpdateAccount:", error);
+      console.error("Error name:", error.name);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
+      toast({ title: "Error al Guardar", description: `No se pudo guardar la cuenta del gestor. Código: ${error.code || 'N/A'}.`, variant: "destructive"});
     } finally {
       setIsSaving(false);
     }
@@ -199,11 +207,15 @@ export const ManageGestoresModal: FC<ManageGestoresModalProps> = ({ isOpen, onCl
     const accountToDelete = accounts.find(acc => acc.id === accountId);
     if (window.confirm(`¿Está seguro que desea eliminar la cuenta de ${accountToDelete?.username}? Esta acción no se puede deshacer.`)) {
         try {
+            console.log("Attempting to delete gestor account, ID:", accountId);
             await deleteDoc(doc(db, "gestorAccounts", accountId));
+            console.log("Gestor account deleted successfully, ID:", accountId);
             toast({ title: "Cuenta Eliminada", description: `La cuenta ha sido eliminada.`, variant: "destructive" });
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error deleting gestor account:", error);
-            toast({ title: "Error al Eliminar", description: "No se pudo eliminar la cuenta.", variant: "destructive"});
+            console.error("Error code:", error.code);
+            console.error("Error message:", error.message);
+            toast({ title: "Error al Eliminar", description: `No se pudo eliminar la cuenta. Código: ${error.code || 'N/A'}.`, variant: "destructive"});
         }
     }
   };
@@ -226,7 +238,7 @@ export const ManageGestoresModal: FC<ManageGestoresModalProps> = ({ isOpen, onCl
   const existingUsernames = accounts.map(acc => acc.username.toLowerCase());
 
   const handleCloseModal = () => {
-    if (isSaving) return; // Prevent closing if saving
+    if (isSaving) return; 
     setShowForm(false);
     setEditingAccount(null);
     onClose();
