@@ -1,18 +1,19 @@
 
+// Import the functions you need from the SDKs you need
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getAnalytics, type Analytics } from "firebase/analytics";
 
 // Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyBcGYgGUGwj85OljFBnOXZodXty_A7lYxw",
-  authDomain: "customs-ex-p.firebaseapp.com",
-  projectId: "customs-ex-p",
-  storageBucket: "customs-ex-p.firebasestorage.app", // Using the bucket name you provided
-  messagingSenderId: "826985934088",
-  appId: "1:826985934088:web:ac258c65c60ed0e99d90bd"
-  // measurementId is optional and was not in your latest snippet, so it's omitted here.
-  // If you have one and need it, it can be added back.
+  apiKey: "AIzaSyCQC1mhHsl8_jd-z7gwSud4918rdAF-OU0",
+  authDomain: "customsex-p.firebaseapp.com",
+  projectId: "customsex-p",
+  storageBucket: "customsex-p.firebasestorage.app", // Using the bucket name you provided
+  messagingSenderId: "1037782875421",
+  appId: "1:1037782875421:web:81d185a49efa176106f5f4",
+  measurementId: "G-JH6903HB5S"
 };
 
 // Initialize Firebase
