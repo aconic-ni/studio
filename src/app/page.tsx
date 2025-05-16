@@ -34,7 +34,7 @@ import { ManageGestoresModal } from '@/components/customs-ex-p/ManageGestoresMod
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { generateTxtReport, generateExcelReport } from '@/lib/reportUtils';
-import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle, PackageSearch, LogIn, ChevronRight, ChevronLeft, Info, DatabaseZap, WifiOff, Users, Bookmark, X } from 'lucide-react';
+import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle, PackageSearch, LogIn, ChevronRight, ChevronLeft, Info, DatabaseZap, WifiOff, Users, Bookmark, X, Copy } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 const STATIC_PASSWORDS: Record<string, UserRole> = {
@@ -97,6 +97,8 @@ export default function CustomsPage() {
 
   const [showManageGestoresModal, setShowManageGestoresModal] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+
+  const [showCopyHtmlButton, setShowCopyHtmlButton] = useState(true); // State for button visibility
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -539,6 +541,24 @@ export default function CustomsPage() {
     return null;
   };
 
+  const handleCopyFrontendHtml = async () => {
+    try {
+      const htmlContent = document.documentElement.outerHTML;
+      await navigator.clipboard.writeText(htmlContent);
+      toast({
+        title: "HTML Copiado",
+        description: "El HTML del frontend ha sido copiado al portapapeles.",
+      });
+    } catch (err) {
+      console.error("Error al copiar HTML:", err);
+      toast({
+        title: "Error al Copiar",
+        description: "No se pudo copiar el HTML al portapapeles.",
+        variant: "destructive",
+      });
+    }
+  };
+
 
   if (currentView === 'welcome') {
     return (
@@ -553,6 +573,17 @@ export default function CustomsPage() {
                 <PackageSearch className="h-32 w-32 text-white transition-transform group-hover:scale-110" />
                 <p className="mt-4 text-3xl font-semibold text-white">Customs Ex-p</p>
             </div>
+            {showCopyHtmlButton && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyFrontendHtml}
+                className="mt-8 text-app-text-on-page-bg border-app-text-on-page-bg/50 hover:bg-app-text-on-page-bg/10"
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                Copiar HTML del Frontend
+              </Button>
+            )}
         </main>
         <FooterContent />
       </div>
