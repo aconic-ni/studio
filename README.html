@@ -1,0 +1,907 @@
+
+"use client";
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import type { FirebaseApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  collection, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  orderBy, 
+  serverTimestamp,
+  Timestamp,
+  where,
+  getDocs
+} from 'firebase/firestore';
+import { db } from '@/lib/firebase'; 
+
+import type { ExamInfo, Product, UserRole, SavedExam, ProductStatus, ManagedGestorAccount } from '@/types';
+import type { ProductFormData } from '@/components/customs-ex-p/AddProductForm';
+import { USER_ROLES, PRODUCT_STATUS } from '@/types';
+import { Header } from '@/components/Header';
+import { InitialExamForm } from '@/components/customs-ex-p/InitialExamForm';
+import { ProductsTable } from '@/components/customs-ex-p/ProductsTable';
+import { PreviewModal } from '@/components/customs-ex-p/PreviewModal';
+import { PasswordModal, type LoginCredentials } from '@/components/customs-ex-p/PasswordModal';
+// import { AddProductModal } from '@/components/customs-ex-p/AddProductModal'; // Removed
+import { AddProductForm } from '@/components/customs-ex-p/AddProductForm'; // Added for new view
+import { ManageGestoresModal } from '@/components/customs-ex-p/ManageGestoresModal';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { generateTxtReport, generateExcelReport } from '@/lib/reportUtils';
+import { Eye, PackagePlus, List, Edit3, Trash2, ArrowLeftToLine, Save, FileText, FileSpreadsheet, AlertTriangle, PackageSearch, LogIn, ChevronRight, ChevronLeft, Info, DatabaseZap, WifiOff, Users, Bookmark, X, Copy } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+
+const STATIC_PASSWORDS: Record<string, UserRole> = {
+  "viewer123": USER_ROLES.VIEWER,
+  "admin123": USER_ROLES.ADMIN,
+};
+
+const ROLE_DISPLAY_NAMES: Record<Exclude<UserRole, null>, string> = {
+  [USER_ROLES.GESTOR_ADUANERO]: "Gestor Aduanero",
+  [USER_ROLES.VIEWER]: "Visualizador",
+  [USER_ROLES.ADMIN]: "Administrador",
+};
+
+const initialExamData: ExamInfo = {
+  examId: '',
+  date: new Date().toISOString().split('T')[0],
+  inspectorName: '',
+  location: '',
+  reference: '',
+};
+
+const initialProductFormData: Omit<Product, 'id'> = {
+  itemNumber: '',
+  packageNumbers: '',
+  packageQuantity: 0,
+  unitQuantity: 0,
+  description: '',
+  brand: '',
+  model: '',
+  origin: '',
+  merchandiseState: '',
+  weightValue: 0,
+  weightUnit: 'kg',
+  measurementUnit: '',
+  serialNumber: '',
+  observation: '',
+  status: PRODUCT_STATUS.CONFORME,
+};
+
+
+export default function CustomsPage() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole>(null);
+  const [currentView, setCurrentView] = useState<'welcome' | 'login' | 'form' | 'database' | 'productForm'>('welcome');
+  const [inspectorStep, setInspectorStep] = useState<'examInfo' | 'products'>('examInfo');
+  
+  const [examInfo, setExamInfo] = useState<ExamInfo | null>(initialExamData);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [savedExams, setSavedExams] = useState<SavedExam[]>([]);
+  const [editingExamId, setEditingExamId] = useState<string | null>(null); 
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  // const [showAddProductModal, setShowAddProductModal] = useState(false); // Removed
+  const [passwordError, setPasswordError] = useState('');
+  const [dbError, setDbError] = useState<string | null>(null);
+  const { toast } = useToast();
+  
+  const firebaseConfigured = db !== null; 
+
+  const [showManageGestoresModal, setShowManageGestoresModal] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = ''; 
+    };
+
+    if ((currentView === 'form' || currentView === 'productForm') && isDirty) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+    }
+  }, [currentView, isDirty]);
+
+
+  useEffect(() => {
+    if (!firebaseConfigured || !(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER)) {
+      if (userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER) {
+         if (!firebaseConfigured) setDbError("Error de configuración: Firebase no está configurado. Por favor, revise src/lib/firebase.ts y asegúrese de que la base de datos esté habilitada en su proyecto Firebase.");
+      }
+      return;
+    }
+    setDbError(null); 
+    const examsCollectionRef = collection(db, "exams");
+    const q = query(examsCollectionRef, orderBy("timestamp", "desc"));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const examsFromDb: SavedExam[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        examsFromDb.push({
+          id: doc.id,
+          examInfo: data.examInfo,
+          products: data.products,
+          timestamp: (data.timestamp as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+        });
+      });
+      setSavedExams(examsFromDb);
+      setDbError(null);
+    }, (error: any) => {
+      console.error("Error fetching exams from Firestore:", error);
+      toast({ title: "Error de Base de Datos", description: `No se pudieron cargar los exámenes guardados. Código: ${error.code || 'N/A'}.`, variant: "destructive" });
+      setDbError(`Error al cargar datos de Firestore. Código: ${error.code || 'N/A'}. Verifique la configuración de Firebase, sus reglas de seguridad y su conexión a internet. Intente recargar la página.`);
+    });
+
+    return () => unsubscribe(); 
+  }, [userRole, toast, firebaseConfigured]);
+
+
+  const handlePasswordSubmit = async (credentials: LoginCredentials) => {
+    const { username, password } = credentials;
+    setPasswordError('');
+
+    const staticRole = STATIC_PASSWORDS[password];
+    if (staticRole && (!username || username.trim() === '')) {
+      setIsAuthenticated(true);
+      setUserRole(staticRole);
+      const roleName = ROLE_DISPLAY_NAMES[staticRole] || staticRole;
+      toast({ title: "Acceso Concedido", description: `Bienvenido como ${roleName}.` });
+      if (staticRole === USER_ROLES.VIEWER || staticRole === USER_ROLES.ADMIN) {
+        setCurrentView('database');
+      } else {
+        setCurrentView('form');
+        resetForm();
+      }
+      setIsDirty(false); 
+      return;
+    }
+
+    if (username && username.toLowerCase() === "localgestor" && password === "localpass123") {
+      setIsAuthenticated(true);
+      setUserRole(USER_ROLES.GESTOR_ADUANERO);
+      setExamInfo({
+        ...initialExamData,
+        examId: `EXM-${Date.now().toString().slice(-6)}`,
+        inspectorName: "Gestor Aduanero (Local)", 
+        date: new Date().toISOString().split('T')[0],
+        location: '',
+        reference: '',
+      });
+      setProducts([]);
+      setEditingExamId(null);
+      setProductToEdit(null);
+      setInspectorStep('examInfo');
+      setIsDirty(false);
+      toast({ title: "Acceso Concedido", description: `Bienvenido Gestor Aduanero (Local).` });
+      setCurrentView('form');
+      return;
+    }
+
+    if (username && firebaseConfigured) {
+      try {
+        const gestorAccountsRef = collection(db, "gestorAccounts");
+        const q = query(gestorAccountsRef, where("username", "==", username.toLowerCase()));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          const gestorDoc = querySnapshot.docs[0];
+          const gestorAccount = gestorDoc.data() as ManagedGestorAccount;
+
+          if (gestorAccount.password === password) {
+            setIsAuthenticated(true);
+            setUserRole(USER_ROLES.GESTOR_ADUANERO);
+            setExamInfo(prev => ({
+              ...initialExamData,
+              ...(prev && prev.examId ? { examId: prev.examId } : {} ), 
+              examId: `EXM-${Date.now().toString().slice(-6)}`,
+              inspectorName: gestorAccount.gestorName,
+              date: new Date().toISOString().split('T')[0],
+              location: '',
+              reference: '',
+            }));
+            setProducts([]);
+            setEditingExamId(null);
+            setProductToEdit(null);
+            setInspectorStep('examInfo');
+            setIsDirty(false);
+            toast({ title: "Acceso Concedido", description: `Bienvenido Gestor Aduanero: ${gestorAccount.gestorName}.` });
+            setCurrentView('form');
+            return;
+          }
+        }
+      } catch (error: any) {
+        console.error("Error verifying Gestor Aduanero account:", error);
+        setPasswordError(`Error al verificar cuenta. Código: ${error.code || 'N/A'}. Intente más tarde.`);
+        toast({ title: "Error de Autenticación", description: `No se pudo verificar la cuenta del gestor. Código: ${error.code || 'N/A'}.`, variant: "destructive" });
+        return;
+      }
+    } else if (username && !firebaseConfigured) {
+        setPasswordError("Servicio de autenticación de gestores no disponible (Firebase no configurado).");
+        return;
+    }
+
+    setPasswordError("Usuario o clave incorrecta. Intente de nuevo.");
+  };
+  
+  const resetForm = useCallback(() => {
+    const currentGestorName = userRole === USER_ROLES.GESTOR_ADUANERO && examInfo?.inspectorName ? examInfo.inspectorName : '';
+    
+    setExamInfo({
+        ...initialExamData, 
+        examId: `EXM-${Date.now().toString().slice(-6)}`,
+        inspectorName: currentGestorName,
+        reference: '',
+    });
+    setProducts([]);
+    setEditingExamId(null);
+    setProductToEdit(null);
+    setInspectorStep('examInfo'); 
+    setIsDirty(false);
+  }, [userRole, examInfo?.inspectorName]);
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setUserRole(null);
+    setCurrentView('welcome'); 
+    resetForm(); 
+    setDbError(null); 
+    setExamInfo(initialExamData); 
+    setIsDirty(false);
+    toast({ title: "Sesión Cerrada"});
+  };
+  
+  const handleExamInfoChange = (newData: ExamInfo) => {
+    if (JSON.stringify(examInfo) !== JSON.stringify(newData) && (currentView === 'form' || currentView === 'productForm')) {
+        setIsDirty(true);
+    }
+    setExamInfo(newData);
+  };
+
+  const navigateToProductFormForAdd = () => {
+    setProductToEdit(null); 
+    setCurrentView('productForm');
+    // isDirty will be set if the form itself is changed
+  };
+
+  const navigateToProductFormForEdit = (product: Product) => {
+    setProductToEdit(product);
+    setCurrentView('productForm');
+    // isDirty will be set if the form itself is changed
+  };
+  
+  // This function handles the actual saving of product data from AddProductForm
+  const handleProductFormSubmit = (productData: ProductFormData) => {
+    const editingProductId = productToEdit ? productToEdit.id : null;
+    if (editingProductId) { 
+        const updatedProduct: Product = { ...initialProductFormData, ...productData, id: editingProductId };
+        setProducts(prevProducts => prevProducts.map(p => p.id === editingProductId ? updatedProduct : p));
+        toast({ title: "Producto Actualizado", description: `${updatedProduct.description} ha sido actualizado.` });
+    } else { 
+        const newProduct: Product = {
+            ...initialProductFormData,
+            ...productData,
+            id: crypto.randomUUID(),
+        };
+        setProducts(prevProducts => [...prevProducts, newProduct]);
+        toast({ title: "Producto Agregado", description: `${newProduct.description} ha sido agregado.` });
+    }
+    setCurrentView('form');
+    setProductToEdit(null); 
+    setIsDirty(true); // Exam is now dirty because products list changed
+  };
+
+  const handleCancelProductForm = () => {
+    setCurrentView('form');
+    setProductToEdit(null);
+    // setIsDirty(false); // Or maintain based on examInfo changes if needed. If form had changes, isDirty should remain true.
+  }
+
+  const handleRemoveProduct = (productId: string) => {
+    setProducts((prevProducts) => prevProducts.filter(p => p.id !== productId));
+    toast({ title: "Producto Eliminado", variant: "destructive" });
+    setIsDirty(true);
+  };
+
+  const handlePreview = () => {
+    if (!examInfo || !examInfo.examId || !examInfo.date || !examInfo.inspectorName || !examInfo.location) {
+       toast({ title: "Falta Información del Examen", description: "Complete todos los campos del formulario de Información del Examen.", variant: "destructive" });
+      return;
+    }
+    setIsPreviewModalOpen(true);
+  };
+
+  const handleSaveOrUpdateExamAndGenerateReports = async (generateReports = true) => {
+    if (!firebaseConfigured) {
+        toast({ title: "Error de Configuración", description: "La conexión a la base de datos (Firebase) no está configurada. Revise src/lib/firebase.ts", variant: "destructive" });
+        setDbError("Firebase no configurado. Siga las instrucciones en src/lib/firebase.ts.");
+        return;
+    }
+    if (!examInfo || !examInfo.examId || !examInfo.date || !examInfo.inspectorName || !examInfo.location) {
+        toast({ title: "Error", description: "Información del examen incompleta.", variant: "destructive" });
+        return;
+    }
+    const isNewExamByCreator = !editingExamId && (userRole === USER_ROLES.GESTOR_ADUANERO || userRole === USER_ROLES.ADMIN);
+    if (products.length === 0 && isNewExamByCreator) { 
+        toast({ title: "Sin Productos", description: "Agregue al menos un producto para guardar el examen.", variant: "destructive" });
+        return;
+    }
+
+    const productsWithIds = products.map(p => p.id ? p : {...p, id: crypto.randomUUID()});
+    
+    const examDataToSave = {
+      examInfo,
+      products: productsWithIds,
+      timestamp: serverTimestamp(), 
+    };
+
+    try {
+      console.log("Attempting to save/update exam. EditingExamId:", editingExamId, "Data:", JSON.stringify(examDataToSave, null, 2));
+      if (editingExamId) { 
+        const examDocRef = doc(db, "exams", editingExamId);
+        await updateDoc(examDocRef, examDataToSave);
+        console.log("Exam updated successfully, ID:", editingExamId);
+      } else { 
+        const docRef = await addDoc(collection(db, "exams"), examDataToSave);
+        console.log("Exam added successfully, new ID:", docRef.id);
+      }
+      setDbError(null);
+      setIsDirty(false);
+
+      toast({ 
+        title: "Operación Guardada Exitosamente", 
+        description: `Correos enviados a: gerencia@aconic.com.ni; coordinacion@aconic.com.ni y asuntos.juridicos@aconic.com.ni. Muchas gracias por tu excelente desempeño ${examInfo.inspectorName}.` 
+      });
+
+      if (generateReports) {
+        try {
+          generateTxtReport(examInfo, productsWithIds);
+          toast({ title: "Reporte TXT Generado" });
+        } catch (error) {
+          console.error("Error generando reporte TXT:", error);
+          toast({ title: "Error en Reporte TXT", variant: "destructive" });
+        }
+
+        try {
+          generateExcelReport(examInfo, productsWithIds);
+          toast({ title: "Reporte Excel Generado" });
+        } catch (error) {
+          console.error("Error generando reporte Excel:", error);
+          toast({ title: "Error en Reporte Excel", variant: "destructive" });
+        }
+      }
+    } catch (error: any) {
+      console.error("Firestore save/update error in handleSaveOrUpdateExamAndGenerateReports:", error);
+      console.error("Error name:", error.name);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
+      // console.error("Error details:", error.details); // May not be present or useful
+      // console.error("Error stack:", error.stack);
+      toast({ 
+        title: "Error de Base de Datos", 
+        description: `No se pudo guardar/actualizar el examen. Código: ${error.code || 'N/A'}. Mensaje: ${error.message || 'Verifique consola.'}`, 
+        variant: "destructive" 
+      });
+      setDbError(`Error al guardar en Firestore. Código: ${error.code || 'N/A'}. Verifique la configuración, reglas de seguridad y conexión.`);
+      return; 
+    }
+        
+    if (userRole === USER_ROLES.GESTOR_ADUANERO) {
+      resetForm(); 
+    } else if (userRole === USER_ROLES.ADMIN && editingExamId) {
+      setCurrentView('database'); 
+      resetForm();
+    } else if (userRole === USER_ROLES.ADMIN && !editingExamId) { 
+        resetForm(); 
+        setCurrentView('form'); 
+    }
+  };
+
+  const handleDirectDownloadTXT = () => {
+    if (!examInfo || !examInfo.examId || !examInfo.date || !examInfo.inspectorName || !examInfo.location) {
+      toast({ title: "Falta Información", description: "Complete la información del examen.", variant: "destructive" });
+      return;
+    }
+    const isNewExamByCreator = !editingExamId && (userRole === USER_ROLES.GESTOR_ADUANERO || userRole === USER_ROLES.ADMIN);
+    if (products.length === 0 && isNewExamByCreator) { 
+        toast({ title: "Sin Productos", description: "Agregue al menos un producto.", variant: "destructive" });
+        return;
+    }
+    try {
+      generateTxtReport(examInfo, products);
+      toast({ title: "Reporte TXT Descargado" });
+    } catch (error) {
+      console.error("Error generando reporte TXT:", error);
+      toast({ title: "Error en Reporte TXT", variant: "destructive" });
+    }
+  };
+
+  const handleDirectDownloadExcel = () => {
+     if (!examInfo || !examInfo.examId || !examInfo.date || !examInfo.inspectorName || !examInfo.location) {
+      toast({ title: "Falta Información", description: "Complete la información del examen.", variant: "destructive" });
+      return;
+    }
+    const isNewExamByCreator = !editingExamId && (userRole === USER_ROLES.GESTOR_ADUANERO || userRole === USER_ROLES.ADMIN);
+    if (products.length === 0 && isNewExamByCreator) {
+        toast({ title: "Sin Productos", description: "Agregue al menos un producto.", variant: "destructive" });
+        return;
+    }
+    try {
+      generateExcelReport(examInfo, products);
+      toast({ title: "Reporte Excel Descargado" });
+    } catch (error) {
+      console.error("Error generando reporte Excel:", error);
+      toast({ title: "Error en Reporte Excel", variant: "destructive" });
+    }
+  };
+
+  const handleEditExam = (examIdToEdit: string) => {
+    const examToEdit = savedExams.find(ex => ex.id === examIdToEdit);
+    if (examToEdit) {
+      setExamInfo(examToEdit.examInfo);
+      const productsWithDefaults = examToEdit.products.map(p => ({ ...initialProductFormData, ...p }));
+      setProducts(productsWithDefaults);
+      setEditingExamId(examIdToEdit); 
+      setCurrentView('form');
+      setDbError(null);
+      setIsDirty(false); 
+    } else {
+      toast({ title: "Error", description: "No se encontró el examen para editar.", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteExam = async (examIdToDelete: string) => {
+    if (!firebaseConfigured) {
+      toast({ title: "Error de Configuración", description: "La conexión a la base de datos (Firebase) no está configurada.", variant: "destructive" });
+      setDbError("Firebase no configurado.");
+      return;
+    }
+    try {
+      console.log("Attempting to delete exam, ID:", examIdToDelete);
+      await deleteDoc(doc(db, "exams", examIdToDelete));
+      console.log("Exam deleted successfully, ID:", examIdToDelete);
+      toast({ title: "Examen Eliminado", description: "El examen ha sido eliminado de la base de datos.", variant: "destructive"});
+      setDbError(null);
+    } catch (error: any) {
+      console.error("Error deleting exam from Firestore:", error);
+      console.error("Error code:", error.code);
+      console.error("Error message:", error.message);
+      toast({ title: "Error de Base de Datos", description: `No se pudo eliminar el examen. Código: ${error.code || 'N/A'}.`, variant: "destructive" });
+      setDbError(`Error al eliminar de Firestore. Código: ${error.code || 'N/A'}.`);
+    }
+  };
+  
+  const handleAdminCancelEdit = () => {
+    resetForm();
+    setCurrentView('database');
+  };
+
+  useEffect(() => {
+    if (currentView === 'form' && !editingExamId && (userRole === USER_ROLES.GESTOR_ADUANERO || userRole === USER_ROLES.ADMIN)) {
+        if (userRole === USER_ROLES.ADMIN && (!examInfo?.examId || examInfo.examId === initialExamData.examId)) {
+             setExamInfo(prev => ({...initialExamData, ...prev!, examId: `EXM-${Date.now().toString().slice(-6)}`}));
+        }
+    }
+  }, [currentView, editingExamId, userRole, examInfo?.examId]);
+
+  const isExamInfoComplete = !!(examInfo && examInfo.examId && examInfo.date && examInfo.inspectorName && examInfo.location);
+  const isNewExamByCreator = !editingExamId && (userRole === USER_ROLES.GESTOR_ADUANERO || (userRole === USER_ROLES.ADMIN && !editingExamId));
+  const commonDisabledConditionForActions = !isExamInfoComplete || (products.length === 0 && isNewExamByCreator);
+  
+  const FooterContent = () => (
+    <footer className="text-center p-4 text-sm border-t border-border/30 bg-transparent text-white">
+      Stvaer © 2025 <em className="italic">for</em> ACONIC
+    </footer>
+  );
+
+  const DatabaseErrorDisplay = () => {
+    if (!firebaseConfigured) {
+      return (
+        <Card className="bg-destructive/10 border-destructive shadow-md mb-6">
+          <CardHeader>
+            <CardTitle className="text-destructive flex items-center">
+              <WifiOff className="mr-2 h-5 w-5" /> Error de Configuración de Firebase
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-destructive-foreground">Firebase no está configurado correctamente o no se puede acceder. La funcionalidad de base de datos (guardar, cargar, editar, eliminar exámenes y gestionar cuentas de gestor) está desactivada.</p>
+            <p className="text-sm mt-2">Por favor, siga las instrucciones en <code className="bg-muted text-muted-foreground px-1 rounded-sm">src/lib/firebase.ts</code> para configurar su proyecto Firebase y asegúrese de que Firestore esté habilitado en su consola de Firebase con las reglas de seguridad adecuadas.</p>
+            <p className="text-sm mt-1">Verifique también su conexión a internet.</p>
+          </CardContent>
+        </Card>
+      );
+    }
+    if (dbError) {
+      return (
+        <Card className="bg-destructive/10 border-destructive shadow-md mb-6">
+          <CardHeader>
+            <CardTitle className="text-destructive flex items-center">
+              <AlertTriangle className="mr-2 h-5 w-5" /> Error de Base de Datos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-destructive-foreground">{dbError}</p>
+            <p className="text-sm mt-2">Verifique su conexión a internet y las reglas de seguridad de Firestore. Puede ser necesario recargar la página. Revise la consola del navegador para más detalles técnicos.</p>
+          </CardContent>
+        </Card>
+      );
+    }
+    return null;
+  };
+
+
+  if (currentView === 'welcome') {
+    return (
+      <div className={`min-h-screen flex flex-col relative ${currentView === 'login' ? 'backdrop-blur-sm' : ''}`}>
+        <main className="flex-grow flex flex-col items-center justify-center p-4 text-center">
+            <div 
+                className="flex flex-col items-center cursor-pointer group"
+                onClick={() => setCurrentView('login')}
+                aria-label="Iniciar sesión"
+                role="button"
+            >
+                <PackageSearch className="h-32 w-32 text-white transition-transform group-hover:scale-110" />
+                <p className="mt-4 text-3xl font-semibold text-white">Customs Ex-p</p>
+            </div>
+        </main>
+        <FooterContent />
+      </div>
+    );
+  }
+
+  if (currentView === 'login') {
+     return (
+      <>
+        <div className="min-h-screen flex flex-col relative backdrop-blur-sm">
+          <main className="flex-grow flex flex-col items-center justify-center p-4 text-center opacity-50">
+            <div className="flex flex-col items-center">
+                <PackageSearch className="h-32 w-32 text-white" aria-hidden="true" />
+                <p className="mt-4 text-3xl font-semibold text-white">Customs Ex-p</p>
+            </div>
+          </main>
+          <FooterContent />
+        </div>
+        <PasswordModal
+            isOpen={true} 
+            onSubmit={handlePasswordSubmit}
+            error={passwordError}
+            onClose={() => setCurrentView('welcome')} 
+        />
+      </>
+    );
+  }
+
+  const headerActions = (
+    <>
+      {userRole === USER_ROLES.ADMIN && currentView === 'form' && editingExamId && (
+        <Button variant="outline" onClick={handleAdminCancelEdit} size="sm" className="text-card-foreground">
+            <ArrowLeftToLine className="mr-2 h-4 w-4" /> Volver a Base de Datos
+        </Button>
+      )}
+      {userRole === USER_ROLES.ADMIN && currentView === 'database' && (
+        <>
+          <Button 
+            onClick={() => setShowManageGestoresModal(true)} 
+            variant="outline" 
+            size="sm" 
+            className="text-card-foreground"
+            disabled={!firebaseConfigured}
+          >
+            <Users className="mr-2 h-4 w-4" /> Gestionar Gestores
+          </Button>
+          <Button onClick={() => { resetForm(); setCurrentView('form'); setEditingExamId(null); setDbError(null); }}>
+              <PackagePlus className="mr-2 h-5 w-5" /> Nuevo Examen
+          </Button>
+        </>
+      )}
+    </>
+  );
+
+  if (currentView === 'productForm' && (userRole === USER_ROLES.GESTOR_ADUANERO || userRole === USER_ROLES.ADMIN)) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <header className="py-4 px-4 md:px-6 border-b bg-card shadow-sm sticky top-0 z-50">
+          <div className="container mx-auto flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-primary flex items-center">
+              {productToEdit ? <Edit3 className="mr-2 h-5 w-5" /> : <PackagePlus className="mr-2 h-5 w-5" />}
+              {productToEdit ? 'Editar Producto' : 'Agregar Nuevo Producto'}
+            </h2>
+            {/* "Volver" button in header removed as "Cancelar" is in footer */}
+          </div>
+        </header>
+  
+        <main className="flex-grow container mx-auto p-4 md:p-6 space-y-6">
+          <Card>
+            <CardContent className="p-6">
+              <AddProductForm
+                key={productToEdit ? productToEdit.id : 'new-product-form'}
+                initialData={productToEdit || initialProductFormData}
+                onSubmit={handleProductFormSubmit}
+              />
+            </CardContent>
+          </Card>
+        </main>
+  
+        <footer className="p-4 border-t bg-card sticky bottom-0 z-10">
+          <div className="container mx-auto flex justify-end gap-4">
+            <Button variant="outline" onClick={handleCancelProductForm}>
+              <X className="mr-2 h-4 w-4" /> Cancelar
+            </Button>
+            <Button type="submit" form="product-form-page"> {/* This button submits the form */}
+              {productToEdit ? <Save className="mr-2 h-4 w-4" /> : <PackagePlus className="mr-2 h-4 w-4" />}
+              {productToEdit ? 'Actualizar Producto' : 'Agregar Producto'}
+            </Button>
+          </div>
+        </footer>
+        <FooterContent /> 
+      </div>
+    );
+  }
+
+
+  if (currentView === 'database' && (userRole === USER_ROLES.VIEWER || userRole === USER_ROLES.ADMIN)) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header onLogout={handleLogout} actions={headerActions} />
+        <main className="flex-grow container mx-auto p-4 md:p-6 space-y-8">
+          <DatabaseErrorDisplay />
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-2xl flex items-center justify-between">
+                <span className="flex items-center"><DatabaseZap className="inline mr-2 h-6 w-6" />Base de Datos de Exámenes</span>
+              </CardTitle>
+              <CardDescription>
+                {firebaseConfigured && savedExams.length > 0 ? `Mostrando ${savedExams.length} exámenes guardados.` : firebaseConfigured && savedExams.length === 0 && !dbError ? "No hay exámenes guardados." : ""}
+                {userRole === USER_ROLES.VIEWER && " (Modo Solo Lectura)"}
+                {!firebaseConfigured && " (Funcionalidad de base de datos limitada sin conexión Firebase)"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {firebaseConfigured && savedExams.length === 0 && !dbError ? (
+                <p className="text-center py-8 text-card-foreground">No hay exámenes para mostrar.</p>
+              ) : savedExams.length === 0 && dbError ? (
+                 <p className="text-destructive text-center py-8">No se pudieron cargar los exámenes debido a un error.</p>
+              ) : !firebaseConfigured && savedExams.length === 0 ? (
+                 <p className="text-center py-8 text-card-foreground">Configure Firebase para ver o guardar exámenes.</p>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {savedExams.map(exam => ( 
+                  <Card key={exam.id} className="flex flex-col shadow-md hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <CardTitle className="text-lg">ID: {exam.examInfo.examId}</CardTitle>
+                      <CardDescription>
+                        Fecha: {exam.examInfo.date} <br />
+                        Gestor Aduanero: {exam.examInfo.inspectorName} <br />
+                        Lugar: {exam.examInfo.location} <br />
+                        Referencia: {exam.examInfo.reference || '-'}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow">
+                      <p className="text-sm font-medium">Productos ({exam.products.length}):</p>
+                      <ul className="text-xs list-disc list-inside max-h-24 overflow-y-auto pr-2">
+                        {exam.products.slice(0,5).map(p => <li key={p.id} className="truncate">{p.description} (Item: {p.itemNumber})</li>)}
+                        {exam.products.length > 5 && <li className="italic">... y {exam.products.length - 5} más.</li>}
+                         {exam.products.length === 0 && <li className="italic">Sin productos.</li>}
+                      </ul>
+                    </CardContent>
+                    <div className="p-4 border-t mt-auto flex flex-col gap-2">
+                      <p className="text-xs text-muted-foreground">Guardado: {new Date(exam.timestamp).toLocaleString()}</p>
+                      <div className="flex gap-2 items-center">
+                        {(userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.VIEWER) && (
+                           <Button variant="outline" size="sm" onClick={() => { setIsDirty(false); setExamInfo(exam.examInfo); setProducts(exam.products.map(p => ({...initialProductFormData, ...p }))); setEditingExamId(exam.id); setIsPreviewModalOpen(true); } }>
+                              <Eye className="mr-1 h-4 w-4" /> Ver Detalles
+                            </Button>
+                         )}
+                        {userRole === USER_ROLES.ADMIN && (
+                          <>
+                            <Button variant="outline" size="sm" onClick={() => handleEditExam(exam.id)} disabled={!firebaseConfigured}>
+                              <Edit3 className="mr-1 h-4 w-4" /> Editar
+                            </Button>
+                            <Button variant="destructive" size="sm" onClick={() => handleDeleteExam(exam.id)} disabled={!firebaseConfigured}>
+                              <Trash2 className="mr-1 h-4 w-4" /> Eliminar
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </main>
+        <FooterContent />
+        {isPreviewModalOpen && examInfo && (
+             <PreviewModal
+                isOpen={isPreviewModalOpen}
+                onClose={() => { setIsPreviewModalOpen(false); if (currentView === 'database') resetForm();}} 
+                examInfo={examInfo}
+                products={products}
+            />
+        )}
+         {userRole === USER_ROLES.ADMIN && (
+            <ManageGestoresModal
+                isOpen={showManageGestoresModal}
+                onClose={() => setShowManageGestoresModal(false)}
+            />
+        )}
+      </div>
+    );
+  }
+  
+  if (currentView === 'form' && (userRole === USER_ROLES.GESTOR_ADUANERO || userRole === USER_ROLES.ADMIN) && examInfo) {
+    const isInspectorCreatingNew = userRole === USER_ROLES.GESTOR_ADUANERO && !editingExamId;
+
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header onLogout={handleLogout} actions={headerActions} />
+        <main className="flex-grow container mx-auto p-4 md:p-6 space-y-8">
+          {userRole === USER_ROLES.ADMIN && (
+            <div className={`flex justify-between items-center p-3 mb-6 rounded-md shadow-sm ${editingExamId ? 'bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700/50' : 'bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700/50'}`}>
+                <p className={`font-semibold ${editingExamId ? 'text-blue-700 dark:text-blue-300' : 'text-green-700 dark:text-green-300'}`}>
+                    {editingExamId ? `Modo Edición Administrador: Editando examen ID: ${examInfo?.examId || ''} (Firestore ID: ${editingExamId})` : 'Modo Administrador: Creando nuevo examen.'}
+                </p>
+            </div>
+          )}
+          <DatabaseErrorDisplay />
+
+          {(!isInspectorCreatingNew || (isInspectorCreatingNew && inspectorStep === 'examInfo')) && (
+            <section id="exam-info">
+              <InitialExamForm 
+                onExamInfoSubmit={handleExamInfoChange} 
+                initialData={examInfo} 
+                isReadOnly={userRole === USER_ROLES.GESTOR_ADUANERO && !!examInfo.inspectorName} 
+              />
+              {isInspectorCreatingNew && inspectorStep === 'examInfo' && (
+                <div className="mt-6 flex justify-end">
+                  <Button 
+                    size="lg"
+                    onClick={() => { if(isExamInfoComplete) { setIsDirty(false); setInspectorStep('products');} }}
+                    disabled={!isExamInfoComplete}
+                    variant="outline"
+                    className="text-primary border-primary hover:bg-accent hover:text-primary focus-visible:ring-primary"
+                  >
+                    Continuar <ChevronRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </div>
+              )}
+            </section>
+          )}
+
+          {(!isInspectorCreatingNew || (isInspectorCreatingNew && inspectorStep === 'products')) && (
+            <>
+              {isInspectorCreatingNew && inspectorStep === 'products' && examInfo && (
+                <Card className="shadow-md my-6">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl flex items-center gap-2">
+                        <Info className="w-5 h-5 text-primary"/>
+                        Información del Examen Ingresada
+                      </CardTitle>
+                      <CardDescription>Verifique los datos antes de añadir productos. (Gestor Aduanero)</CardDescription>
+                    </div>
+                    <Button variant="outline" onClick={() => setInspectorStep('examInfo')} size="sm">
+                      <ChevronLeft className="mr-2 h-4 w-4" /> Retroceder
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2">
+                        <div><p><strong>ID Examen:</strong> {examInfo.examId}</p></div>
+                        <div><p><strong>Fecha:</strong> {examInfo.date}</p></div>
+                        <div><p><strong>Gestor Aduanero:</strong> {examInfo.inspectorName}</p></div>
+                        <div><p><strong>Ubicación:</strong> {examInfo.location}</p></div>
+                        <div><p><strong>Referencia:</strong> {examInfo.reference || '-'}</p></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <section id="products" className="space-y-6">
+                <ProductsTable 
+                  products={products} 
+                  onRemoveProduct={handleRemoveProduct}
+                  onEditProduct={navigateToProductFormForEdit}
+                  headerActions={
+                    <Button onClick={navigateToProductFormForAdd} size="default">
+                        <PackagePlus className="mr-2 h-5 w-5" /> Agregar Nuevo Producto
+                    </Button>
+                  }
+                />
+              </section>
+              
+              <section id="actions" className="py-6">
+                <Card className="shadow-lg">
+                  <CardContent className="p-6 flex flex-col sm:flex-row flex-wrap justify-end items-center gap-4">
+                      <p className="text-sm mr-auto self-center text-card-foreground">
+                          Productos Totales: {products.length}
+                      </p>
+                      {userRole === USER_ROLES.ADMIN && editingExamId && (
+                        <Button variant="outline" onClick={handleAdminCancelEdit} size="lg" className="w-full sm:w-auto order-1 sm:order-none">
+                          <ArrowLeftToLine className="mr-2 h-5 w-5" /> Cancelar Edición
+                        </Button>
+                      )}
+                      <Button 
+                        onClick={handleDirectDownloadTXT}
+                        variant="outline" 
+                        size="lg" 
+                        disabled={commonDisabledConditionForActions}
+                        className="w-full sm:w-auto order-2 sm:order-none"
+                      >
+                        <FileText className="mr-2 h-5 w-5" /> Descargar TXT
+                      </Button>
+                       <Button 
+                        onClick={handleDirectDownloadExcel}
+                        variant="outline" 
+                        size="lg" 
+                        disabled={commonDisabledConditionForActions}
+                        className="w-full sm:w-auto order-3 sm:order-none"
+                      >
+                        <FileSpreadsheet className="mr-2 h-5 w-5" /> Descargar Excel
+                      </Button>
+                      <Button 
+                        onClick={() => handleSaveOrUpdateExamAndGenerateReports(true)}
+                        size="lg" 
+                        disabled={commonDisabledConditionForActions || !firebaseConfigured}
+                        className="w-full sm:w-auto order-4 sm:order-none"
+                      >
+                        <Save className="mr-2 h-5 w-5" /> 
+                        {editingExamId ? "Actualizar y Generar" : "Guardar y Generar"}
+                      </Button>
+                      <Button 
+                        onClick={handlePreview} 
+                        variant="outline"
+                        size="lg" 
+                        disabled={commonDisabledConditionForActions || !firebaseConfigured} 
+                        className="w-full sm:w-auto order-5 sm:order-none"
+                      >
+                        <Eye className="mr-2 h-5 w-5" />
+                         Previsualizar
+                      </Button>
+                  </CardContent>
+                </Card>
+              </section>
+            </>
+          )}
+
+          {isPreviewModalOpen && examInfo && currentView === 'form' && (
+            <PreviewModal
+              isOpen={isPreviewModalOpen}
+              onClose={() => setIsPreviewModalOpen(false)}
+              examInfo={examInfo}
+              products={products}
+            />
+          )}
+          
+        </main>
+        <FooterContent />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <main className="flex-grow flex items-center justify-center p-4">
+        <div className="bg-card text-card-foreground p-8 rounded-lg shadow-xl text-center">
+            <AlertTriangle className="mx-auto h-12 w-12 text-destructive mb-4" />
+            <p className="text-xl font-semibold text-destructive">Error: Estado de la aplicación no válido.</p>
+            <p className="mt-2">Ha ocurrido un problema con la vista actual. Intente volver a iniciar sesión.</p>
+            <Button onClick={handleLogout} className="mt-6">
+                <LogIn className="mr-2 h-4 w-4" /> Reintentar Login
+            </Button>
+        </div>
+      </main>
+      <FooterContent />
+    </div>
+  );
+}
