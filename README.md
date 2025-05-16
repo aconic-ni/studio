@@ -1,5 +1,23 @@
-# Firebase Studio
+import type {NextConfig} from 'next';
 
-This is a NextJS starter in Firebase Studio.
+const nextConfig: NextConfig = {
+  /* config options here */
+  typescript: {
+    // ignoreBuildErrors: true, // Removed to enforce TypeScript error checking during builds
+  },
+  eslint: {
+    // ignoreDuringBuilds: true, // Removed to enforce ESLint error checking during builds
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'placehold.co',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
+};
 
-To get started, take a look at src/app/page.tsx.
+export default nextConfig;
