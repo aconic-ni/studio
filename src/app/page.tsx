@@ -105,7 +105,7 @@ export default function HomePage() {
   };
 
   const handleLogout = () => {
-    // import { signOut } from 'firebase/auth';
+    // import { signOut } from 'firebase/auth'; // Example: Add Firebase sign out later
     // signOut(auth).then(() => { ... }).catch((error) => { ... });
     setIsLoggedIn(false);
     setUserRole(null);
@@ -118,12 +118,12 @@ export default function HomePage() {
   };
 
   const handleExamInfoSubmit = (data: ExamInfo) => {
-    // Preserve existing audit fields if editing
     const currentAuditFields = editingExamId && examInfo ? {
         createdBy: examInfo.createdBy,
         createdAt: examInfo.createdAt,
     } : {};
-    setExamInfo({...currentAuditFields, ...data});
+    // If editing, ensure existing audit fields are carried over from examInfo state
+    setExamInfo(prevExamInfo => ({ ...prevExamInfo, ...currentAuditFields, ...data }));
     setCurrentView('productList');
   };
 
@@ -180,19 +180,25 @@ export default function HomePage() {
   const handleStartNewExam = () => {
     setExamInfo(null);
     setProducts([]);
-    setEditingExamId(null);
+    setEditingExamId(null); // Reset editing state
     setCurrentView('examForm');
     setIsSuccessModalOpen(false);
   };
 
   const handleReviewPreviousExam = () => {
     setIsSuccessModalOpen(false);
-    if (editingExamId && examInfo) { // If was editing, go back to product list of that exam
-      setCurrentView('productList');
-    } else if (userRole === 'admin') { // If admin and not editing, go to dashboard
+    if (userRole === 'admin') {
       setCurrentView('adminDashboard');
-    } else { // Default for gestor if somehow not editing
-       setCurrentView('productList'); 
+      // If admin was editing, clear the editing context now that they are done
+      if (editingExamId) {
+        setExamInfo(null);
+        setProducts([]);
+        setEditingExamId(null);
+      }
+    } else {
+      // For gestor (or other roles), go to productList to see the current/last exam.
+      // This assumes examInfo and products are still set from the completed exam.
+      setCurrentView('productList');
     }
   };
 
@@ -202,7 +208,7 @@ export default function HomePage() {
       return;
     }
 
-    const examDataToSave = {
+    const examDataToSave: Partial<ExamInfo> = { // Use Partial as some fields are set by Firestore
       ...examInfo,
       products: products,
     };
@@ -211,25 +217,24 @@ export default function HomePage() {
       if (editingExamId) {
         const examDocRef = doc(db, "exams", editingExamId);
         await setDoc(examDocRef, {
-          ...examDataToSave,
+          ...examDataToSave, // contains all existing fields, including createdBy, createdAt
           lastModifiedAt: serverTimestamp(),
-          lastModifiedBy: examInfo.manager, // Placeholder for actual authenticated user
+          lastModifiedBy: examInfo.manager, // Placeholder for actual authenticated user's ID/name
         }, { merge: true }); 
         toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado en la base de datos." });
       } else {
-        await addDoc(collection(db, "exams"), {
+        const newExamData = {
           ...examDataToSave,
           createdAt: serverTimestamp(),
-          createdBy: examInfo.manager, // Placeholder for actual authenticated user
-          lastModifiedAt: serverTimestamp(), // Also set on creation
-          lastModifiedBy: examInfo.manager, // Also set on creation
-        });
+          createdBy: examInfo.manager, // Placeholder for actual authenticated user's ID/name
+          lastModifiedAt: serverTimestamp(), 
+          lastModifiedBy: examInfo.manager, 
+        };
+        await addDoc(collection(db, "exams"), newExamData);
         toast({ title: "Examen Guardado", description: "El examen ha sido guardado en la base de datos." });
       }
 
-      // Refresh admin exam list if admin is saving
       if (userRole === 'admin') {
-        // A short delay to allow Firestore to process the update/add before refetching
         setTimeout(async () => {
           setIsLoadingExams(true);
           try {
@@ -249,11 +254,11 @@ export default function HomePage() {
           } finally {
             setIsLoadingExams(false);
           }
-        }, 500); // 500ms delay
+        }, 500);
       }
       
-      // Do not reset editingExamId here if success modal allows further review/actions on the same exam.
-      // It will be reset if user starts a new exam or explicitly navigates away from edit.
+      // Don't reset editingExamId here. It will be reset if user starts a new exam or
+      // navigates away via handleReviewPreviousExam (if admin) or handleStartNewExam.
     } catch (error) {
       console.error("Error saving exam data: ", error);
       toast({ title: "Error al Guardar", description: "No se pudo guardar el examen.", variant: "destructive" });
@@ -311,29 +316,22 @@ export default function HomePage() {
         return;
     }
     // Ensure all fields, including audit fields, are part of the examInfo state for editing
-    setExamInfo({ 
-        ...examToEdit, // Spread all properties from examToEdit
-        ne: examToEdit.ne, // explicit for clarity, but covered by spread
-        reference: examToEdit.reference,
-        manager: examToEdit.manager,
-        location: examToEdit.location,
-    });
+    setExamInfo({ ...examToEdit }); // examToEdit should have all fields from Firestore including products
     setProducts(examToEdit.products || []); 
     setEditingExamId(examToEdit.id); 
-    setCurrentView('productList'); 
+    setCurrentView('productList'); // Admin starts editing from product list
     toast({ title: "Editando Examen", description: `Modificando examen NE: ${examToEdit.ne}` });
   };
 
   const handleBackNavigation = () => {
     if (userRole === 'admin' && editingExamId) {
-      // Admin was editing an exam, go back to the dashboard
+      // Admin was editing an exam, go back to the dashboard and clear context
       setCurrentView('adminDashboard');
-      setExamInfo(null); // Clear the current exam context
+      setExamInfo(null); 
       setProducts([]);
-      setEditingExamId(null); // Reset the editing state
+      setEditingExamId(null); 
     } else {
-      // Gestor (or admin creating a new exam - though this flow isn't explicitly for admin)
-      // goes back to the exam form.
+      // Gestor (or admin creating a new exam) goes back to the exam form.
       setCurrentView('examForm');
     }
   };
@@ -376,7 +374,7 @@ export default function HomePage() {
             onViewProduct={handleViewProduct}
             onDeleteProduct={handleDeleteProduct}
             onFinalize={handleFinalize}
-            onBackToExamForm={handleBackNavigation}
+            onBackToExamForm={handleBackNavigation} // Use the new combined handler
           />
         )}
       </main>
@@ -533,5 +531,4 @@ export default function HomePage() {
     </div>
   );
 }
-
     
