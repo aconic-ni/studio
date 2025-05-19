@@ -11,7 +11,7 @@ body {
   :root {
     /* Theme colors from proposal:
        Primary: New #4361EE -> hsl(229, 84%, 60%)
-       Background: Light gray (#D4DADF) -> hsl(210, 13%, 85%)
+       Background: White (#FFFFFF) -> hsl(0, 0%, 100%)
        Accent: Soft, muted blue (#96B3C2) -> hsl(203, 26%, 67%)
        Original CSS body bg: #f0f4f8 -> hsl(216, 25%, 96%)
        Original CSS btn-primary bg: #4361ee -> hsl(229, 84%, 60%)
@@ -19,22 +19,22 @@ body {
        Prioritizing proposal's color scheme for theme variables.
        The grid-bg on body will use a dark blue, while main content cards are white.
     */
-    --background: 210 13% 85%; /* Light Gray #D4DADF */
+    --background: 0 0% 100%; /* White #FFFFFF */
     --foreground: 210 10% 23%; /* Dark Gray for contrast */
     
     --muted: 210 15% 90%; /* Lighter shade for muted backgrounds */
     --muted-foreground: 210 10% 40%; /* Softer foreground for muted */
 
-    --popover: 210 13% 95%; /* Slightly lighter than background for popovers */
+    --popover: 0 0% 98%; /* Slightly darker than background for popovers, adjusted for white bg */
     --popover-foreground: 210 10% 23%;
 
-    --card: 0 0% 100%; /* White for cards */
+    --card: 0 0% 100%; /* White for cards, can remain white or slightly off-white */
     --card-foreground: 210 10% 23%;
 
     --border: 210 10% 75%; /* Border color */
     --input: 210 10% 80%; /* Input border */
 
-    --primary: 229 84% 60%;        /* New Primary #4361EE */
+    --primary: 229 84% 60%;        /* Primary #4361EE */
     --primary-foreground: 0 0% 100%; /* White for contrast on primary */
 
     --secondary: 203 20% 75%; /* Lighter shade of accent for secondary elements */
@@ -46,7 +46,7 @@ body {
     --destructive: 0 72% 51%; /* Default destructive */
     --destructive-foreground: 0 0% 98%;
 
-    --ring: 229 84% 60%; /* Ring color based on new primary */
+    --ring: 229 84% 60%; /* Ring color based on primary */
     
     --radius: 0.5rem;
 
