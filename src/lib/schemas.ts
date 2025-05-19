@@ -38,15 +38,18 @@ export const ProductSchema = z.object({
 });
 export type Product = z.infer<typeof ProductSchema>;
 
-// export const AccessCodeSchema = z.object({
-//   accessCode: z.string().length(6, "El código debe tener 6 dígitos.").regex(/^\d{6}$/, "El código debe ser numérico."),
-// });
-// export type AccessCodeFormData = z.infer<typeof AccessCodeSchema>;
-
 export const LoginSchema = z.object({
   email: z.string().email("Correo electrónico inválido."),
-  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres."),
+  password: z.string().min(1, "La contraseña es requerida."), // Min 1 for now for easier testing
 });
 export type LoginFormData = z.infer<typeof LoginSchema>;
 
-export type UserRole = 'admin' | 'ejecutivo' | 'gestor' | null;
+export const UserRoleEnum = z.enum(['admin', 'ejecutivo', 'gestor']);
+export type UserRole = z.infer<typeof UserRoleEnum> | null;
+
+export const CreateUserSchema = z.object({
+  email: z.string().email("Correo electrónico inválido."),
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres."),
+  role: UserRoleEnum,
+});
+export type CreateUserFormData = z.infer<typeof CreateUserSchema>;

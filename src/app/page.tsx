@@ -11,17 +11,18 @@ import { AddProductModalContent } from '@/components/product/AddProductModalCont
 import { ProductDetailModalContent } from '@/components/product/ProductDetailModalContent';
 import { PreviewModalContent } from '@/components/preview/PreviewModalContent';
 import { SuccessModalContent } from '@/components/common/SuccessModalContent';
+import { AdminDashboard } from '@/components/admin/AdminDashboard'; // New Admin Dashboard
+import { AddUserModalContent } from '@/components/admin/AddUserModalContent'; // New Add User Modal
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertTriangle } from 'lucide-react';
 import { generateTxtReport, downloadFile, generateExcelReport } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-type AppView = 'login' | 'examForm' | 'productList';
+type AppView = 'login' | 'examForm' | 'productList' | 'adminDashboard';
 
 export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>(null);
-  const [currentView, setCurrentView] = useState<AppView>('examForm'); // Start with exam form after login
+  const [currentView, setCurrentView] = useState<AppView>('login');
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   
@@ -32,30 +33,49 @@ export default function HomePage() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-  const [showLeaveConfirmation, setShowLeaveConfirmation] = useState(false);
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false); // For Admin
+
+  // Mock data for saved exams - replace with Firestore fetching later
+  const [savedExams, setSavedExams] = useState<ExamInfo[]>([]); 
 
   const { toast } = useToast();
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (isLoggedIn && (examInfo || products.length > 0)) { // Only show if there's data
+      if (isLoggedIn && (examInfo || products.length > 0) && userRole !== 'admin') { 
         event.preventDefault();
-        event.returnValue = ''; // For older browsers
-        // Consider showing a custom dialog here instead, as browser default is inconsistent
-        // For now, this will trigger browser's default confirmation
+        event.returnValue = ''; 
       }
     };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isLoggedIn, examInfo, products]);
+  }, [isLoggedIn, examInfo, products, userRole]);
 
 
   const handleLoginSuccess = (role: UserRole) => {
     setIsLoggedIn(true);
     setUserRole(role);
     toast({ title: "Acceso Concedido", description: `Bienvenido. Rol: ${role?.toUpperCase()}` });
-    setCurrentView('examForm'); // Go to exam form after login
+    if (role === 'admin') {
+      setCurrentView('adminDashboard');
+      // Fetch saved exams for admin (mocked for now)
+      setSavedExams([
+        { ne: 'NX1001', reference: 'REF001', manager: 'Admin Test User', location: 'Almacen Central' },
+        { ne: 'NX1002', reference: 'REF002', manager: 'Admin Test User 2', location: 'Bodega B' },
+      ]);
+    } else {
+      setCurrentView('examForm'); 
+    }
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUserRole(null);
+    setExamInfo(null);
+    setProducts([]);
+    setSavedExams([]);
+    setCurrentView('login');
+    toast({ title: "Sesión Cerrada", description: "Has salido de la aplicación." });
   };
 
   const handleExamInfoSubmit = (data: ExamInfo) => {
@@ -110,8 +130,6 @@ export default function HomePage() {
   const handleConfirmExam = () => {
     setIsPreviewModalOpen(false);
     setIsSuccessModalOpen(true);
-    // Here you would typically send data to a server or email
-    // For now, it just shows the success modal
      toast({ title: "Examen Confirmado", description: "La información del examen ha sido procesada." });
   };
 
@@ -124,14 +142,20 @@ export default function HomePage() {
 
   const handleReviewPreviousExam = () => {
     setIsSuccessModalOpen(false);
-    setCurrentView('productList'); // Stay on product list with current data
+    setCurrentView('productList'); 
   };
 
   const handleSaveExamData = () => {
-    // Placeholder for future save logic (e.g., to SQL Server)
-    console.log("Attempting to save exam data...", { examInfo, products });
-    toast({ title: "Guardar Datos", description: "La funcionalidad de guardar en base de datos está pendiente." });
-    // This is where you'd trigger an API call to save data.
+    // Placeholder for saving exam data to Firestore
+    if (!examInfo || products.length === 0) {
+      toast({ title: "Datos incompletos", description: "No hay información de examen o productos para guardar.", variant: "destructive" });
+      return;
+    }
+    console.log("Simulando guardado de examen:", { examInfo, products });
+    // In a real scenario, this would be an async call to Firebase/Firestore
+    // Add to a local 'savedExams' list for admin demo purposes for now
+    setSavedExams(prev => [...prev, examInfo]); 
+    toast({ title: "Examen Guardado (Simulado)", description: "El examen se ha guardado localmente para demostración." });
   };
   
   const handleDownloadTxt = () => {
@@ -146,27 +170,49 @@ export default function HomePage() {
     generateExcelReport(examInfo, products);
   };
 
+  const handleOpenAddUserModal = () => setIsAddUserModalOpen(true);
+  const handleCloseAddUserModal = () => setIsAddUserModalOpen(false);
+  const handleCreateUser = (userData: any) => { // Replace 'any' with CreateUserFormData
+    // Placeholder for Firebase user creation
+    console.log("Creando nuevo usuario (simulado):", userData);
+    toast({ title: "Usuario Creado (Simulado)", description: `El usuario ${userData.email} con rol ${userData.role} ha sido creado.` });
+    setIsAddUserModalOpen(false);
+  };
 
-  if (!isLoggedIn) {
+  const handleViewSavedExam = (exam: ExamInfo) => {
+    // Placeholder: In a real app, you might fetch full details or navigate to a specific view
+    toast({ title: "Ver Examen", description: `Viendo detalles del examen NE: ${exam.ne}` });
+    // For now, just log, or you could open a modal showing examInfo and associated products (if fetched)
+    console.log("Viendo examen guardado:", exam);
+  };
+
+  if (!isLoggedIn || currentView === 'login') {
     return <AuthWorkflow onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl min-h-screen flex flex-col">
-      <AppHeader />
+      <AppHeader isLoggedIn={isLoggedIn} onLogout={handleLogout} />
       {userRole && (
         <div className="text-white text-center mb-2 bg-primary/20 p-2 rounded-md">
           Rol Actual: <span className="font-semibold">{userRole.toUpperCase()}</span>
         </div>
       )}
       <main className="flex-grow">
-        {currentView === 'examForm' && (
+        {currentView === 'adminDashboard' && userRole === 'admin' && (
+          <AdminDashboard
+            savedExams={savedExams}
+            onAddNewUser={handleOpenAddUserModal}
+            onViewExam={handleViewSavedExam}
+          />
+        )}
+        {currentView === 'examForm' && userRole !== 'admin' && (
           <ExamForm 
             onSubmitExamInfo={handleExamInfoSubmit} 
             initialData={examInfo || undefined} 
           />
         )}
-        {currentView === 'productList' && examInfo && (
+        {currentView === 'productList' && examInfo && userRole !== 'admin' && (
           <ProductListScreen
             examInfo={examInfo}
             products={products}
@@ -182,9 +228,7 @@ export default function HomePage() {
 
       {/* Add/Edit Product Modal */}
       <Dialog open={isAddEditModalOpen} onOpenChange={(isOpen) => {
-          if (!isOpen) {
-            setEditingProduct(undefined); // Clear editing product on close
-          }
+          if (!isOpen) setEditingProduct(undefined);
           setIsAddEditModalOpen(isOpen);
         }}>
         <DialogContent className="sm:max-w-3xl p-0">
@@ -242,13 +286,31 @@ export default function HomePage() {
       {examInfo && (
          <Dialog open={isSuccessModalOpen} onOpenChange={setIsSuccessModalOpen}>
           <DialogContent className="sm:max-w-md p-0">
-            {/* No explicit header here, content provides its own structure. Default X button will appear. */}
             <SuccessModalContent
               managerName={examInfo.manager}
               onStartNew={handleStartNewExam}
               onReviewPrevious={handleReviewPreviousExam}
-              onSave={handleSaveExamData} // Pass the new handler
+              onSave={handleSaveExamData}
             />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Add User Modal (Admin only) */}
+      {userRole === 'admin' && (
+        <Dialog open={isAddUserModalOpen} onOpenChange={setIsAddUserModalOpen}>
+          <DialogContent className="sm:max-w-lg p-0">
+            <DialogHeader className="p-5 md:p-6 pb-0 text-left">
+              <DialogTitle className="text-lg md:text-xl font-semibold text-foreground">
+                Agregar Nuevo Usuario
+              </DialogTitle>
+            </DialogHeader>
+            <div className="p-5 md:p-6 pt-0">
+              <AddUserModalContent
+                onSubmitUser={handleCreateUser}
+                onClose={handleCloseAddUserModal}
+              />
+            </div>
           </DialogContent>
         </Dialog>
       )}
