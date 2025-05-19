@@ -66,7 +66,7 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
 
       <Dialog open={isLoginModalOpen} onOpenChange={setIsLoginModalOpen}>
         <DialogContent className="glass-effect sm:max-w-md text-white p-6 rounded-lg">
-          <DialogHeader className="text-left mb-4"> {/* Ensures title is left-aligned, default X from DialogContent is used */}
+          <DialogHeader className="text-left mb-4">
             <DialogTitle className="text-2xl font-bold text-white">{APP_NAME}</DialogTitle>
           </DialogHeader>
           
@@ -78,7 +78,7 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="block text-sm font-medium text-white mb-1 leading-tight">
-                      Solicitar Acceso a Coordinación ACONIC (
+                      Solicitar acceso numérico a Coordinación ACONIC (
                       <a 
                         href="https://wa.me/+50583956505" 
                         target="_blank" 
@@ -88,7 +88,7 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
                       >
                         clic aquí
                       </a>
-                      ):
+                      ) e ingréselo:
                     </FormLabel>
                     <FormControl>
                       <Input 
@@ -115,7 +115,7 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
           
           {serverAccessCode && (
             <div className="mt-4 text-center">
-              <p className="text-xs text-gray-300 mt-1">Código: {accessCodeWords}</p>
+              <p className="text-xs text-gray-300 mt-1">Palabras de acceso: {accessCodeWords}</p>
             </div>
           )}
         </DialogContent>
