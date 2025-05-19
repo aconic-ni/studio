@@ -33,14 +33,13 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
   const form = useForm<LoginFormData>({ // Updated to LoginFormData
     resolver: zodResolver(LoginSchema), // Updated to LoginSchema
     defaultValues: {
-      email: '', // Added email
-      password: '', // Added password
+      email: '', // Technically email, but labeled as User
+      password: '', 
     },
   });
 
-  const onSubmit: SubmitHandler<LoginFormData> = (data) => { // Updated to LoginFormData
-    // Placeholder for actual Firebase authentication
-    console.log("Login attempt with:", data.email, data.password);
+  const onSubmit: SubmitHandler<LoginFormData> = (data) => { 
+    console.log("Login attempt with:", data.email, data.password); // data.email is used here
     toast({ title: "Inicio de Sesión", description: "Verificando credenciales..." });
     
     let role: UserRole = 'gestor'; // Default role
@@ -57,20 +56,6 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
     // For now, grant access immediately. Replace with Firebase auth later.
     onLoginSuccess(role); 
     
-    // Old logic:
-    // if (data.accessCode === serverAccessCode) {
-    //   toast({ title: "Acceso Concedido", description: "Bienvenido a CustomsEX-p." });
-    //   onLoginSuccess();
-    // } else {
-    //   toast({
-    //     title: "Error de Acceso",
-    //     description: "Incorrecto. Inténtelo de nuevo o solicite uno nuevo.",
-    //     variant: "destructive",
-    //   });
-    //   form.reset();
-    //   // Optionally regenerate code on failed attempt:
-    //   // setServerAccessCode(generateAccessCode());
-    // }
   };
 
   return (
@@ -94,18 +79,18 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name="email"
+                name="email" // Field name remains 'email' for schema and Firebase
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="block text-sm font-medium text-white mb-1 leading-tight">
-                      Correo Electrónico (Usuario)
+                      Usuario
                     </FormLabel>
                     <FormControl>
                       <Input 
-                        type="email"
+                        type="email" // Input type still email for validation and Firebase
                         required 
                         className="w-full px-4 py-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-white/20 text-white placeholder-gray-300"
-                        autoComplete="email"
+                        autoComplete="username" // Changed from email to username for autocomplete hint
                         {...field} 
                       />
                     </FormControl>
@@ -141,7 +126,7 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
             </form>
           </Form>
           
-          {/* {serverAccessCode && ( // Commented out access code display
+          {/* {serverAccessCode && ( 
             <div className="mt-4 text-center">
               <p className="text-xs text-gray-300 mt-1"> </p>
             </div>
