@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { ExamInfo, Product, UserRole, CreateUserFormData } from '@/lib/schemas';
 import { AuthWorkflow } from '@/components/auth/AuthWorkflow';
 import { AppHeader } from '@/components/common/Header';
@@ -46,6 +46,7 @@ export default function HomePage() {
   const [isViewExamDetailModalOpen, setIsViewExamDetailModalOpen] = useState(false);
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
   const [isLoadingExams, setIsLoadingExams] = useState(false);
+  const [refreshExamsTrigger, setRefreshExamsTrigger] = useState(0);
 
 
   const { toast } = useToast();
@@ -62,36 +63,39 @@ export default function HomePage() {
   }, [isLoggedIn, examInfo, products, userRole, editingExamId]);
 
   // Fetch exams for Admin
-  useEffect(() => {
-    const fetchExamsForAdmin = async () => {
-      if (isLoggedIn && userRole === 'admin' && currentView === 'adminDashboard') {
-        setIsLoadingExams(true);
-        try {
-          const examsCollectionRef = collection(db, "exams");
-          const q = query(examsCollectionRef, orderBy("createdAt", "desc"));
-          const querySnapshot = await getDocs(q);
-          const fetchedExams: ExamInfo[] = querySnapshot.docs.map(docSnap => ({
-            id: docSnap.id,
-            ...docSnap.data(),
-            products: docSnap.data().products || [], 
-            createdAt: docSnap.data().createdAt instanceof Timestamp ? docSnap.data().createdAt.toDate() : docSnap.data().createdAt,
-            lastModifiedAt: docSnap.data().lastModifiedAt instanceof Timestamp ? docSnap.data().lastModifiedAt.toDate() : docSnap.data().lastModifiedAt,
-          })) as ExamInfo[];
-          setSavedExams(fetchedExams);
-        } catch (error) {
-          console.error("Error fetching exams: ", error);
-          toast({
-            title: "Error al cargar exámenes",
-            description: "No se pudieron cargar los exámenes previos desde la base de datos.",
-            variant: "destructive",
-          });
-        } finally {
-          setIsLoadingExams(false);
-        }
+  const fetchExamsForAdmin = useCallback(async () => {
+    if (isLoggedIn && userRole === 'admin') {
+      setIsLoadingExams(true);
+      try {
+        const examsCollectionRef = collection(db, "exams");
+        const q = query(examsCollectionRef, orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        const fetchedExams: ExamInfo[] = querySnapshot.docs.map(docSnap => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+          products: docSnap.data().products || [], 
+          createdAt: docSnap.data().createdAt instanceof Timestamp ? docSnap.data().createdAt.toDate() : new Date(docSnap.data().createdAt),
+          lastModifiedAt: docSnap.data().lastModifiedAt instanceof Timestamp ? docSnap.data().lastModifiedAt.toDate() : new Date(docSnap.data().lastModifiedAt),
+        })) as ExamInfo[];
+        setSavedExams(fetchedExams);
+      } catch (error) {
+        console.error("Error fetching exams: ", error);
+        toast({
+          title: "Error al cargar exámenes",
+          description: "No se pudieron cargar los exámenes previos desde la base de datos.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingExams(false);
       }
-    };
-    fetchExamsForAdmin();
-  }, [isLoggedIn, userRole, currentView, toast]);
+    }
+  }, [isLoggedIn, userRole, toast]);
+
+  useEffect(() => {
+    if (currentView === 'adminDashboard') {
+      fetchExamsForAdmin();
+    }
+  }, [currentView, fetchExamsForAdmin, refreshExamsTrigger]);
 
 
   const handleLoginSuccess = (role: UserRole) => {
@@ -122,8 +126,16 @@ export default function HomePage() {
     const currentAuditFields = editingExamId && examInfo ? {
         createdBy: examInfo.createdBy,
         createdAt: examInfo.createdAt,
+        lastModifiedBy: examInfo.lastModifiedBy,
+        lastModifiedAt: examInfo.lastModifiedAt,
     } : {};
-    setExamInfo(prevExamInfo => ({ ...prevExamInfo, ...currentAuditFields, ...data }));
+
+    const submittedExamInfo = { 
+      ...(examInfo || {}), // Spread existing examInfo if editing
+      ...currentAuditFields, // Ensure audit fields are preserved if they exist
+      ...data // Apply new data from the form
+    };
+    setExamInfo(submittedExamInfo);
     setCurrentView('productList');
   };
 
@@ -202,10 +214,15 @@ export default function HomePage() {
   };
 
   const handleSaveExamData = async () => {
-    if (!examInfo || products.length === 0) {
-      toast({ title: "Datos incompletos", description: "No hay información de examen o productos para guardar.", variant: "destructive" });
+    if (!examInfo || !examInfo.manager) { // Ensure manager is present
+      toast({ title: "Datos incompletos", description: "Falta información del gestor o del examen.", variant: "destructive" });
       return;
     }
+     if (products.length === 0) {
+      toast({ title: "Sin Productos", description: "Debe agregar al menos un producto antes de guardar.", variant: "destructive" });
+      return;
+    }
+
 
     const examDataToSave: Partial<ExamInfo> = {
       ...examInfo,
@@ -215,17 +232,23 @@ export default function HomePage() {
     try {
       if (editingExamId) {
         const examDocRef = doc(db, "exams", editingExamId);
-        await setDoc(examDocRef, {
-          ...examDataToSave,
+        // Preserve existing createdBy and createdAt, update lastModified
+        const updateData: Partial<ExamInfo> = {
+          ...examDataToSave, // contains potentially updated examInfo fields
           lastModifiedAt: serverTimestamp(),
-          lastModifiedBy: examInfo.manager, // Placeholder for actual authenticated user's ID/name
-        }, { merge: true }); 
+          lastModifiedBy: userRole === 'admin' ? 'TEST ADMIN USER' : examInfo.manager,
+        };
+        // Remove createdBy and createdAt from updateData to ensure they are not overwritten if they are part of examDataToSave
+        delete updateData.createdBy;
+        delete updateData.createdAt;
+
+        await setDoc(examDocRef, updateData, { merge: true }); 
         toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado en la base de datos." });
       } else {
-        const newExamData = {
-          ...examDataToSave,
-          createdAt: serverTimestamp(),
+        const newExamData: ExamInfo = {
+          ...(examDataToSave as ExamInfo), // Cast as ExamInfo, assuming all required fields are present or will be
           createdBy: examInfo.manager, 
+          createdAt: serverTimestamp(),
           lastModifiedAt: serverTimestamp(), 
           lastModifiedBy: examInfo.manager, 
         };
@@ -234,26 +257,10 @@ export default function HomePage() {
       }
 
       if (userRole === 'admin') {
-        setTimeout(async () => {
-          setIsLoadingExams(true);
-          try {
-            const examsCollectionRef = collection(db, "exams");
-            const q = query(examsCollectionRef, orderBy("createdAt", "desc"));
-            const querySnapshot = await getDocs(q);
-            const fetchedExams: ExamInfo[] = querySnapshot.docs.map(docSnap => ({
-              id: docSnap.id,
-              ...docSnap.data(),
-              products: docSnap.data().products || [],
-              createdAt: docSnap.data().createdAt instanceof Timestamp ? docSnap.data().createdAt.toDate() : docSnap.data().createdAt,
-              lastModifiedAt: docSnap.data().lastModifiedAt instanceof Timestamp ? docSnap.data().lastModifiedAt.toDate() : docSnap.data().lastModifiedAt,
-            })) as ExamInfo[];
-            setSavedExams(fetchedExams);
-          } catch (error) {
-            console.error("Error refreshing exams: ", error);
-          } finally {
-            setIsLoadingExams(false);
-          }
-        }, 500);
+        // Trigger a refresh of the exams list for the admin
+        setTimeout(() => {
+          setRefreshExamsTrigger(prev => prev + 1);
+        }, 500); // Small delay to allow Firestore to process
       }
       
     } catch (error) {
@@ -312,7 +319,13 @@ export default function HomePage() {
         toast({ title: "Error", description: "ID de examen no encontrado.", variant: "destructive" });
         return;
     }
-    setExamInfo({ ...examToEdit }); 
+    // Ensure all existing fields, including audit ones, are carried over
+    setExamInfo({ 
+      ...examToEdit, 
+      // Convert Timestamps to Dates if necessary for form compatibility, though ExamForm doesn't directly use these
+      createdAt: examToEdit.createdAt instanceof Timestamp ? examToEdit.createdAt.toDate() : examToEdit.createdAt,
+      lastModifiedAt: examToEdit.lastModifiedAt instanceof Timestamp ? examToEdit.lastModifiedAt.toDate() : examToEdit.lastModifiedAt,
+    }); 
     setProducts(examToEdit.products || []); 
     setEditingExamId(examToEdit.id); 
     setCurrentView('productList'); 
@@ -479,9 +492,9 @@ export default function HomePage() {
                   <p><strong>Gestor:</strong> {viewingExamDetail.manager || 'N/A'}</p>
                   <p><strong>Ubicación:</strong> {viewingExamDetail.location || 'N/A'}</p>
                   <p><strong>Creado por:</strong> {viewingExamDetail.createdBy || 'N/A'}</p>
-                  <p><strong>Fecha Creación:</strong> {viewingExamDetail.createdAt ? (typeof viewingExamDetail.createdAt === 'object' && 'seconds' in viewingExamDetail.createdAt ? new Date(viewingExamDetail.createdAt.seconds * 1000).toLocaleString() : (viewingExamDetail.createdAt instanceof Date ? viewingExamDetail.createdAt.toLocaleString() : String(viewingExamDetail.createdAt))) : 'N/A'}</p>
+                  <p><strong>Fecha Creación:</strong> {viewingExamDetail.createdAt ? (viewingExamDetail.createdAt instanceof Date ? viewingExamDetail.createdAt.toLocaleString() : String(viewingExamDetail.createdAt)) : 'N/A'}</p>
                   <p><strong>Modificado por:</strong> {viewingExamDetail.lastModifiedBy || 'N/A'}</p>
-                  <p><strong>Última Modificación:</strong> {viewingExamDetail.lastModifiedAt ? (typeof viewingExamDetail.lastModifiedAt === 'object' && 'seconds' in viewingExamDetail.lastModifiedAt ? new Date(viewingExamDetail.lastModifiedAt.seconds * 1000).toLocaleString() : (viewingExamDetail.lastModifiedAt instanceof Date ? viewingExamDetail.lastModifiedAt.toLocaleString() : String(viewingExamDetail.lastModifiedAt))) : 'N/A'}</p>
+                  <p><strong>Última Modificación:</strong> {viewingExamDetail.lastModifiedAt ? (viewingExamDetail.lastModifiedAt instanceof Date ? viewingExamDetail.lastModifiedAt.toLocaleString() : String(viewingExamDetail.lastModifiedAt)) : 'N/A'}</p>
                 </div>
 
                 <h4 className="font-medium text-md pt-2">Productos ({viewingExamDetail.products?.length || 0})</h4>
@@ -528,3 +541,4 @@ export default function HomePage() {
   );
 }
     
+

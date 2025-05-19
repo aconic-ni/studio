@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import type { ExamInfo } from '@/lib/schemas';
@@ -19,10 +20,12 @@ export function AdminDashboard({ savedExams, onAddNewUser, onViewExam, onEditExa
   const formatDate = (date: any) => {
     if (!date) return 'N/A';
     if (date instanceof Date) return date.toLocaleString();
-    if (typeof date === 'object' && 'seconds' in date) { // Firestore Timestamp
-      return new Date(date.seconds * 1000).toLocaleString();
+    // Firestore Timestamps are already converted to Date objects in HomePage before passing here.
+    // This is a fallback if a raw Timestamp object somehow makes it through.
+    if (typeof date === 'object' && 'seconds' in date && 'nanoseconds' in date) { 
+      return new Date(date.seconds * 1000 + date.nanoseconds / 1000000).toLocaleString();
     }
-    return String(date); // Fallback
+    return String(date); // Fallback for other types
   };
 
   return (
