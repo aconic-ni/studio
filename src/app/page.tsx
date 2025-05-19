@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -122,7 +123,6 @@ export default function HomePage() {
         createdBy: examInfo.createdBy,
         createdAt: examInfo.createdAt,
     } : {};
-    // If editing, ensure existing audit fields are carried over from examInfo state
     setExamInfo(prevExamInfo => ({ ...prevExamInfo, ...currentAuditFields, ...data }));
     setCurrentView('productList');
   };
@@ -189,7 +189,7 @@ export default function HomePage() {
     setIsSuccessModalOpen(false);
     if (userRole === 'admin') {
       setCurrentView('adminDashboard');
-      // If admin was editing, clear the editing context now that they are done
+      // If admin was editing, clear the editing context now that they are done with this exam
       if (editingExamId) {
         setExamInfo(null);
         setProducts([]);
@@ -197,7 +197,6 @@ export default function HomePage() {
       }
     } else {
       // For gestor (or other roles), go to productList to see the current/last exam.
-      // This assumes examInfo and products are still set from the completed exam.
       setCurrentView('productList');
     }
   };
@@ -208,7 +207,7 @@ export default function HomePage() {
       return;
     }
 
-    const examDataToSave: Partial<ExamInfo> = { // Use Partial as some fields are set by Firestore
+    const examDataToSave: Partial<ExamInfo> = {
       ...examInfo,
       products: products,
     };
@@ -217,7 +216,7 @@ export default function HomePage() {
       if (editingExamId) {
         const examDocRef = doc(db, "exams", editingExamId);
         await setDoc(examDocRef, {
-          ...examDataToSave, // contains all existing fields, including createdBy, createdAt
+          ...examDataToSave,
           lastModifiedAt: serverTimestamp(),
           lastModifiedBy: examInfo.manager, // Placeholder for actual authenticated user's ID/name
         }, { merge: true }); 
@@ -226,7 +225,7 @@ export default function HomePage() {
         const newExamData = {
           ...examDataToSave,
           createdAt: serverTimestamp(),
-          createdBy: examInfo.manager, // Placeholder for actual authenticated user's ID/name
+          createdBy: examInfo.manager, 
           lastModifiedAt: serverTimestamp(), 
           lastModifiedBy: examInfo.manager, 
         };
@@ -257,8 +256,6 @@ export default function HomePage() {
         }, 500);
       }
       
-      // Don't reset editingExamId here. It will be reset if user starts a new exam or
-      // navigates away via handleReviewPreviousExam (if admin) or handleStartNewExam.
     } catch (error) {
       console.error("Error saving exam data: ", error);
       toast({ title: "Error al Guardar", description: "No se pudo guardar el examen.", variant: "destructive" });
@@ -315,23 +312,20 @@ export default function HomePage() {
         toast({ title: "Error", description: "ID de examen no encontrado.", variant: "destructive" });
         return;
     }
-    // Ensure all fields, including audit fields, are part of the examInfo state for editing
-    setExamInfo({ ...examToEdit }); // examToEdit should have all fields from Firestore including products
+    setExamInfo({ ...examToEdit }); 
     setProducts(examToEdit.products || []); 
     setEditingExamId(examToEdit.id); 
-    setCurrentView('productList'); // Admin starts editing from product list
+    setCurrentView('productList'); 
     toast({ title: "Editando Examen", description: `Modificando examen NE: ${examToEdit.ne}` });
   };
 
   const handleBackNavigation = () => {
     if (userRole === 'admin' && editingExamId) {
-      // Admin was editing an exam, go back to the dashboard and clear context
       setCurrentView('adminDashboard');
       setExamInfo(null); 
       setProducts([]);
       setEditingExamId(null); 
     } else {
-      // Gestor (or admin creating a new exam) goes back to the exam form.
       setCurrentView('examForm');
     }
   };
@@ -374,7 +368,9 @@ export default function HomePage() {
             onViewProduct={handleViewProduct}
             onDeleteProduct={handleDeleteProduct}
             onFinalize={handleFinalize}
-            onBackToExamForm={handleBackNavigation} // Use the new combined handler
+            onBackToExamForm={handleBackNavigation}
+            userRole={userRole} 
+            editingExamId={editingExamId}
           />
         )}
       </main>

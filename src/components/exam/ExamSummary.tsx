@@ -1,3 +1,4 @@
+
 import type { ExamInfo } from '@/lib/schemas';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
@@ -5,9 +6,10 @@ import { ChevronLeft } from 'lucide-react';
 interface ExamSummaryProps {
   examInfo: ExamInfo;
   onGoBack: () => void;
+  backButtonLabel: string; // New prop for dynamic label
 }
 
-export function ExamSummary({ examInfo, onGoBack }: ExamSummaryProps) {
+export function ExamSummary({ examInfo, onGoBack, backButtonLabel }: ExamSummaryProps) {
   return (
     <div className="mb-4 p-4 bg-primary/10 border border-primary/20 rounded-md">
       <div className="flex flex-wrap gap-x-6 gap-y-2">
@@ -19,7 +21,7 @@ export function ExamSummary({ examInfo, onGoBack }: ExamSummaryProps) {
       <div className="mt-3">
         <Button variant="link" onClick={onGoBack} className="text-primary hover:text-primary/80 p-0 h-auto">
           <ChevronLeft className="h-4 w-4 mr-1" />
-          Regresar para modificar datos
+          {backButtonLabel}
         </Button>
       </div>
     </div>

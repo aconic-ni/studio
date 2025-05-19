@@ -1,6 +1,7 @@
+
 "use client";
 
-import type { ExamInfo, Product } from '@/lib/schemas';
+import type { ExamInfo, Product, UserRole } from '@/lib/schemas';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ExamSummary } from '@/components/exam/ExamSummary';
@@ -16,6 +17,8 @@ interface ProductListScreenProps {
   onDeleteProduct: (productId: string) => void;
   onFinalize: () => void;
   onBackToExamForm: () => void;
+  userRole: UserRole; // Added prop
+  editingExamId: string | null; // Added prop
 }
 
 export function ProductListScreen({
@@ -27,7 +30,17 @@ export function ProductListScreen({
   onDeleteProduct,
   onFinalize,
   onBackToExamForm,
+  userRole,
+  editingExamId,
 }: ProductListScreenProps) {
+  
+  const getBackButtonLabel = () => {
+    if (userRole === 'admin' && editingExamId) {
+      return "Volver al Panel";
+    }
+    return "Regresar para modificar datos";
+  };
+
   return (
     <Card className="bg-card custom-shadow">
       <CardHeader>
@@ -46,7 +59,11 @@ export function ProductListScreen({
         </div>
       </CardHeader>
       <CardContent>
-        <ExamSummary examInfo={examInfo} onGoBack={onBackToExamForm} />
+        <ExamSummary 
+          examInfo={examInfo} 
+          onGoBack={onBackToExamForm} 
+          backButtonLabel={getBackButtonLabel()} 
+        />
         <ProductTable
           products={products}
           onViewProduct={onViewProduct}
