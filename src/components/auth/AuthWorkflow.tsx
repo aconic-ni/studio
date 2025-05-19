@@ -44,7 +44,7 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
     } else {
       toast({
         title: "Error de Acceso",
-        description: "Código incorrecto. Inténtelo de nuevo o solicite uno nuevo.",
+        description: "Incorrecto. Inténtelo de nuevo o solicite uno nuevo.",
         variant: "destructive",
       });
       form.reset();
@@ -115,7 +115,7 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
           
           {serverAccessCode && (
             <div className="mt-4 text-center">
-              <p className="text-xs text-gray-300 mt-1">Palabras de acceso: {accessCodeWords}</p>
+              <p className="text-xs text-gray-300 mt-1"> {accessCodeWords}</p>
             </div>
           )}
         </DialogContent>
