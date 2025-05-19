@@ -72,9 +72,7 @@ export default function HomePage() {
           const fetchedExams: ExamInfo[] = querySnapshot.docs.map(docSnap => ({
             id: docSnap.id,
             ...docSnap.data(),
-            // Ensure products array is present, even if empty
             products: docSnap.data().products || [], 
-             // Convert Firestore Timestamps to Date objects if necessary, or handle in display
             createdAt: docSnap.data().createdAt instanceof Timestamp ? docSnap.data().createdAt.toDate() : docSnap.data().createdAt,
             lastModifiedAt: docSnap.data().lastModifiedAt instanceof Timestamp ? docSnap.data().lastModifiedAt.toDate() : docSnap.data().lastModifiedAt,
           })) as ExamInfo[];
@@ -185,8 +183,6 @@ export default function HomePage() {
 
   const handleReviewPreviousExam = () => {
     setIsSuccessModalOpen(false);
-    // If editing, go back to product list of the exam being edited
-    // Otherwise, if admin, go to dashboard, else to product list (though this path might not be hit often for non-admins)
     if (editingExamId && examInfo) {
       setCurrentView('productList');
     } else if (userRole === 'admin') {
@@ -204,30 +200,26 @@ export default function HomePage() {
 
     const examDataToSave: Omit<ExamInfo, 'id'> = {
       ...examInfo,
-      products: products, // Embed products array
-      // For createdBy, use manager name or current user ID if Firebase Auth is integrated
+      products: products, 
       createdBy: examInfo.manager, // Placeholder
     };
 
     try {
       if (editingExamId) {
-        // Update existing exam
         const examDocRef = doc(db, "exams", editingExamId);
         await setDoc(examDocRef, {
           ...examDataToSave,
           lastModifiedAt: serverTimestamp(),
           lastModifiedBy: examInfo.manager, // Placeholder
-        }, { merge: true }); // merge:true to avoid overwriting fields not present in examDataToSave
+        }, { merge: true }); 
         toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado en la base de datos." });
       } else {
-        // Create new exam
         await addDoc(collection(db, "exams"), {
           ...examDataToSave,
           createdAt: serverTimestamp(),
         });
         toast({ title: "Examen Guardado", description: "El examen ha sido guardado en la base de datos." });
       }
-       // Refetch exams if admin to show updated list
       if (userRole === 'admin') {
         const examsCollectionRef = collection(db, "exams");
         const q = query(examsCollectionRef, orderBy("createdAt", "desc"));
@@ -235,7 +227,7 @@ export default function HomePage() {
         const fetchedExams = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })) as ExamInfo[];
         setSavedExams(fetchedExams);
       }
-      setEditingExamId(null); // Reset editing ID after save
+      setEditingExamId(null); 
     } catch (error) {
       console.error("Error saving exam data: ", error);
       toast({ title: "Error al Guardar", description: "No se pudo guardar el examen.", variant: "destructive" });
@@ -262,7 +254,6 @@ export default function HomePage() {
       const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
       const user = userCredential.user;
 
-      // Store user role in Firestore
       await setDoc(doc(db, "users", user.uid), {
         email: userData.email,
         role: userData.role,
@@ -293,16 +284,19 @@ export default function HomePage() {
         toast({ title: "Error", description: "ID de examen no encontrado.", variant: "destructive" });
         return;
     }
-    setExamInfo({ // Set the main examInfo state for editing
+    setExamInfo({ 
         ne: examToEdit.ne,
         reference: examToEdit.reference,
         manager: examToEdit.manager,
         location: examToEdit.location,
-        // products are part of the examToEdit, set them to products state
+        createdBy: examToEdit.createdBy,
+        createdAt: examToEdit.createdAt,
+        lastModifiedAt: examToEdit.lastModifiedAt,
+        lastModifiedBy: examToEdit.lastModifiedBy,
     });
-    setProducts(examToEdit.products || []); // Populate products for editing
-    setEditingExamId(examToEdit.id); // Set the ID of the exam being edited
-    setCurrentView('examForm'); // Navigate to the exam form to start editing
+    setProducts(examToEdit.products || []); 
+    setEditingExamId(examToEdit.id); 
+    setCurrentView('productList'); // Navigate to the product list screen for editing
     toast({ title: "Editando Examen", description: `Modificando examen NE: ${examToEdit.ne}` });
   };
 
@@ -325,17 +319,17 @@ export default function HomePage() {
             savedExams={savedExams}
             onAddNewUser={handleOpenAddUserModal}
             onViewExam={handleViewSavedExam}
-            onEditExam={handleEditSavedExam} // Pass the edit handler
+            onEditExam={handleEditSavedExam} 
             isLoading={isLoadingExams}
           />
         )}
-        {currentView === 'examForm' && userRole !== 'admin' && (
+        {currentView === 'examForm' && (userRole !== 'admin' || (userRole === 'admin' && editingExamId)) && (
           <ExamForm 
             onSubmitExamInfo={handleExamInfoSubmit} 
             initialData={examInfo || undefined} 
           />
         )}
-        {currentView === 'productList' && examInfo && userRole !== 'admin' && (
+        {currentView === 'productList' && examInfo && (userRole !== 'admin' || (userRole === 'admin' && editingExamId)) && (
           <ProductListScreen
             examInfo={examInfo}
             products={products}
@@ -345,11 +339,9 @@ export default function HomePage() {
             onDeleteProduct={handleDeleteProduct}
             onFinalize={handleFinalize}
             onBackToExamForm={() => {
-                if (editingExamId && userRole === 'admin') {
-                    setCurrentView('adminDashboard'); // Admin goes back to dashboard
-                } else {
-                    setCurrentView('examForm');
-                }
+              // If editing an exam (either admin or gestor), going back from product list means going back to the exam form for that exam.
+              // Or if creating a new exam.
+              setCurrentView('examForm');
             }}
           />
         )}
@@ -431,7 +423,7 @@ export default function HomePage() {
             </DialogHeader>
             <div className="p-5 md:p-6 pt-0">
               <AddUserModalContent
-                onSubmitUser={handleCreateUser} // Pass the actual Firebase function
+                onSubmitUser={handleCreateUser} 
                 onClose={handleCloseAddUserModal}
               />
             </div>
@@ -459,9 +451,9 @@ export default function HomePage() {
                   <p><strong>Gestor:</strong> {viewingExamDetail.manager || 'N/A'}</p>
                   <p><strong>Ubicación:</strong> {viewingExamDetail.location || 'N/A'}</p>
                   <p><strong>Creado por:</strong> {viewingExamDetail.createdBy || 'N/A'}</p>
-                  <p><strong>Fecha Creación:</strong> {viewingExamDetail.createdAt ? new Date(viewingExamDetail.createdAt.seconds * 1000).toLocaleString() : 'N/A'}</p>
+                  <p><strong>Fecha Creación:</strong> {viewingExamDetail.createdAt && typeof viewingExamDetail.createdAt === 'object' && 'seconds' in viewingExamDetail.createdAt ? new Date(viewingExamDetail.createdAt.seconds * 1000).toLocaleString() : 'N/A'}</p>
                   <p><strong>Modificado por:</strong> {viewingExamDetail.lastModifiedBy || 'N/A'}</p>
-                  <p><strong>Última Modificación:</strong> {viewingExamDetail.lastModifiedAt ? new Date(viewingExamDetail.lastModifiedAt.seconds * 1000).toLocaleString() : 'N/A'}</p>
+                  <p><strong>Última Modificación:</strong> {viewingExamDetail.lastModifiedAt && typeof viewingExamDetail.lastModifiedAt === 'object' && 'seconds' in viewingExamDetail.lastModifiedAt ? new Date(viewingExamDetail.lastModifiedAt.seconds * 1000).toLocaleString() : 'N/A'}</p>
                 </div>
 
                 <h4 className="font-medium text-md pt-2">Productos ({viewingExamDetail.products?.length || 0})</h4>
