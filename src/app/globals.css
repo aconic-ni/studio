@@ -10,7 +10,7 @@ body {
 @layer base {
   :root {
     /* Theme colors from proposal:
-       Primary: Slate blue (#7395AE) -> hsl(208, 21%, 59%)
+       Primary: New #4361EE -> hsl(229, 84%, 60%)
        Background: Light gray (#D4DADF) -> hsl(210, 13%, 85%)
        Accent: Soft, muted blue (#96B3C2) -> hsl(203, 26%, 67%)
        Original CSS body bg: #f0f4f8 -> hsl(216, 25%, 96%)
@@ -34,7 +34,7 @@ body {
     --border: 210 10% 75%; /* Border color */
     --input: 210 10% 80%; /* Input border */
 
-    --primary: 208 21% 59%;        /* Slate Blue #7395AE */
+    --primary: 229 84% 60%;        /* New Primary #4361EE */
     --primary-foreground: 0 0% 100%; /* White for contrast on primary */
 
     --secondary: 203 20% 75%; /* Lighter shade of accent for secondary elements */
@@ -46,7 +46,7 @@ body {
     --destructive: 0 72% 51%; /* Default destructive */
     --destructive-foreground: 0 0% 98%;
 
-    --ring: 208 21% 59%; /* Ring color based on primary */
+    --ring: 229 84% 60%; /* Ring color based on new primary */
     
     --radius: 0.5rem;
 
@@ -84,7 +84,7 @@ body {
     --border: 210 10% 30%;
     --input: 210 10% 35%;
 
-    --primary: 208 21% 59%;
+    --primary: 229 84% 60%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 203 20% 40%;
@@ -96,7 +96,7 @@ body {
     --destructive: 0 63% 40%;
     --destructive-foreground: 0 0% 98%;
 
-    --ring: 208 21% 59%;
+    --ring: 229 84% 60%;
 
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
