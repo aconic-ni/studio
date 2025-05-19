@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
@@ -9,9 +10,8 @@ import { AccessCodeSchema, type AccessCodeFormData } from '@/lib/schemas';
 import { AppLogo } from '@/components/common/AppLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { XIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthWorkflowProps {
@@ -66,13 +66,8 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
 
       <Dialog open={isLoginModalOpen} onOpenChange={setIsLoginModalOpen}>
         <DialogContent className="glass-effect sm:max-w-md text-white p-6 rounded-lg">
-          <DialogHeader className="flex flex-row justify-between items-center mb-4">
+          <DialogHeader className="text-left mb-4"> {/* Ensures title is left-aligned, default X from DialogContent is used */}
             <DialogTitle className="text-2xl font-bold text-white">{APP_NAME}</DialogTitle>
-            <DialogClose asChild>
-              <Button variant="ghost" size="icon" className="text-white hover:text-gray-300">
-                <XIcon className="h-6 w-6" />
-              </Button>
-            </DialogClose>
           </DialogHeader>
           
           <Form {...form}>

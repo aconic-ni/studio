@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -10,11 +11,10 @@ import { AddProductModalContent } from '@/components/product/AddProductModalCont
 import { ProductDetailModalContent } from '@/components/product/ProductDetailModalContent';
 import { PreviewModalContent } from '@/components/preview/PreviewModalContent';
 import { SuccessModalContent } from '@/components/common/SuccessModalContent';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
-import { XIcon, AlertTriangle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertTriangle } from 'lucide-react';
 import { generateTxtReport, downloadFile, generateExcelReport } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
 
 type AppView = 'login' | 'examForm' | 'productList';
 
@@ -173,15 +173,10 @@ export default function HomePage() {
           setIsAddEditModalOpen(isOpen);
         }}>
         <DialogContent className="sm:max-w-3xl p-0">
-          <DialogHeader className="p-5 md:p-6 pb-0">
-            <div className="flex justify-between items-center">
-              <DialogTitle className="text-lg md:text-xl font-semibold text-foreground">
-                {editingProduct ? 'Editar Producto' : 'Añadir Producto'}
-              </DialogTitle>
-              <DialogClose asChild>
-                <Button variant="ghost" size="icon"><XIcon className="h-5 w-5" /></Button>
-              </DialogClose>
-            </div>
+          <DialogHeader className="p-5 md:p-6 pb-0 text-left">
+            <DialogTitle className="text-lg md:text-xl font-semibold text-foreground">
+              {editingProduct ? 'Editar Producto' : 'Añadir Producto'}
+            </DialogTitle>
           </DialogHeader>
           <div className="p-5 md:p-6 pt-0">
             <AddProductModalContent
@@ -197,13 +192,8 @@ export default function HomePage() {
       {viewingProduct && (
         <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
           <DialogContent className="sm:max-w-2xl p-0">
-             <DialogHeader className="p-5 md:p-6 pb-0">
-              <div className="flex justify-between items-center">
+             <DialogHeader className="p-5 md:p-6 pb-0 text-left">
                 <DialogTitle className="text-lg md:text-xl font-semibold text-foreground">Detalles del Producto</DialogTitle>
-                <DialogClose asChild>
-                    <Button variant="ghost" size="icon"><XIcon className="h-5 w-5" /></Button>
-                </DialogClose>
-              </div>
             </DialogHeader>
             <div className="p-5 md:p-6 pt-0">
               <ProductDetailModalContent product={viewingProduct} onClose={() => setIsDetailModalOpen(false)} />
@@ -216,13 +206,8 @@ export default function HomePage() {
       {examInfo && (
         <Dialog open={isPreviewModalOpen} onOpenChange={setIsPreviewModalOpen}>
           <DialogContent className="sm:max-w-4xl p-0">
-            <DialogHeader className="p-5 md:p-6 pb-0">
-              <div className="flex justify-between items-center">
+            <DialogHeader className="p-5 md:p-6 pb-0 text-left">
                 <DialogTitle className="text-lg md:text-xl font-semibold text-foreground">Vista Previa</DialogTitle>
-                 <DialogClose asChild>
-                    <Button variant="ghost" size="icon"><XIcon className="h-5 w-5" /></Button>
-                </DialogClose>
-              </div>
             </DialogHeader>
             <div className="p-5 md:p-6 pt-0">
               <PreviewModalContent
@@ -242,7 +227,7 @@ export default function HomePage() {
       {examInfo && (
          <Dialog open={isSuccessModalOpen} onOpenChange={setIsSuccessModalOpen}>
           <DialogContent className="sm:max-w-md p-0">
-            {/* No explicit header here, content provides its own structure */}
+            {/* No explicit header here, content provides its own structure. Default X button will appear. */}
             <SuccessModalContent
               managerName={examInfo.manager}
               onStartNew={handleStartNewExam}
