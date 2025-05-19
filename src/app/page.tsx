@@ -51,14 +51,14 @@ export default function HomePage() {
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (isLoggedIn && (examInfo || products.length > 0) && userRole !== 'admin') { 
+      if (isLoggedIn && (examInfo || products.length > 0) && userRole !== 'admin' && !editingExamId) { 
         event.preventDefault();
         event.returnValue = ''; 
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isLoggedIn, examInfo, products, userRole]);
+  }, [isLoggedIn, examInfo, products, userRole, editingExamId]);
 
   // Fetch exams for Admin
   useEffect(() => {
@@ -105,21 +105,25 @@ export default function HomePage() {
   };
 
   const handleLogout = () => {
-    // Add Firebase sign out if auth state is managed by Firebase
     // import { signOut } from 'firebase/auth';
     // signOut(auth).then(() => { ... }).catch((error) => { ... });
     setIsLoggedIn(false);
     setUserRole(null);
     setExamInfo(null);
     setProducts([]);
-    setSavedExams([]); // Clear admin exams
+    setSavedExams([]); 
     setEditingExamId(null);
     setCurrentView('login');
     toast({ title: "Sesión Cerrada", description: "Has salido de la aplicación." });
   };
 
   const handleExamInfoSubmit = (data: ExamInfo) => {
-    setExamInfo(data);
+    // Preserve existing audit fields if editing
+    const currentAuditFields = editingExamId && examInfo ? {
+        createdBy: examInfo.createdBy,
+        createdAt: examInfo.createdAt,
+    } : {};
+    setExamInfo({...currentAuditFields, ...data});
     setCurrentView('productList');
   };
 
@@ -176,18 +180,18 @@ export default function HomePage() {
   const handleStartNewExam = () => {
     setExamInfo(null);
     setProducts([]);
-    setEditingExamId(null); // Reset editing ID
+    setEditingExamId(null);
     setCurrentView('examForm');
     setIsSuccessModalOpen(false);
   };
 
   const handleReviewPreviousExam = () => {
     setIsSuccessModalOpen(false);
-    if (editingExamId && examInfo) {
+    if (editingExamId && examInfo) { // If was editing, go back to product list of that exam
       setCurrentView('productList');
-    } else if (userRole === 'admin') {
+    } else if (userRole === 'admin') { // If admin and not editing, go to dashboard
       setCurrentView('adminDashboard');
-    } else {
+    } else { // Default for gestor if somehow not editing
        setCurrentView('productList'); 
     }
   };
@@ -198,10 +202,9 @@ export default function HomePage() {
       return;
     }
 
-    const examDataToSave: Omit<ExamInfo, 'id'> = {
+    const examDataToSave = {
       ...examInfo,
-      products: products, 
-      createdBy: examInfo.manager, // Placeholder
+      products: products,
     };
 
     try {
@@ -210,24 +213,47 @@ export default function HomePage() {
         await setDoc(examDocRef, {
           ...examDataToSave,
           lastModifiedAt: serverTimestamp(),
-          lastModifiedBy: examInfo.manager, // Placeholder
+          lastModifiedBy: examInfo.manager, // Placeholder for actual authenticated user
         }, { merge: true }); 
         toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado en la base de datos." });
       } else {
         await addDoc(collection(db, "exams"), {
           ...examDataToSave,
           createdAt: serverTimestamp(),
+          createdBy: examInfo.manager, // Placeholder for actual authenticated user
+          lastModifiedAt: serverTimestamp(), // Also set on creation
+          lastModifiedBy: examInfo.manager, // Also set on creation
         });
         toast({ title: "Examen Guardado", description: "El examen ha sido guardado en la base de datos." });
       }
+
+      // Refresh admin exam list if admin is saving
       if (userRole === 'admin') {
-        const examsCollectionRef = collection(db, "exams");
-        const q = query(examsCollectionRef, orderBy("createdAt", "desc"));
-        const querySnapshot = await getDocs(q);
-        const fetchedExams = querySnapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() })) as ExamInfo[];
-        setSavedExams(fetchedExams);
+        // A short delay to allow Firestore to process the update/add before refetching
+        setTimeout(async () => {
+          setIsLoadingExams(true);
+          try {
+            const examsCollectionRef = collection(db, "exams");
+            const q = query(examsCollectionRef, orderBy("createdAt", "desc"));
+            const querySnapshot = await getDocs(q);
+            const fetchedExams: ExamInfo[] = querySnapshot.docs.map(docSnap => ({
+              id: docSnap.id,
+              ...docSnap.data(),
+              products: docSnap.data().products || [],
+              createdAt: docSnap.data().createdAt instanceof Timestamp ? docSnap.data().createdAt.toDate() : docSnap.data().createdAt,
+              lastModifiedAt: docSnap.data().lastModifiedAt instanceof Timestamp ? docSnap.data().lastModifiedAt.toDate() : docSnap.data().lastModifiedAt,
+            })) as ExamInfo[];
+            setSavedExams(fetchedExams);
+          } catch (error) {
+            console.error("Error refreshing exams: ", error);
+          } finally {
+            setIsLoadingExams(false);
+          }
+        }, 500); // 500ms delay
       }
-      setEditingExamId(null); 
+      
+      // Do not reset editingExamId here if success modal allows further review/actions on the same exam.
+      // It will be reset if user starts a new exam or explicitly navigates away from edit.
     } catch (error) {
       console.error("Error saving exam data: ", error);
       toast({ title: "Error al Guardar", description: "No se pudo guardar el examen.", variant: "destructive" });
@@ -284,20 +310,32 @@ export default function HomePage() {
         toast({ title: "Error", description: "ID de examen no encontrado.", variant: "destructive" });
         return;
     }
+    // Ensure all fields, including audit fields, are part of the examInfo state for editing
     setExamInfo({ 
-        ne: examToEdit.ne,
+        ...examToEdit, // Spread all properties from examToEdit
+        ne: examToEdit.ne, // explicit for clarity, but covered by spread
         reference: examToEdit.reference,
         manager: examToEdit.manager,
         location: examToEdit.location,
-        createdBy: examToEdit.createdBy,
-        createdAt: examToEdit.createdAt,
-        lastModifiedAt: examToEdit.lastModifiedAt,
-        lastModifiedBy: examToEdit.lastModifiedBy,
     });
     setProducts(examToEdit.products || []); 
     setEditingExamId(examToEdit.id); 
-    setCurrentView('productList'); // Navigate to the product list screen for editing
+    setCurrentView('productList'); 
     toast({ title: "Editando Examen", description: `Modificando examen NE: ${examToEdit.ne}` });
+  };
+
+  const handleBackNavigation = () => {
+    if (userRole === 'admin' && editingExamId) {
+      // Admin was editing an exam, go back to the dashboard
+      setCurrentView('adminDashboard');
+      setExamInfo(null); // Clear the current exam context
+      setProducts([]);
+      setEditingExamId(null); // Reset the editing state
+    } else {
+      // Gestor (or admin creating a new exam - though this flow isn't explicitly for admin)
+      // goes back to the exam form.
+      setCurrentView('examForm');
+    }
   };
 
 
@@ -338,11 +376,7 @@ export default function HomePage() {
             onViewProduct={handleViewProduct}
             onDeleteProduct={handleDeleteProduct}
             onFinalize={handleFinalize}
-            onBackToExamForm={() => {
-              // If editing an exam (either admin or gestor), going back from product list means going back to the exam form for that exam.
-              // Or if creating a new exam.
-              setCurrentView('examForm');
-            }}
+            onBackToExamForm={handleBackNavigation}
           />
         )}
       </main>
@@ -451,9 +485,9 @@ export default function HomePage() {
                   <p><strong>Gestor:</strong> {viewingExamDetail.manager || 'N/A'}</p>
                   <p><strong>Ubicación:</strong> {viewingExamDetail.location || 'N/A'}</p>
                   <p><strong>Creado por:</strong> {viewingExamDetail.createdBy || 'N/A'}</p>
-                  <p><strong>Fecha Creación:</strong> {viewingExamDetail.createdAt && typeof viewingExamDetail.createdAt === 'object' && 'seconds' in viewingExamDetail.createdAt ? new Date(viewingExamDetail.createdAt.seconds * 1000).toLocaleString() : 'N/A'}</p>
+                  <p><strong>Fecha Creación:</strong> {viewingExamDetail.createdAt ? (typeof viewingExamDetail.createdAt === 'object' && 'seconds' in viewingExamDetail.createdAt ? new Date(viewingExamDetail.createdAt.seconds * 1000).toLocaleString() : (viewingExamDetail.createdAt instanceof Date ? viewingExamDetail.createdAt.toLocaleString() : String(viewingExamDetail.createdAt))) : 'N/A'}</p>
                   <p><strong>Modificado por:</strong> {viewingExamDetail.lastModifiedBy || 'N/A'}</p>
-                  <p><strong>Última Modificación:</strong> {viewingExamDetail.lastModifiedAt && typeof viewingExamDetail.lastModifiedAt === 'object' && 'seconds' in viewingExamDetail.lastModifiedAt ? new Date(viewingExamDetail.lastModifiedAt.seconds * 1000).toLocaleString() : 'N/A'}</p>
+                  <p><strong>Última Modificación:</strong> {viewingExamDetail.lastModifiedAt ? (typeof viewingExamDetail.lastModifiedAt === 'object' && 'seconds' in viewingExamDetail.lastModifiedAt ? new Date(viewingExamDetail.lastModifiedAt.seconds * 1000).toLocaleString() : (viewingExamDetail.lastModifiedAt instanceof Date ? viewingExamDetail.lastModifiedAt.toLocaleString() : String(viewingExamDetail.lastModifiedAt))) : 'N/A'}</p>
                 </div>
 
                 <h4 className="font-medium text-md pt-2">Productos ({viewingExamDetail.products?.length || 0})</h4>
@@ -499,3 +533,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    

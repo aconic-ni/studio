@@ -5,17 +5,26 @@ import type { ExamInfo } from '@/lib/schemas';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserPlus, Eye, Edit3, Loader2 } from 'lucide-react'; // Added Loader2
+import { UserPlus, Eye, Edit3, Loader2 } from 'lucide-react'; 
 
 interface AdminDashboardProps {
   savedExams: ExamInfo[];
   onAddNewUser: () => void;
   onViewExam: (exam: ExamInfo) => void;
   onEditExam: (exam: ExamInfo) => void; 
-  isLoading?: boolean; // Added isLoading prop
+  isLoading?: boolean;
 }
 
 export function AdminDashboard({ savedExams, onAddNewUser, onViewExam, onEditExam, isLoading }: AdminDashboardProps) {
+  const formatDate = (date: any) => {
+    if (!date) return 'N/A';
+    if (date instanceof Date) return date.toLocaleString();
+    if (typeof date === 'object' && 'seconds' in date) { // Firestore Timestamp
+      return new Date(date.seconds * 1000).toLocaleString();
+    }
+    return String(date); // Fallback
+  };
+
   return (
     <div className="space-y-6">
       <Card className="bg-card custom-shadow">
@@ -57,20 +66,24 @@ export function AdminDashboard({ savedExams, onAddNewUser, onViewExam, onEditExa
                     <TableHead>Referencia</TableHead>
                     <TableHead>Gestor</TableHead>
                     <TableHead>Ubicación</TableHead>
+                    <TableHead>Creado por</TableHead>
                     <TableHead>Fecha Creación</TableHead>
+                    <TableHead>Modificado por</TableHead>
+                    <TableHead>Últ. Modificación</TableHead>
                     <TableHead>Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {savedExams.map((exam) => (
-                    <TableRow key={exam.id || exam.ne}> {/* Use exam.id from Firestore */}
+                    <TableRow key={exam.id || exam.ne}>
                       <TableCell className="font-medium">{exam.ne}</TableCell>
                       <TableCell>{exam.reference || 'N/A'}</TableCell>
                       <TableCell>{exam.manager}</TableCell>
                       <TableCell>{exam.location}</TableCell>
-                       <TableCell>
-                        {exam.createdAt ? new Date((exam.createdAt as any).seconds * 1000).toLocaleDateString() : 'N/A'}
-                      </TableCell>
+                      <TableCell>{exam.createdBy || 'N/A'}</TableCell>
+                      <TableCell>{formatDate(exam.createdAt)}</TableCell>
+                      <TableCell>{exam.lastModifiedBy || 'N/A'}</TableCell>
+                      <TableCell>{formatDate(exam.lastModifiedAt)}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" onClick={() => onViewExam(exam)} title="Ver Examen">
@@ -79,7 +92,6 @@ export function AdminDashboard({ savedExams, onAddNewUser, onViewExam, onEditExa
                           <Button variant="ghost" size="icon" onClick={() => onEditExam(exam)} title="Editar Examen">
                             <Edit3 className="h-4 w-4" />
                           </Button>
-                          {/* Future: Delete button */}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -104,3 +116,5 @@ export function AdminDashboard({ savedExams, onAddNewUser, onViewExam, onEditExa
     </div>
   );
 }
+
+    
