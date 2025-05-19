@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 
 export const ExamInfoSchema = z.object({
@@ -47,3 +48,5 @@ export const LoginSchema = z.object({
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres."),
 });
 export type LoginFormData = z.infer<typeof LoginSchema>;
+
+export type UserRole = 'admin' | 'ejecutivo' | 'gestor' | null;

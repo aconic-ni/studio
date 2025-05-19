@@ -6,7 +6,7 @@ import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { APP_NAME, APP_SUBTITLE, APP_AUTHOR } from '@/lib/constants';
 // import { generateAccessCode, convertCodeToWords } from '@/lib/utils'; // Commented out
-import { LoginSchema, type LoginFormData } from '@/lib/schemas'; // Updated schema import
+import { LoginSchema, type LoginFormData, type UserRole } from '@/lib/schemas'; // Updated schema import
 import { AppLogo } from '@/components/common/AppLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthWorkflowProps {
-  onLoginSuccess: () => void;
+  onLoginSuccess: (role: UserRole) => void;
 }
 
 export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
@@ -42,8 +42,20 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
     // Placeholder for actual Firebase authentication
     console.log("Login attempt with:", data.email, data.password);
     toast({ title: "Inicio de Sesión", description: "Verificando credenciales..." });
+    
+    let role: UserRole = 'gestor'; // Default role
+
+    if (data.email.toLowerCase() === 'admin@customsex.com') {
+      role = 'admin';
+    } else if (data.email.toLowerCase() === 'ejecutivo@customsex.com') {
+      role = 'ejecutivo';
+    } else if (data.email.toLowerCase() === 'gestor@customsex.com') {
+      role = 'gestor';
+    }
+    // Any other email defaults to 'gestor' as set above
+
     // For now, grant access immediately. Replace with Firebase auth later.
-    onLoginSuccess(); 
+    onLoginSuccess(role); 
     
     // Old logic:
     // if (data.accessCode === serverAccessCode) {
@@ -86,7 +98,7 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="block text-sm font-medium text-white mb-1 leading-tight">
-                      Correo Electrónico
+                      Correo Electrónico (Usuario)
                     </FormLabel>
                     <FormControl>
                       <Input 
@@ -131,7 +143,7 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
           
           {/* {serverAccessCode && ( // Commented out access code display
             <div className="mt-4 text-center">
-              <p className="text-xs text-gray-300 mt-1"> {accessCodeWords}</p>
+              <p className="text-xs text-gray-300 mt-1"> </p>
             </div>
           )} */}
         </DialogContent>

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import type { ExamInfo, Product } from '@/lib/schemas';
+import type { ExamInfo, Product, UserRole } from '@/lib/schemas';
 import { AuthWorkflow } from '@/components/auth/AuthWorkflow';
 import { AppHeader } from '@/components/common/Header';
 import { ExamForm } from '@/components/exam/ExamForm';
@@ -20,6 +20,7 @@ type AppView = 'login' | 'examForm' | 'productList';
 
 export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole>(null);
   const [currentView, setCurrentView] = useState<AppView>('examForm'); // Start with exam form after login
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -50,8 +51,10 @@ export default function HomePage() {
   }, [isLoggedIn, examInfo, products]);
 
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = (role: UserRole) => {
     setIsLoggedIn(true);
+    setUserRole(role);
+    toast({ title: "Acceso Concedido", description: `Bienvenido. Rol: ${role?.toUpperCase()}` });
     setCurrentView('examForm'); // Go to exam form after login
   };
 
@@ -151,6 +154,11 @@ export default function HomePage() {
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl min-h-screen flex flex-col">
       <AppHeader />
+      {userRole && (
+        <div className="text-white text-center mb-2 bg-primary/20 p-2 rounded-md">
+          Rol Actual: <span className="font-semibold">{userRole.toUpperCase()}</span>
+        </div>
+      )}
       <main className="flex-grow">
         {currentView === 'examForm' && (
           <ExamForm 
@@ -247,4 +255,3 @@ export default function HomePage() {
     </div>
   );
 }
-
