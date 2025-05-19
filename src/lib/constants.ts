@@ -1,17 +1,17 @@
-export const NUMBER_TO_WORD: { [key: string]: string } = {
-  '0': 'NADZERU',
-  '1': 'UNANE',
-  '2': 'BISSTO',
-  '3': 'TRISTREE',
-  '4': 'PANTOTRE',
-  '5': 'PANTAFIVE',
-  '6': 'SOXISIX',
-  '7': 'SETTESEVEN',
-  '8': 'OKTOET',
-  '9': 'NOVANINE',
-};
+// export const NUMBER_TO_WORD: { [key: string]: string } = {
+//   '0': 'NADZERU',
+//   '1': 'UNANE',
+//   '2': 'BISSTO',
+//   '3': 'TRISTREE',
+//   '4': 'PANTOTRE',
+//   '5': 'PANTAFIVE',
+//   '6': 'SOXISIX',
+//   '7': 'SETTESEVEN',
+//   '8': 'OKTOET',
+//   '9': 'NOVANINE',
+// };
 
-export const ACCESS_CODE_LENGTH = 6;
+// export const ACCESS_CODE_LENGTH = 6;
 
 export const APP_NAME = "CustomsEX-p";
 export const APP_SUBTITLE = "Sistema de EXAMENES PREVIOS";

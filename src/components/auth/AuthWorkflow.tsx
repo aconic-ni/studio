@@ -1,12 +1,12 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { APP_NAME, APP_SUBTITLE, APP_AUTHOR } from '@/lib/constants';
-import { generateAccessCode, convertCodeToWords } from '@/lib/utils';
-import { AccessCodeSchema, type AccessCodeFormData } from '@/lib/schemas';
+// import { generateAccessCode, convertCodeToWords } from '@/lib/utils'; // Commented out
+import { LoginSchema, type LoginFormData } from '@/lib/schemas'; // Updated schema import
 import { AppLogo } from '@/components/common/AppLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,37 +20,45 @@ interface AuthWorkflowProps {
 
 export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [serverAccessCode, setServerAccessCode] = useState('');
+  // const [serverAccessCode, setServerAccessCode] = useState(''); // Commented out
   
   const { toast } = useToast();
 
-  useEffect(() => {
-    setServerAccessCode(generateAccessCode());
-  }, []);
+  // useEffect(() => { // Commented out
+  //   setServerAccessCode(generateAccessCode());
+  // }, []);
 
-  const accessCodeWords = useMemo(() => convertCodeToWords(serverAccessCode), [serverAccessCode]);
+  // const accessCodeWords = useMemo(() => convertCodeToWords(serverAccessCode), [serverAccessCode]); // Commented out
 
-  const form = useForm<AccessCodeFormData>({
-    resolver: zodResolver(AccessCodeSchema),
+  const form = useForm<LoginFormData>({ // Updated to LoginFormData
+    resolver: zodResolver(LoginSchema), // Updated to LoginSchema
     defaultValues: {
-      accessCode: '',
+      email: '', // Added email
+      password: '', // Added password
     },
   });
 
-  const onSubmit: SubmitHandler<AccessCodeFormData> = (data) => {
-    if (data.accessCode === serverAccessCode) {
-      toast({ title: "Acceso Concedido", description: "Bienvenido a CustomsEX-p." });
-      onLoginSuccess();
-    } else {
-      toast({
-        title: "Error de Acceso",
-        description: "Incorrecto. Inténtelo de nuevo o solicite uno nuevo.",
-        variant: "destructive",
-      });
-      form.reset();
-      // Optionally regenerate code on failed attempt:
-      // setServerAccessCode(generateAccessCode());
-    }
+  const onSubmit: SubmitHandler<LoginFormData> = (data) => { // Updated to LoginFormData
+    // Placeholder for actual Firebase authentication
+    console.log("Login attempt with:", data.email, data.password);
+    toast({ title: "Inicio de Sesión", description: "Verificando credenciales..." });
+    // For now, grant access immediately. Replace with Firebase auth later.
+    onLoginSuccess(); 
+    
+    // Old logic:
+    // if (data.accessCode === serverAccessCode) {
+    //   toast({ title: "Acceso Concedido", description: "Bienvenido a CustomsEX-p." });
+    //   onLoginSuccess();
+    // } else {
+    //   toast({
+    //     title: "Error de Acceso",
+    //     description: "Incorrecto. Inténtelo de nuevo o solicite uno nuevo.",
+    //     variant: "destructive",
+    //   });
+    //   form.reset();
+    //   // Optionally regenerate code on failed attempt:
+    //   // setServerAccessCode(generateAccessCode());
+    // }
   };
 
   return (
@@ -74,31 +82,39 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name="accessCode"
+                name="email"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="block text-sm font-medium text-white mb-1 leading-tight">
-                      Solicitar acceso numérico a Coordinación ACONIC (
-                      <a 
-                        href="https://wa.me/+50583956505" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-400 underline leading-tight"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        clic aquí
-                      </a>
-                      ) e ingréselo:
+                      Correo Electrónico
                     </FormLabel>
                     <FormControl>
                       <Input 
-                        type="text"
-                        maxLength={6}
+                        type="email"
                         required 
-                        className="w-full px-4 py-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary code-input bg-white/20 text-white placeholder-gray-300"
-                        autoComplete="off" 
-                        inputMode="numeric" 
-                        pattern="[0-9]*"
+                        className="w-full px-4 py-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-white/20 text-white placeholder-gray-300"
+                        autoComplete="email"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage className="text-red-300" />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="block text-sm font-medium text-white mb-1 leading-tight">
+                      Contraseña
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="password"
+                        required 
+                        className="w-full px-4 py-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-white/20 text-white placeholder-gray-300"
+                        autoComplete="current-password"
                         {...field} 
                       />
                     </FormControl>
@@ -113,11 +129,11 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
             </form>
           </Form>
           
-          {serverAccessCode && (
+          {/* {serverAccessCode && ( // Commented out access code display
             <div className="mt-4 text-center">
               <p className="text-xs text-gray-300 mt-1"> {accessCodeWords}</p>
             </div>
-          )}
+          )} */}
         </DialogContent>
       </Dialog>
     </div>

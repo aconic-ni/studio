@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { ACCESS_CODE_LENGTH, NUMBER_TO_WORD } from "@/lib/constants";
+// import { ACCESS_CODE_LENGTH, NUMBER_TO_WORD } from "@/lib/constants"; // Commented out as part of disabling access code system
 import type { ExamInfo, Product } from "@/lib/schemas";
 import * as XLSX from 'xlsx';
 
@@ -8,13 +8,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function generateAccessCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
+// export function generateAccessCode(): string {
+//   return Math.floor(100000 + Math.random() * 900000).toString();
+// }
 
-export function convertCodeToWords(code: string): string {
-  return code.split('').map(digit => NUMBER_TO_WORD[digit] || '').join(' ');
-}
+// export function convertCodeToWords(code: string): string {
+//   return code.split('').map(digit => NUMBER_TO_WORD[digit] || '').join(' ');
+// }
 
 export function generateTxtReport(examInfo: ExamInfo, products: Product[]): string {
   let content = `EXAMEN PREVIO AGENCIA ACONIC - CustomsEX-p\n`;

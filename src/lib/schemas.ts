@@ -37,7 +37,13 @@ export const ProductSchema = z.object({
 });
 export type Product = z.infer<typeof ProductSchema>;
 
-export const AccessCodeSchema = z.object({
-  accessCode: z.string().length(6, "El código debe tener 6 dígitos.").regex(/^\d{6}$/, "El código debe ser numérico."),
+// export const AccessCodeSchema = z.object({
+//   accessCode: z.string().length(6, "El código debe tener 6 dígitos.").regex(/^\d{6}$/, "El código debe ser numérico."),
+// });
+// export type AccessCodeFormData = z.infer<typeof AccessCodeSchema>;
+
+export const LoginSchema = z.object({
+  email: z.string().email("Correo electrónico inválido."),
+  password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres."),
 });
-export type AccessCodeFormData = z.infer<typeof AccessCodeSchema>;
+export type LoginFormData = z.infer<typeof LoginSchema>;
