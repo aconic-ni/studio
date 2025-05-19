@@ -123,6 +123,13 @@ export default function HomePage() {
     setIsSuccessModalOpen(false);
     setCurrentView('productList'); // Stay on product list with current data
   };
+
+  const handleSaveExamData = () => {
+    // Placeholder for future save logic (e.g., to SQL Server)
+    console.log("Attempting to save exam data...", { examInfo, products });
+    toast({ title: "Guardar Datos", description: "La funcionalidad de guardar en base de datos está pendiente." });
+    // This is where you'd trigger an API call to save data.
+  };
   
   const handleDownloadTxt = () => {
     if (!examInfo) return;
@@ -232,6 +239,7 @@ export default function HomePage() {
               managerName={examInfo.manager}
               onStartNew={handleStartNewExam}
               onReviewPrevious={handleReviewPreviousExam}
+              onSave={handleSaveExamData} // Pass the new handler
             />
           </DialogContent>
         </Dialog>
@@ -239,3 +247,4 @@ export default function HomePage() {
     </div>
   );
 }
+
