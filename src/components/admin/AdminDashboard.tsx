@@ -5,17 +5,17 @@ import type { ExamInfo } from '@/lib/schemas';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UserPlus, Eye } from 'lucide-react';
+import { UserPlus, Eye, Edit3, Loader2 } from 'lucide-react'; // Added Loader2
 
 interface AdminDashboardProps {
-  savedExams: ExamInfo[]; // This would eventually come from Firestore
+  savedExams: ExamInfo[];
   onAddNewUser: () => void;
   onViewExam: (exam: ExamInfo) => void;
-  // onEditExam: (examId: string) => void; // Future functionality
-  // onDeleteExam: (examId: string) => void; // Future functionality
+  onEditExam: (exam: ExamInfo) => void; 
+  isLoading?: boolean; // Added isLoading prop
 }
 
-export function AdminDashboard({ savedExams, onAddNewUser, onViewExam }: AdminDashboardProps) {
+export function AdminDashboard({ savedExams, onAddNewUser, onViewExam, onEditExam, isLoading }: AdminDashboardProps) {
   return (
     <div className="space-y-6">
       <Card className="bg-card custom-shadow">
@@ -35,13 +35,20 @@ export function AdminDashboard({ savedExams, onAddNewUser, onViewExam }: AdminDa
         <CardHeader>
           <CardTitle>Exámenes Previos Guardados</CardTitle>
           <CardDescription>
-            {savedExams.length > 0 
-              ? "Lista de todos los exámenes previos registrados en el sistema." 
-              : "No hay exámenes previos guardados. Los exámenes guardados por los gestores aparecerán aquí."}
+            {isLoading ? "Cargando exámenes..." : 
+              (savedExams.length > 0 
+                ? "Lista de todos los exámenes previos registrados en el sistema." 
+                : "No hay exámenes previos guardados. Los exámenes guardados por los gestores aparecerán aquí.")
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {savedExams.length > 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center items-center py-10">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="ml-2 text-muted-foreground">Cargando datos...</p>
+            </div>
+          ) : savedExams.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -50,27 +57,30 @@ export function AdminDashboard({ savedExams, onAddNewUser, onViewExam }: AdminDa
                     <TableHead>Referencia</TableHead>
                     <TableHead>Gestor</TableHead>
                     <TableHead>Ubicación</TableHead>
+                    <TableHead>Fecha Creación</TableHead>
                     <TableHead>Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {savedExams.map((exam) => (
-                    <TableRow key={exam.ne + (exam.reference || '')}> {/* Ensure unique key */}
+                    <TableRow key={exam.id || exam.ne}> {/* Use exam.id from Firestore */}
                       <TableCell className="font-medium">{exam.ne}</TableCell>
                       <TableCell>{exam.reference || 'N/A'}</TableCell>
                       <TableCell>{exam.manager}</TableCell>
                       <TableCell>{exam.location}</TableCell>
+                       <TableCell>
+                        {exam.createdAt ? new Date((exam.createdAt as any).seconds * 1000).toLocaleDateString() : 'N/A'}
+                      </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => onViewExam(exam)} title="Ver Examen">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {/* Future: Edit/Delete buttons for Admin */}
-                        {/* <Button variant="ghost" size="icon" onClick={() => onEditExam(exam.id)} title="Editar Examen">
-                          <Edit3 className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => onDeleteExam(exam.id)} title="Eliminar Examen" className="text-destructive hover:text-destructive/80">
-                          <Trash2 className="h-4 w-4" />
-                        </Button> */}
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => onViewExam(exam)} title="Ver Examen">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => onEditExam(exam)} title="Editar Examen">
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                          {/* Future: Delete button */}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -83,7 +93,7 @@ export function AdminDashboard({ savedExams, onAddNewUser, onViewExam }: AdminDa
             </p>
           )}
         </CardContent>
-         {savedExams.length > 0 && (
+         {!isLoading && savedExams.length > 0 && (
           <CardFooter>
             <p className="text-xs text-muted-foreground">
               Total de exámenes: {savedExams.length}

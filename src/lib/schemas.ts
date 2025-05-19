@@ -2,10 +2,16 @@
 import { z } from 'zod';
 
 export const ExamInfoSchema = z.object({
+  id: z.string().optional(), // Firestore document ID
   ne: z.string().min(1, 'NE es requerido.'),
   reference: z.string().optional(),
   manager: z.string().min(1, 'Nombre del gestor es requerido.'),
   location: z.string().min(1, 'Ubicación es requerida.'),
+  products: z.array(z.lazy(() => ProductSchema)).optional(), // To store products with the exam
+  createdAt: z.any().optional(), // Firestore timestamp
+  createdBy: z.string().optional(), // User ID or name
+  lastModifiedAt: z.any().optional(), // Firestore timestamp
+  lastModifiedBy: z.string().optional(), // User ID or name
 });
 export type ExamInfo = z.infer<typeof ExamInfoSchema>;
 
