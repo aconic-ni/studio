@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 
 import { auth, db } from '@/lib/firebase'; 
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, setDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, setDoc, Timestamp, getDoc } from 'firebase/firestore'; // Added getDoc here
 
 type AppView = 'login' | 'examForm' | 'productList' | 'adminDashboard';
 
@@ -245,7 +245,7 @@ export default function HomePage() {
       return;
     }
 
-    const currentUser = auth.currentUser; // Get the currently logged-in user
+    const currentUser = auth.currentUser; 
 
     try {
       if (editingExamId) {
@@ -254,23 +254,24 @@ export default function HomePage() {
           ...examInfo, // contains potentially updated examInfo fields and preserved createdBy/At
           products: products,
           lastModifiedAt: serverTimestamp(),
-          lastModifiedBy: userRole === 'admin' ? (currentUser?.email || "Admin User") : examInfo.manager,
+          lastModifiedBy: userRole === 'admin' ? (currentUser?.email || "TEST ADMIN USER") : examInfo.manager,
         };
-        // Ensure createdBy and createdAt are not part of the direct updateData object
-        // if they were part of examInfo, as they should not be changed.
-        // Firestore set with merge:true handles this, but explicit removal is safer.
-        delete updateData.createdBy; 
-        delete updateData.createdAt;
-
+        
+        // Ensure these are not accidentally overwritten if they exist in examInfo
+        // Though setDoc with merge handles this, being explicit can be safer.
+        delete updateData.id; 
+        if (examInfo.createdBy) updateData.createdBy = examInfo.createdBy;
+        if (examInfo.createdAt) updateData.createdAt = examInfo.createdAt;
+        
         await setDoc(examDocRef, updateData, { merge: true }); 
         toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado en la base de datos." });
       } else {
         const newExamData: ExamInfo = {
           ...examInfo,
           products: products,
-          createdBy: examInfo.manager, // Creator is the gestor named in the form
+          createdBy: examInfo.manager, 
           createdAt: serverTimestamp(),
-          lastModifiedBy: examInfo.manager, // Initially, creator is also last modifier
+          lastModifiedBy: examInfo.manager, 
           lastModifiedAt: serverTimestamp(), 
         };
         await addDoc(collection(db, "exams"), newExamData);
@@ -339,10 +340,13 @@ export default function HomePage() {
         toast({ title: "Error", description: "ID de examen no encontrado.", variant: "destructive" });
         return;
     }
+    // Ensure audit fields are preserved from the loaded exam data
     setExamInfo({ 
       ...examToEdit, 
       createdAt: examToEdit.createdAt instanceof Timestamp ? examToEdit.createdAt.toDate() : examToEdit.createdAt,
       lastModifiedAt: examToEdit.lastModifiedAt instanceof Timestamp ? examToEdit.lastModifiedAt.toDate() : examToEdit.lastModifiedAt,
+      // Explicitly carry over existing createdBy if it exists
+      createdBy: examToEdit.createdBy || examToEdit.manager, 
     }); 
     setProducts(examToEdit.products || []); 
     setEditingExamId(examToEdit.id); 
@@ -558,3 +562,4 @@ export default function HomePage() {
     </div>
   );
 }
+
