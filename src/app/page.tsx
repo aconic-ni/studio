@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -18,8 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { generateTxtReport, downloadFile, generateExcelReport } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-import { auth, db } from '@/lib/firebase'; // Firebase imports
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase'; 
+import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, setDoc, Timestamp } from 'firebase/firestore';
 
 type AppView = 'login' | 'examForm' | 'productList' | 'adminDashboard';
@@ -39,7 +38,6 @@ export default function HomePage() {
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   
-  // Admin related state
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [savedExams, setSavedExams] = useState<ExamInfo[]>([]); 
   const [viewingExamDetail, setViewingExamDetail] = useState<ExamInfo | null>(null);
@@ -62,9 +60,8 @@ export default function HomePage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isLoggedIn, examInfo, products, userRole, editingExamId]);
 
-  // Fetch exams for Admin
   const fetchExamsForAdmin = useCallback(async () => {
-    if (isLoggedIn && userRole === 'admin') {
+    if (userRole === 'admin') { // Check only role, isLoggedIn is checked by caller
       setIsLoadingExams(true);
       try {
         const examsCollectionRef = collection(db, "exams");
@@ -89,13 +86,39 @@ export default function HomePage() {
         setIsLoadingExams(false);
       }
     }
-  }, [isLoggedIn, userRole, toast]);
+  }, [userRole, toast]);
 
   useEffect(() => {
-    if (currentView === 'adminDashboard') {
+    // Listen to Firebase auth state changes
+    const unsubscribe = auth.onAuthStateChanged(async firebaseUser => {
+      if (firebaseUser) {
+        // User is signed in, fetch their role
+        const userDocRef = doc(db, "users", firebaseUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data();
+          const role = userData.role as UserRole;
+          handleLoginSuccess(role); // This will set isLoggedIn, userRole, and currentView
+        } else {
+          // User exists in Auth but not in Firestore users collection (should not happen with current flow)
+          console.error("User data not found in Firestore for UID:", firebaseUser.uid);
+          handleLogout(); // Log them out as their role cannot be determined
+        }
+      } else {
+        // User is signed out
+        handleLogout();
+      }
+    });
+    return () => unsubscribe(); // Cleanup subscription on unmount
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
+
+
+  useEffect(() => {
+    if (isLoggedIn && currentView === 'adminDashboard' && userRole === 'admin') {
       fetchExamsForAdmin();
     }
-  }, [currentView, fetchExamsForAdmin, refreshExamsTrigger]);
+  }, [isLoggedIn, currentView, userRole, fetchExamsForAdmin, refreshExamsTrigger]);
 
 
   const handleLoginSuccess = (role: UserRole) => {
@@ -110,30 +133,31 @@ export default function HomePage() {
   };
 
   const handleLogout = () => {
-    // import { signOut } from 'firebase/auth'; // Example: Add Firebase sign out later
-    // signOut(auth).then(() => { ... }).catch((error) => { ... });
-    setIsLoggedIn(false);
-    setUserRole(null);
-    setExamInfo(null);
-    setProducts([]);
-    setSavedExams([]); 
-    setEditingExamId(null);
-    setCurrentView('login');
-    toast({ title: "Sesión Cerrada", description: "Has salido de la aplicación." });
+    signOut(auth).then(() => {
+      setIsLoggedIn(false);
+      setUserRole(null);
+      setExamInfo(null);
+      setProducts([]);
+      setSavedExams([]); 
+      setEditingExamId(null);
+      setCurrentView('login');
+      toast({ title: "Sesión Cerrada", description: "Has salido de la aplicación." });
+    }).catch((error) => {
+      console.error("Error signing out: ", error);
+      toast({ title: "Error al Salir", description: "No se pudo cerrar la sesión.", variant: "destructive"});
+    });
   };
 
   const handleExamInfoSubmit = (data: ExamInfo) => {
     const currentAuditFields = editingExamId && examInfo ? {
         createdBy: examInfo.createdBy,
         createdAt: examInfo.createdAt,
-        lastModifiedBy: examInfo.lastModifiedBy,
-        lastModifiedAt: examInfo.lastModifiedAt,
     } : {};
 
     const submittedExamInfo = { 
-      ...(examInfo || {}), // Spread existing examInfo if editing
-      ...currentAuditFields, // Ensure audit fields are preserved if they exist
-      ...data // Apply new data from the form
+      ...(examInfo || {}), 
+      ...currentAuditFields, 
+      ...data 
     };
     setExamInfo(submittedExamInfo);
     setCurrentView('productList');
@@ -192,7 +216,7 @@ export default function HomePage() {
   const handleStartNewExam = () => {
     setExamInfo(null);
     setProducts([]);
-    setEditingExamId(null); // Reset editing state
+    setEditingExamId(null); 
     setCurrentView('examForm');
     setIsSuccessModalOpen(false);
   };
@@ -201,20 +225,18 @@ export default function HomePage() {
     setIsSuccessModalOpen(false);
     if (userRole === 'admin') {
       setCurrentView('adminDashboard');
-      // If admin was editing, clear the editing context now that they are done with this exam
-      if (editingExamId) {
+      if (editingExamId) { // If admin was editing, clear context
         setExamInfo(null);
         setProducts([]);
         setEditingExamId(null);
       }
     } else {
-      // For gestor (or other roles), go to productList to see the current/last exam.
       setCurrentView('productList');
     }
   };
 
   const handleSaveExamData = async () => {
-    if (!examInfo || !examInfo.manager) { // Ensure manager is present
+    if (!examInfo || !examInfo.manager) { 
       toast({ title: "Datos incompletos", description: "Falta información del gestor o del examen.", variant: "destructive" });
       return;
     }
@@ -223,44 +245,42 @@ export default function HomePage() {
       return;
     }
 
-
-    const examDataToSave: Partial<ExamInfo> = {
-      ...examInfo,
-      products: products,
-    };
+    const currentUser = auth.currentUser; // Get the currently logged-in user
 
     try {
       if (editingExamId) {
         const examDocRef = doc(db, "exams", editingExamId);
-        // Preserve existing createdBy and createdAt, update lastModified
         const updateData: Partial<ExamInfo> = {
-          ...examDataToSave, // contains potentially updated examInfo fields
+          ...examInfo, // contains potentially updated examInfo fields and preserved createdBy/At
+          products: products,
           lastModifiedAt: serverTimestamp(),
-          lastModifiedBy: userRole === 'admin' ? 'TEST ADMIN USER' : examInfo.manager,
+          lastModifiedBy: userRole === 'admin' ? (currentUser?.email || "Admin User") : examInfo.manager,
         };
-        // Remove createdBy and createdAt from updateData to ensure they are not overwritten if they are part of examDataToSave
-        delete updateData.createdBy;
+        // Ensure createdBy and createdAt are not part of the direct updateData object
+        // if they were part of examInfo, as they should not be changed.
+        // Firestore set with merge:true handles this, but explicit removal is safer.
+        delete updateData.createdBy; 
         delete updateData.createdAt;
 
         await setDoc(examDocRef, updateData, { merge: true }); 
         toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado en la base de datos." });
       } else {
         const newExamData: ExamInfo = {
-          ...(examDataToSave as ExamInfo), // Cast as ExamInfo, assuming all required fields are present or will be
-          createdBy: examInfo.manager, 
+          ...examInfo,
+          products: products,
+          createdBy: examInfo.manager, // Creator is the gestor named in the form
           createdAt: serverTimestamp(),
+          lastModifiedBy: examInfo.manager, // Initially, creator is also last modifier
           lastModifiedAt: serverTimestamp(), 
-          lastModifiedBy: examInfo.manager, 
         };
         await addDoc(collection(db, "exams"), newExamData);
         toast({ title: "Examen Guardado", description: "El examen ha sido guardado en la base de datos." });
       }
 
       if (userRole === 'admin') {
-        // Trigger a refresh of the exams list for the admin
         setTimeout(() => {
           setRefreshExamsTrigger(prev => prev + 1);
-        }, 500); // Small delay to allow Firestore to process
+        }, 500); 
       }
       
     } catch (error) {
@@ -319,10 +339,8 @@ export default function HomePage() {
         toast({ title: "Error", description: "ID de examen no encontrado.", variant: "destructive" });
         return;
     }
-    // Ensure all existing fields, including audit ones, are carried over
     setExamInfo({ 
       ...examToEdit, 
-      // Convert Timestamps to Dates if necessary for form compatibility, though ExamForm doesn't directly use these
       createdAt: examToEdit.createdAt instanceof Timestamp ? examToEdit.createdAt.toDate() : examToEdit.createdAt,
       lastModifiedAt: examToEdit.lastModifiedAt instanceof Timestamp ? examToEdit.lastModifiedAt.toDate() : examToEdit.lastModifiedAt,
     }); 
@@ -354,6 +372,7 @@ export default function HomePage() {
       {userRole && (
         <div className="text-white text-center mb-2 bg-primary/20 p-2 rounded-md">
           Rol Actual: <span className="font-semibold">{userRole.toUpperCase()}</span>
+          {auth.currentUser && <span className="text-xs"> ({auth.currentUser.email})</span>}
         </div>
       )}
       <main className="flex-grow">
@@ -366,13 +385,13 @@ export default function HomePage() {
             isLoading={isLoadingExams}
           />
         )}
-        {currentView === 'examForm' && (userRole !== 'admin' || (userRole === 'admin' && editingExamId)) && (
+        {(currentView === 'examForm' && (userRole !== 'admin' || (userRole === 'admin' && editingExamId))) && (
           <ExamForm 
             onSubmitExamInfo={handleExamInfoSubmit} 
             initialData={examInfo || undefined} 
           />
         )}
-        {currentView === 'productList' && examInfo && (userRole !== 'admin' || (userRole === 'admin' && editingExamId)) && (
+        {(currentView === 'productList' && examInfo && (userRole !== 'admin' || (userRole === 'admin' && editingExamId))) && (
           <ProductListScreen
             examInfo={examInfo}
             products={products}
@@ -472,7 +491,6 @@ export default function HomePage() {
         </Dialog>
       )}
 
-      {/* View Exam Detail Modal (Admin) */}
       {viewingExamDetail && userRole === 'admin' && (
         <Dialog open={isViewExamDetailModalOpen} onOpenChange={setIsViewExamDetailModalOpen}>
           <DialogContent className="sm:max-w-3xl p-0">
@@ -540,5 +558,3 @@ export default function HomePage() {
     </div>
   );
 }
-    
-

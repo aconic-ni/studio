@@ -5,14 +5,16 @@ import { useState } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { APP_NAME, APP_SUBTITLE, APP_AUTHOR } from '@/lib/constants';
-// import { generateAccessCode, convertCodeToWords } from '@/lib/utils'; // Commented out
-import { LoginSchema, type LoginFormData, type UserRole } from '@/lib/schemas'; // Updated schema import
+import { LoginSchema, type LoginFormData, type UserRole } from '@/lib/schemas';
 import { AppLogo } from '@/components/common/AppLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from '@/hooks/use-toast';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 
 interface AuthWorkflowProps {
   onLoginSuccess: (role: UserRole) => void;
@@ -20,42 +22,53 @@ interface AuthWorkflowProps {
 
 export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  // const [serverAccessCode, setServerAccessCode] = useState(''); // Commented out
+  const [isLoading, setIsLoading] = useState(false);
   
   const { toast } = useToast();
 
-  // useEffect(() => { // Commented out
-  //   setServerAccessCode(generateAccessCode());
-  // }, []);
-
-  // const accessCodeWords = useMemo(() => convertCodeToWords(serverAccessCode), [serverAccessCode]); // Commented out
-
-  const form = useForm<LoginFormData>({ // Updated to LoginFormData
-    resolver: zodResolver(LoginSchema), // Updated to LoginSchema
+  const form = useForm<LoginFormData>({ 
+    resolver: zodResolver(LoginSchema), 
     defaultValues: {
-      email: '', // Technically email, but labeled as User
+      email: '', 
       password: '', 
     },
   });
 
-  const onSubmit: SubmitHandler<LoginFormData> = (data) => { 
-    console.log("Login attempt with:", data.email, data.password); // data.email is used here
-    toast({ title: "Inicio de Sesión", description: "Verificando credenciales..." });
+  const onSubmit: SubmitHandler<LoginFormData> = async (data) => { 
+    setIsLoading(true);
+    toast({ title: "Iniciando Sesión", description: "Verificando credenciales..." });
     
-    let role: UserRole = 'gestor'; // Default role
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
 
-    if (data.email.toLowerCase() === 'admin@customsex.com') {
-      role = 'admin';
-    } else if (data.email.toLowerCase() === 'ejecutivo@customsex.com') {
-      role = 'ejecutivo';
-    } else if (data.email.toLowerCase() === 'gestor@customsex.com') {
-      role = 'gestor';
+      // Fetch user role from Firestore
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const role = userData.role as UserRole;
+        if (role) {
+          onLoginSuccess(role);
+        } else {
+          throw new Error("Rol de usuario no encontrado.");
+        }
+      } else {
+        throw new Error("Datos de usuario no encontrados.");
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
+      let errorMessage = "Error al iniciar sesión.";
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        errorMessage = "Usuario o contraseña incorrectos.";
+      } else if (error.message === "Rol de usuario no encontrado." || error.message === "Datos de usuario no encontrados.") {
+        errorMessage = error.message;
+      }
+      toast({ title: "Error de Acceso", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsLoading(false);
     }
-    // Any other email defaults to 'gestor' as set above
-
-    // For now, grant access immediately. Replace with Firebase auth later.
-    onLoginSuccess(role); 
-    
   };
 
   return (
@@ -79,7 +92,7 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name="email" // Field name remains 'email' for schema and Firebase
+                name="email" 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="block text-sm font-medium text-white mb-1 leading-tight">
@@ -87,10 +100,10 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
                     </FormLabel>
                     <FormControl>
                       <Input 
-                        type="email" // Input type still email for validation and Firebase
+                        type="email" 
                         required 
                         className="w-full px-4 py-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-white/20 text-white placeholder-gray-300"
-                        autoComplete="username" // Changed from email to username for autocomplete hint
+                        autoComplete="username" 
                         {...field} 
                       />
                     </FormControl>
@@ -120,17 +133,15 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
                 )}
               />
               
-              <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-md font-medium w-full">
-                Ingresar
+              <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-md font-medium w-full" disabled={isLoading}>
+                {isLoading ? 'Ingresando...' : 'Ingresar'}
               </Button>
             </form>
           </Form>
           
-          {/* {serverAccessCode && ( 
-            <div className="mt-4 text-center">
+          <div className="mt-4 text-center">
               <p className="text-xs text-gray-300 mt-1"> </p>
-            </div>
-          )} */}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
