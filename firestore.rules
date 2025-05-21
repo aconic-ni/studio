@@ -1,0 +1,56 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to get user data - used for role checking.
+    // WARNING: Reading documents within security rules incurs read costs.
+    // For production, consider using Custom Claims for roles if performance/cost is a concern.
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Authenticated user can read their own document.
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Authenticated user can create their own user document (e.g., on signup).
+      // The 'create user' flow in the app currently allows an admin to create any user.
+      // This rule needs to be aligned with how users are actually created.
+      // If only admins create users via the app's UI:
+      // allow create: if request.auth != null && getUserData(request.auth.uid).role == 'admin';
+      // If users create their own doc during a signup flow not yet built:
+      allow create: if request.auth != null && request.auth.uid == userId;
+
+
+      // Only an admin can update user documents (e.g., to change roles).
+      allow update: if request.auth != null && getUserData(request.auth.uid).role == 'admin';
+
+      // Generally, disallow client-side deletion of user profiles.
+      allow delete: if false;
+    }
+
+    // Exams collection
+    match /exams/{examId} {
+      // Admins can read and write all exams.
+      allow read, write: if request.auth != null && getUserData(request.auth.uid).role == 'admin';
+
+      // Ejecutivos can only read exams (get single, list multiple).
+      allow get, list: if request.auth != null && getUserData(request.auth.uid).role == 'ejecutivo';
+
+      // Gestores can create exams.
+      allow create: if request.auth != null && getUserData(request.auth.uid).role == 'gestor';
+
+      // Gestores can update exams they created (assuming createdBy stores the gestor's email or unique ID).
+      // And ensure only specific fields can be updated by gestores if needed.
+      allow update: if request.auth != null &&
+                       getUserData(request.auth.uid).role == 'gestor' &&
+                       resource.data.createdBy == getUserData(request.auth.uid).email; // Assumes createdBy is email
+
+      // Admins can delete exams. Gestores might be able to delete their own under certain conditions.
+      allow delete: if request.auth != null && getUserData(request.auth.uid).role == 'admin';
+    }
+  }
+}
