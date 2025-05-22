@@ -1,3 +1,4 @@
+
 // src/ai/flows/hs-code-suggestion.ts
 'use server';
 /**
@@ -21,7 +22,7 @@ export type SuggestHsCodeInput = z.infer<typeof SuggestHsCodeInputSchema>;
 const SuggestHsCodeOutputSchema = z.object({
   hsCode: z
     .string()
-    .describe('The suggested HS code for the product, with a brief explanation.'),
+    .describe('El código HS sugerido para el producto, seguido de dos puntos y una explicación detallada en español. Ejemplo: "1234.56.78: Esta es la explicación detallada en español."'),
 });
 export type SuggestHsCodeOutput = z.infer<typeof SuggestHsCodeOutputSchema>;
 
@@ -33,13 +34,17 @@ const prompt = ai.definePrompt({
   name: 'suggestHsCodePrompt',
   input: {schema: SuggestHsCodeInputSchema},
   output: {schema: SuggestHsCodeOutputSchema},
-  prompt: `You are an expert in international trade and customs regulations.
+  prompt: `Eres un experto en comercio internacional y regulaciones aduaneras. Tu tarea es sugerir el código del Sistema Armonizado (HS Code) más apropiado para un producto.
 
-  Based on the following product description, suggest the most appropriate Harmonized System (HS) code. Provide a brief explanation for your suggestion.
+  IMPORTANTE: Toda tu respuesta debe estar en ESPAÑOL.
 
-  Product Description: {{{productDescription}}}
+  Basado en la siguiente descripción del producto, sugiere el código HS más adecuado.
+  Descripción del Producto: {{{productDescription}}}
 
-  Ensure the HS code is accurate and conforms to international standards.
+  Tu respuesta DEBE SEGUIR ESTE FORMATO EXACTO: "<CÓDIGO_HS_SUGERIDO>: <EXPLICACIÓN_DETALLADA_EN_ESPAÑOL>"
+  Por ejemplo: "8517.12.00: Teléfonos móviles (celulares) y otros teléfonos que operan en redes inalámbricas. La explicación detallada debe justificar por qué este código es el más apropiado, basándose en las características del producto descrito."
+
+  Asegúrate de que el código HS sea preciso y se ajuste a los estándares internacionales. La explicación debe ser clara, concisa y útil para alguien que necesite clasificar el producto.
   `,
 });
 
@@ -54,3 +59,4 @@ const suggestHsCodeFlow = ai.defineFlow(
     return output!;
   }
 );
+
