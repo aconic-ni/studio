@@ -13,9 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+// import { doc, getDoc } from 'firebase/firestore'; // Firestore fetch commented out
 import { auth, db } from '@/lib/firebase';
-import { localUsers } from '@/lib/localUsers'; // Import local users
+import { localUsers } from '@/lib/localUsers'; 
 
 interface AuthWorkflowProps {
   onLoginSuccess: (role: UserRole) => void;
@@ -37,9 +37,8 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
 
   const onSubmit: SubmitHandler<LoginFormData> = async (data) => { 
     setIsLoading(true);
-    toast({ title: "Iniciando Sesión", description: "Verificando credenciales..." });
+    // toast({ title: "Iniciando Sesión", description: "Verificando credenciales..." }); // Removed default loading toast
     
-    // 1. Check local users first
     const localUserMatch = localUsers.find(
       (user) => user.email === data.email && user.password === data.password
     );
@@ -48,46 +47,59 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
       toast({ title: "Acceso Local Concedido", description: `Bienvenido (local). Rol: ${localUserMatch.role?.toUpperCase()}` });
       onLoginSuccess(localUserMatch.role);
       setIsLoading(false);
-      setIsLoginModalOpen(false); // Close modal on local login success
+      setIsLoginModalOpen(false);
       return;
     }
 
-    // 2. If no local user match, proceed with Firebase authentication
     try {
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
-      const user = userCredential.user;
+      // const user = userCredential.user;
 
-      // Fetch user role from Firestore
-      const userDocRef = doc(db, "users", user.uid);
-      const userDocSnap = await getDoc(userDocRef);
+      // Firestore role fetching is commented out, defaulting role in onAuthStateChanged or here
+      // const userDocRef = doc(db, "users", user.uid);
+      // const userDocSnap = await getDoc(userDocRef);
+      // if (userDocSnap.exists()) {
+      //   const userData = userDocSnap.data();
+      //   const role = userData.role as UserRole;
+      //   if (role) {
+      //     onLoginSuccess(role); // This is handled by onAuthStateChanged now
+      //     setIsLoginModalOpen(false);
+      //   } else {
+      //     throw new Error("Rol de usuario no encontrado en Firestore.");
+      //   }
+      // } else {
+      //   console.error("Datos de usuario (rol) no encontrados en Firestore para UID:", user.uid);
+      //   throw new Error("Datos de rol de usuario no encontrados. Contacte al administrador.");
+      // }
+      
+      // If Firebase Auth is successful, onAuthStateChanged in HomePage will handle role fetching/defaulting.
+      // For now, we can assume onAuthStateChanged will pick it up.
+      // We can still trigger a loading state end here.
+      // onLoginSuccess might be called by onAuthStateChanged in HomePage.
+      // toast({ title: "Acceso Concedido", description: "Verificando rol..." }); // This could be premature
+      console.log(`Firebase Authentication successful for ${data.email}. Awaiting role processing.`);
+      setIsLoginModalOpen(false); // Close modal, onAuthStateChanged will handle view change
 
-      if (userDocSnap.exists()) {
-        const userData = userDocSnap.data();
-        const role = userData.role as UserRole;
-        if (role) {
-          // onLoginSuccess is handled by the auth state listener in HomePage for Firebase logins
-          // For consistency, we can call it here, but ensure HomePage handles potential double calls if listener also fires
-           onLoginSuccess(role); 
-           setIsLoginModalOpen(false); // Close modal on Firebase login success
-        } else {
-          throw new Error("Rol de usuario no encontrado en Firestore.");
-        }
-      } else {
-        // This case means user is in Auth but not in Firestore `users` collection.
-        // This might happen if user was created directly in Auth console without a corresponding Firestore doc.
-        // Or if the `users` collection or document structure is different than expected.
-        console.error("Datos de usuario (rol) no encontrados en Firestore para UID:", user.uid);
-        throw new Error("Datos de rol de usuario no encontrados. Contacte al administrador.");
-      }
     } catch (error: any) {
-      console.error("Login error (Firebase):", error);
+      console.error("Login error (Firebase):", error.code, error.message); 
       let errorMessage = "Error al iniciar sesión.";
+      let showErrorToast = false;
+
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         errorMessage = "Usuario o contraseña incorrectos.";
-      } else if (error.message.includes("Rol de usuario no encontrado") || error.message.includes("Datos de rol de usuario no encontrados")) {
-        errorMessage = error.message;
+        showErrorToast = true;
+      } else {
+        // For any other Firebase error (network, service unavailable, etc.),
+        // we will only log it to the console and not show a UI toast.
+        console.error("An unexpected Firebase error occurred during login:", error.message);
+        // errorMessage is already "Error al iniciar sesión."
+        // showErrorToast remains false for these cases.
       }
-      toast({ title: "Error de Acceso", description: errorMessage, variant: "destructive" });
+
+      if (showErrorToast) {
+        toast({ title: "Error de Acceso", description: errorMessage, variant: "destructive" });
+      }
+      
     } finally {
       setIsLoading(false);
     }
