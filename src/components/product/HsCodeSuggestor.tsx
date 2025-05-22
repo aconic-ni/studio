@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -14,11 +15,12 @@ interface HsCodeSuggestorProps {
 export function HsCodeSuggestor({ productDescription, onSuggestion }: HsCodeSuggestorProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<SuggestHsCodeOutput | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); // Error state is kept for console logging
 
   const handleSuggestHsCode = async () => {
     if (!productDescription || productDescription.trim() === "") {
-      setError("Por favor, ingrese una descripción del producto.");
+      console.error("HS Code Suggestion: Product description is empty.");
+      // setError("Por favor, ingrese una descripción del producto."); // UI error removed
       setSuggestion(null);
       return;
     }
@@ -38,9 +40,10 @@ export function HsCodeSuggestor({ productDescription, onSuggestion }: HsCodeSugg
         const explanation = parts[1] ? parts[1].trim() : "Explicación no proporcionada.";
         onSuggestion(code, explanation);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error suggesting HS Code:", e);
-      setError("No se pudo sugerir el código HS. Intente de nuevo.");
+      // setError("No se pudo sugerir el código HS. Intente de nuevo. Detalle: " + (e.message || "Error desconocido")); // UI error removed
+      // The specific message "backend preview is disconnected" would have been set here or similar.
     } finally {
       setIsLoading(false);
     }
@@ -63,12 +66,17 @@ export function HsCodeSuggestor({ productDescription, onSuggestion }: HsCodeSugg
         Sugerir Código HS
       </Button>
       
+      {/* 
+      The Alert for displaying errors has been removed. 
+      Original error Alert:
       {error && (
         <Alert variant="destructive">
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-      )}
+      )} 
+      */}
+
       {suggestion && suggestion.hsCode && (
         <Alert variant="default">
            <Wand2 className="h-4 w-4" />
