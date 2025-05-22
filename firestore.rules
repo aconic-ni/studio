@@ -4,74 +4,83 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function getUserRole(userId) {
-      // It's crucial that the user document exists and has a 'role' field.
-      // If get() finds no document, .data will be null.
-      // If document exists but no 'role' field, .data.role will be null.
-      let userData = get(/databases/$(database)/documents/users/$(userId)).data;
-      if (userData != null && userData.role != null) {
-        return userData.role;
-      }
-      return null; // Default if no role or no user doc
-    }
-
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
+    // Helper function to check if the currently authenticated user is an admin.
+    // It reads the 'role' field from the user's own document in the 'users' collection.
     function isAdmin() {
-      return isAuthenticated() && getUserRole(request.auth.uid) == 'admin';
+      // Ensure the user is authenticated.
+      if (request.auth.uid == null) {
+        return false;
+      }
+      // Construct the path to the user's document.
+      let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      // Check if the user's document exists.
+      if (!exists(userDocPath)) {
+        return false;
+      }
+      // Return true if the user's role is 'admin'.
+      return get(userDocPath).data.role == 'admin';
     }
 
-    function isExecutive() {
-      return isAuthenticated() && getUserRole(request.auth.uid) == 'ejecutivo';
+    // Helper function to get the role of the currently authenticated user.
+    function getRequestingUserRole() {
+      // Ensure the user is authenticated.
+      if (request.auth.uid == null) {
+        return null;
+      }
+      // Construct the path to the user's document.
+      let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      // Check if the user's document exists.
+      if (!exists(userDocPath)) {
+        return null;
+      }
+      // Return the user's role.
+      return get(userDocPath).data.role;
     }
 
-    function isGestor() {
-      return isAuthenticated() && getUserRole(request.auth.uid) == 'gestor';
-    }
-    
-    // Users Collection
+    // Rules for the 'users' collection.
     match /users/{userId} {
-      // Authenticated users can read their own profile to get their role.
-      allow get: if isOwner(userId);
+      // A user can read their own document.
+      // An admin can read any user document.
+      allow get: if request.auth.uid == userId || isAdmin();
 
-      // Admins can create user documents for new users.
-      // A user could also create their own document if request.auth.uid == userId,
-      // useful if you had a separate sign-up page that also creates the Firestore user doc.
-      allow create: if isAdmin() || (isOwner(userId) && request.resource.data.email == request.auth.email);
-
-      // Only Admins can update user profiles (e.g., to change roles or other details).
-      allow update: if isAdmin(); 
-
-      // Only Admins can delete user documents.
-      allow delete: if isAdmin();
-      
-      // Only Admins can list all users.
+      // An admin can list all user documents.
       allow list: if isAdmin();
+
+      // An admin can create user documents.
+      // (Allowing users to create their own document typically happens during sign-up
+      // and would require more specific rules, e.g., request.auth.uid == userId
+      // and checking incoming data. For now, focusing on admin creation).
+      allow create: if isAdmin();
+
+      // An admin can update any user document.
+      allow update: if isAdmin();
+
+      // An admin can delete any user document.
+      allow delete: if isAdmin();
     }
 
-    // Exams Collection
+    // Rules for the 'exams' collection.
     match /exams/{examId} {
-      // Admins can read and write (create, update, delete) all exams.
-      allow read, write: if isAdmin();
+      // Admins, Ejecutivos, and Gestores can read/list exams.
+      // (Simplified gestor access for now to avoid complex ownership checks during debugging).
+      allow get, list: if request.auth.uid != null &&
+                        (isAdmin() ||
+                         getRequestingUserRole() == 'ejecutivo' ||
+                         getRequestingUserRole() == 'gestor'
+                        );
 
-      // Ejecutivos can only read exams (get single or list multiple).
-      allow get, list: if isExecutive();
+      // Admins and Gestores can create exams.
+      allow create: if request.auth.uid != null &&
+                        (isAdmin() || getRequestingUserRole() == 'gestor');
 
-      // Gestores can create exams.
-      allow create: if isGestor();
-      
-      // Gestores can read, update, and delete exams they created.
-      // This assumes `resource.data.createdBy` stores the gestor's email.
-      // The app currently sets createdBy to examInfo.manager (which is an email/name).
-      allow get, list, update, delete: if isGestor() && 
-                                        resource.data.createdBy == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email;
+      // Admins and Gestores can update exams.
+      // (Simplified gestor access for now).
+      allow update: if request.auth.uid != null &&
+                        (isAdmin() || getRequestingUserRole() == 'gestor'
+                        );
+
+      // Only admins can delete exams.
+      allow delete: if isAdmin();
     }
   }
 }
