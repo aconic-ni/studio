@@ -85,6 +85,7 @@ export default function HomePage() {
   const fetchExamsForAdmin = useCallback(async () => {
     if (userRole === 'admin') {
       setIsLoadingExams(true);
+      console.log("[fetchExamsForAdmin] Fetching exams from Firestore...");
       try {
         const examsCollectionRef = collection(db, "exams");
         const q = query(examsCollectionRef, orderBy("createdAt", "desc"));
@@ -96,46 +97,63 @@ export default function HomePage() {
           createdAt: docSnap.data().createdAt instanceof Timestamp ? docSnap.data().createdAt.toDate() : new Date(docSnap.data().createdAt),
           lastModifiedAt: docSnap.data().lastModifiedAt instanceof Timestamp ? docSnap.data().lastModifiedAt.toDate() : new Date(docSnap.data().lastModifiedAt),
         })) as ExamInfo[];
+        console.log("[fetchExamsForAdmin] Exams fetched:", fetchedExams.length);
         setSavedExams(fetchedExams);
       } catch (error) {
-        console.error("Error fetching exams: ", error);
+        console.error("[fetchExamsForAdmin] Error fetching exams: ", error);
         setSavedExams(mockSavedExams); // Fallback to mock on error
         // toast({ title: "Error", description: "No se pudieron cargar los exámenes desde la base de datos.", variant: "destructive" });
       } finally {
         setIsLoadingExams(false);
       }
     }
-  }, [userRole, toast]);
+  }, [userRole]); // Removed toast from dependencies as it's stable
 
   useEffect(() => {
+    console.log("[Auth State] Setting up onAuthStateChanged listener.");
     const unsubscribe = auth.onAuthStateChanged(async firebaseUser => {
       if (firebaseUser) {
+        console.log("[Auth State] User is signed in. UID:", firebaseUser.uid, "Email:", firebaseUser.email);
         try {
             const userDocRef = doc(db, "users", firebaseUser.uid);
+            console.log("[Auth State] Attempting to get Firestore doc:", `/users/${firebaseUser.uid}`);
             const userDocSnap = await getDoc(userDocRef);
             if (userDocSnap.exists()) {
               const userData = userDocSnap.data();
               const role = userData.role as UserRole;
-              handleLoginSuccess(role);
+              console.log(`[Auth State] Document for UID ${firebaseUser.uid} exists. UserData:`, userData, "Role from Firestore:", role);
+              if (!role) {
+                 console.warn(`[Auth State] UID: ${firebaseUser.uid}, Email: ${firebaseUser.email}, Role field missing or empty in Firestore. Defaulting to 'gestor'. UserData:`, userData);
+                 handleLoginSuccess('gestor');
+              } else {
+                handleLoginSuccess(role);
+              }
             } else {
-              console.warn(`Firestore user data for ${firebaseUser.email} not found. Defaulting to 'gestor' role.`);
+              console.warn(`[Auth State] Firestore document /users/${firebaseUser.uid} NOT FOUND for authenticated user ${firebaseUser.email}. Defaulting to 'gestor' role.`);
               // toast({ title: "Perfil no encontrado", description: `No se encontró perfil en base de datos para ${firebaseUser.email}. Rol por defecto: gestor.`, variant: "destructive"});
-              handleLoginSuccess('gestor'); // Default role if Firestore doc doesn't exist
+              handleLoginSuccess('gestor');
             }
         } catch (error) {
-            console.error("Error processing auth state change (Firestore role check):", error);
+            console.error("[Auth State] Error processing auth state change (Firestore role check):", error);
             // toast({ title: "Error de Autenticación", description: "No se pudo verificar el rol del usuario.", variant: "destructive"});
             if (!userRole) { // Only default if no role was set (e.g. by localUsers)
-                handleLoginSuccess('gestor'); // Default role on error
+                console.warn("[Auth State] Error fetching role, and no prior role set. Defaulting to 'gestor'.");
+                handleLoginSuccess('gestor');
+            } else {
+                console.warn("[Auth State] Error fetching role, but a role was already set:", userRole, "Retaining existing role.");
             }
         }
       } else {
+        console.log("[Auth State] No user signed in.");
         handleLogout(false);
       }
     });
-    return () => unsubscribe();
+    return () => {
+      console.log("[Auth State] Cleaning up onAuthStateChanged listener.");
+      unsubscribe();
+    };
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // No dependencies to ensure it runs only once on mount
 
 
   useEffect(() => {
@@ -146,9 +164,10 @@ export default function HomePage() {
 
 
   const handleLoginSuccess = (role: UserRole) => {
+    console.log("[Login Success Handler] Role received:", role);
     setIsLoggedIn(true);
     setUserRole(role);
-    toast({ title: "Acceso Concedido", description: `Bienvenido. Rol: ${role?.toUpperCase()}` });
+    // toast({ title: "Acceso Concedido", description: `Bienvenido. Rol: ${role?.toUpperCase()}` }); // Consider if this toast is too frequent
     if (role === 'admin') {
       setCurrentView('adminDashboard');
     } else {
@@ -168,8 +187,9 @@ export default function HomePage() {
       if (showToast) {
         toast({ title: "Sesión Cerrada", description: "Has salido de la aplicación." });
       }
+      console.log("[Logout] User signed out successfully.");
     }).catch((error) => {
-      console.error("Error signing out (Firebase): ", error.code, error.message);
+      console.error("[Logout Error] Firebase sign out failed:", error.code, error.message);
       // For other Firebase errors (network, service unavailable), only log to console.
     });
   };
@@ -251,12 +271,13 @@ export default function HomePage() {
     setIsSuccessModalOpen(false);
     if (userRole === 'admin') {
       setCurrentView('adminDashboard');
-      if (editingExamId) {
+      if (editingExamId) { // Clear editing state if admin was editing
         setExamInfo(null);
         setProducts([]);
         setEditingExamId(null);
       }
     } else {
+      // For gestor, return to product list of the current exam
       setCurrentView('productList');
     }
   };
@@ -273,7 +294,7 @@ export default function HomePage() {
 
     try {
       const managerName = examInfo.manager;
-      const currentUserEmail = auth.currentUser?.email || "TEST ADMIN USER";
+      const currentUserEmail = auth.currentUser?.email || "Admin User"; // Fallback if email not available
 
       if (editingExamId) {
         const examDocRef = doc(db, "exams", editingExamId);
@@ -281,13 +302,14 @@ export default function HomePage() {
           ...examInfo,
           products: products,
           lastModifiedAt: serverTimestamp(),
-          lastModifiedBy: userRole === 'admin' ? currentUserEmail : managerName,
+          lastModifiedBy: userRole === 'admin' ? (auth.currentUser?.email || "TEST ADMIN USER") : managerName,
         };
 
-        delete updateData.id; // Don't save Firestore ID as a field within the document
-        // Preserve original creator and creation time
+        delete updateData.id;
+        // Preserve original creator and creation time explicitly
         if (examInfo.createdBy) updateData.createdBy = examInfo.createdBy;
         if (examInfo.createdAt) updateData.createdAt = examInfo.createdAt;
+
 
         await setDoc(examDocRef, updateData, { merge: true });
         toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado en la base de datos." });
@@ -297,7 +319,7 @@ export default function HomePage() {
           products: products,
           createdBy: managerName,
           createdAt: serverTimestamp(),
-          lastModifiedBy: managerName,
+          lastModifiedBy: managerName, // On creation, lastModifiedBy is same as createdBy
           lastModifiedAt: serverTimestamp(),
         };
         await addDoc(collection(db, "exams"), newExamData);
@@ -306,12 +328,12 @@ export default function HomePage() {
 
       if (userRole === 'admin') {
         setTimeout(() => {
-          setRefreshExamsTrigger(prev => prev + 1);
-        }, 500);
+          setRefreshExamsTrigger(prev => prev + 1); // Trigger re-fetch for admin
+        }, 500); // Small delay to allow Firestore to process
       }
 
     } catch (error) {
-      console.error("Error saving exam data: ", error);
+      console.error("[Save Exam Error] Error saving exam data: ", error);
       // toast({ title: "Error al Guardar", description: "No se pudo guardar el examen en la base de datos.", variant: "destructive" });
     }
   };
@@ -327,7 +349,7 @@ export default function HomePage() {
     if (!examInfo) return;
     generateExcelReport(examInfo, products);
   };
-  
+
   const handleDownloadExcelForSavedExam = () => {
     if (!viewingExamDetail) return;
     generateExcelReport(viewingExamDetail, viewingExamDetail.products || []);
@@ -338,20 +360,23 @@ export default function HomePage() {
   const handleCloseAddUserModal = () => setIsAddUserModalOpen(false);
 
   const handleCreateUser = async (userData: CreateUserFormData) => {
+    console.log("[Create User Attempt] Data:", userData);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
       const user = userCredential.user;
+      console.log("[Create User] Firebase Auth user created. UID:", user.uid);
 
       await setDoc(doc(db, "users", user.uid), {
         email: userData.email,
         role: userData.role,
         createdAt: serverTimestamp(),
       });
+      console.log("[Create User] Firestore user document created for UID:", user.uid, "Role:", userData.role);
 
       toast({ title: "Usuario Creado", description: `El usuario ${userData.email} con rol ${userData.role} ha sido creado.` });
       setIsAddUserModalOpen(false);
     } catch (error: any) {
-      console.error("Error creating user (Firebase):", error.code, error.message);
+      console.error("[Create User Error] Firebase user creation failed:", error.code, error.message, error);
       let errorMessage = "No se pudo crear el usuario.";
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = "Este correo electrónico ya está en uso.";
@@ -360,6 +385,7 @@ export default function HomePage() {
         errorMessage = "La contraseña es demasiado débil.";
         toast({ title: "Error al Crear Usuario", description: errorMessage, variant: "destructive" });
       } else {
+        // For other Firebase errors (network, service unavailable), only log to console.
         console.error("Firebase user creation failed with a non-specific error:", error);
       }
     }
@@ -375,31 +401,40 @@ export default function HomePage() {
         toast({ title: "Error", description: "ID o NE de examen no encontrado.", variant: "destructive" });
         return;
     }
+    // Ensure dates are Date objects
     const createdAtDate = examToEdit.createdAt instanceof Date ? examToEdit.createdAt :
-                         (examToEdit.createdAt as any)?.toDate ? (examToEdit.createdAt as any).toDate() : new Date(examToEdit.createdAt as any);
+                         (examToEdit.createdAt as any)?.toDate ? (examToEdit.createdAt as any).toDate() : new Date(examToEdit.createdAt as any || Date.now());
     const lastModifiedAtDate = examToEdit.lastModifiedAt instanceof Date ? examToEdit.lastModifiedAt :
-                               (examToEdit.lastModifiedAt as any)?.toDate ? (examToEdit.lastModifiedAt as any).toDate() : new Date(examToEdit.lastModifiedAt as any);
+                               (examToEdit.lastModifiedAt as any)?.toDate ? (examToEdit.lastModifiedAt as any).toDate() : new Date(examToEdit.lastModifiedAt as any || Date.now());
 
-    setExamInfo({
-      ...examToEdit,
-      createdAt: createdAtDate,
-      lastModifiedAt: lastModifiedAtDate,
-      createdBy: examToEdit.createdBy || examToEdit.manager,
-    });
+    const examDataForEditing = {
+        ...examToEdit,
+        createdAt: createdAtDate,
+        lastModifiedAt: lastModifiedAtDate,
+        createdBy: examToEdit.createdBy || examToEdit.manager, // Ensure createdBy is present
+    };
+
+    console.log("[Edit Saved Exam] Loading exam for editing:", examDataForEditing);
+    setExamInfo(examDataForEditing);
     setProducts(examToEdit.products || []);
-    setEditingExamId(examToEdit.id || examToEdit.ne);
-    setCurrentView('productList');
+    setEditingExamId(examToEdit.id || examToEdit.ne); // Use Firestore ID if available
+    setCurrentView('productList'); // Go to product list for editing
     toast({ title: "Editando Examen", description: `Modificando examen NE: ${examToEdit.ne}` });
   };
 
+
   const handleBackNavigation = () => {
     if (userRole === 'admin' && editingExamId) {
+      // Admin was editing, return to dashboard and clear editing state
       setCurrentView('adminDashboard');
       setExamInfo(null);
       setProducts([]);
       setEditingExamId(null);
+      console.log("[Back Navigation] Admin returning to dashboard from edit.");
     } else {
+      // Gestor or other, return to exam form (previous step in current exam)
       setCurrentView('examForm');
+       console.log("[Back Navigation] Returning to ExamForm.");
     }
   };
 
@@ -607,5 +642,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-      

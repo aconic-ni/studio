@@ -13,9 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore'; 
-import { auth, db } from '@/lib/firebase'; // db import re-enabled
-import { localUsers } from '@/lib/localUsers'; 
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
+import { localUsers } from '@/lib/localUsers';
 
 interface AuthWorkflowProps {
   onLoginSuccess: (role: UserRole) => void;
@@ -24,25 +24,27 @@ interface AuthWorkflowProps {
 export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const { toast } = useToast();
 
-  const form = useForm<LoginFormData>({ 
-    resolver: zodResolver(LoginSchema), 
+  const form = useForm<LoginFormData>({
+    resolver: zodResolver(LoginSchema),
     defaultValues: {
-      email: '', 
-      password: '', 
+      email: '',
+      password: '',
     },
   });
 
-  const onSubmit: SubmitHandler<LoginFormData> = async (data) => { 
+  const onSubmit: SubmitHandler<LoginFormData> = async (data) => {
     setIsLoading(true);
-    
+    console.log("[Login Attempt] Email:", data.email);
+
     const localUserMatch = localUsers.find(
       (user) => user.email === data.email && user.password === data.password
     );
 
     if (localUserMatch) {
+      console.log("[Login Success] Local user matched:", localUserMatch.email, "Role:", localUserMatch.role);
       toast({ title: "Acceso Local Concedido", description: `Bienvenido (local). Rol: ${localUserMatch.role?.toUpperCase()}` });
       onLoginSuccess(localUserMatch.role);
       setIsLoading(false);
@@ -50,36 +52,41 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
       return;
     }
 
+    console.log("[Login Attempt] No local user match, attempting Firebase Auth for:", data.email);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
+      console.log("[Firebase Auth] Signed in. User UID:", user.uid, "Email:", user.email);
 
       const userDocRef = doc(db, "users", user.uid);
+      console.log("[Firestore Role Check] Attempting to get doc:", `/users/${user.uid}`);
       const userDocSnap = await getDoc(userDocRef);
-      
+
       if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
         const role = userData.role as UserRole;
+        console.log(`[Firestore Role Check] Document for UID ${user.uid} exists. UserData:`, userData, "Role from Firestore:", role);
         if (role) {
           onLoginSuccess(role);
         } else {
-          console.error("Rol de usuario no encontrado en Firestore para UID:", user.uid);
-          toast({ title: "Error de Rol", description: "Rol no definido para este usuario.", variant: "destructive" });
-          onLoginSuccess('gestor'); // Default role if Firestore doc has no role
+          console.error(`[Firestore Role Check] Role field missing or empty in Firestore for UID: ${user.uid}. UserData:`, userData, "Defaulting to 'gestor' role.");
+          // toast({ title: "Error de Rol", description: "Rol no definido para este usuario.", variant: "destructive" });
+          onLoginSuccess('gestor');
         }
       } else {
-        console.warn(`Datos de usuario (rol) no encontrados en Firestore para UID: ${user.uid}.`);
-        toast({ title: "Perfil no encontrado", description: `No se encontró perfil en base de datos para ${user.email}. Consulte al administrador.`, variant: "destructive"});
-        onLoginSuccess('gestor'); // Default role if Firestore doc doesn't exist
+        console.warn(`[Firestore Role Check] Firestore document /users/${user.uid} NOT FOUND for authenticated user ${user.email}. Defaulting to 'gestor' role.`);
+        // toast({ title: "Perfil no encontrado", description: `No se encontró perfil en base de datos para ${user.email}. Consulte al administrador.`, variant: "destructive"});
+        onLoginSuccess('gestor');
       }
       setIsLoginModalOpen(false);
 
     } catch (error: any) {
-      console.error("Login error (Firebase):", error.code, error.message);
+      console.error("[Firebase Auth Error] Login failed for", data.email, "Error Code:", error.code, "Message:", error.message, error);
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         toast({ title: "Error de Acceso", description: "Usuario o contraseña incorrectos.", variant: "destructive" });
       } else {
         // For other Firebase errors (network, service unavailable), only log to console.
+        // toast({ title: "Error al iniciar sesión", description: "Ocurrió un problema de conexión o del servicio.", variant: "destructive" });
         console.error("Firebase login attempt failed with a non-credential error:", error);
       }
     } finally {
@@ -103,24 +110,24 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
           <DialogHeader className="text-left mb-4">
             <DialogTitle className="text-2xl font-bold text-white">{APP_NAME}</DialogTitle>
           </DialogHeader>
-          
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name="email" 
+                name="email"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="block text-sm font-medium text-white mb-1 leading-tight">
                       Usuario
                     </FormLabel>
                     <FormControl>
-                      <Input 
-                        type="email" 
-                        required 
+                      <Input
+                        type="email"
+                        required
                         className="w-full px-4 py-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-white/20 text-white placeholder-gray-300"
-                        autoComplete="username" 
-                        {...field} 
+                        autoComplete="username"
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage className="text-red-300" />
@@ -136,25 +143,25 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
                       Contraseña
                     </FormLabel>
                     <FormControl>
-                      <Input 
+                      <Input
                         type="password"
-                        required 
+                        required
                         className="w-full px-4 py-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-white/20 text-white placeholder-gray-300"
                         autoComplete="current-password"
-                        {...field} 
+                        {...field}
                       />
                     </FormControl>
                     <FormMessage className="text-red-300" />
                   </FormItem>
                 )}
               />
-              
+
               <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-md font-medium w-full" disabled={isLoading}>
                 {isLoading ? 'Ingresando...' : 'Ingresar'}
               </Button>
             </form>
           </Form>
-          
+
           <div className="mt-4 text-center">
               <p className="text-xs text-gray-300 mt-1"> </p>
           </div>
