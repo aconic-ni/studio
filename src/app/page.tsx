@@ -70,9 +70,7 @@ export default function HomePage() {
   const fetchExamsForAdmin = useCallback(async () => {
     if (userRole === 'admin') {
       setIsLoadingExams(true);
-      // console.log("Firestore is currently inactive. Using mock exam data for admin view.");
-      // setSavedExams(mockSavedExams); 
-      // setIsLoadingExams(false);
+      // console.log("Attempting to fetch exams from Firestore for admin.");
       try {
         const examsCollectionRef = collection(db, "exams");
         const q = query(examsCollectionRef, orderBy("createdAt", "desc"));
@@ -86,17 +84,19 @@ export default function HomePage() {
         })) as ExamInfo[];
         setSavedExams(fetchedExams);
       } catch (error) {
-        console.error("Error fetching exams: ", error);
-        toast({ 
-          title: "Error al cargar exámenes",
-          description: "No se pudieron cargar los exámenes previos desde la base de datos.",
-          variant: "destructive",
-        });
+        console.error("Error fetching exams from Firestore: ", error);
+        // toast({ 
+        //   title: "Error al cargar exámenes",
+        //   description: "No se pudieron cargar los exámenes previos desde la base de datos.",
+        //   variant: "destructive",
+        // });
+        // Using mock data as a fallback if Firestore is inactive/errors
+        setSavedExams(mockSavedExams); 
       } finally {
         setIsLoadingExams(false);
       }
     }
-  }, [userRole, toast]); // db was removed from deps, consider re-adding if direct db instance changes
+  }, [userRole, toast]); // db removed from deps as it's constant, add if needed
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async firebaseUser => {
@@ -114,11 +114,11 @@ export default function HomePage() {
             }
         } catch (error) {
             console.error("Error fetching user role from Firestore:", error);
-            toast({title: "Error de Rol", description: "No se pudo verificar el rol del usuario. Usando rol por defecto.", variant: "destructive"});
+            // toast({title: "Error de Rol", description: "No se pudo verificar el rol del usuario. Usando rol por defecto.", variant: "destructive"});
             handleLoginSuccess('gestor'); // Default role on error
         }
       } else {
-        handleLogout(false); // Pass false to indicate not a user-initiated logout
+        handleLogout(false); 
       }
     });
     return () => unsubscribe();
@@ -150,7 +150,7 @@ export default function HomePage() {
       setUserRole(null);
       setExamInfo(null);
       setProducts([]);
-      setSavedExams(mockSavedExams);
+      setSavedExams(mockSavedExams); // Reset to mock or empty if preferred
       setEditingExamId(null);
       setCurrentView('login');
       if (showToast) {
@@ -158,9 +158,9 @@ export default function HomePage() {
       }
     }).catch((error) => {
       console.error("Error signing out: ", error.code, error.message);
-      // Reverted: UI toast for logout errors re-enabled
       if (showToast) {
-        toast({ title: "Error al Salir", description: "No se pudo cerrar la sesión.", variant: "destructive"});
+        // UI toast for logout errors removed, only console logged
+        // toast({ title: "Error al Salir", description: "No se pudo cerrar la sesión.", variant: "destructive"});
       }
     });
   };
@@ -248,10 +248,6 @@ export default function HomePage() {
         setEditingExamId(null);
       }
     } else {
-      // For gestor, they might review the current exam they just finished.
-      // If it was saved, it should be on the product list.
-      // If not saved, this might lead to an empty product list.
-      // Consider behavior if examInfo is null here for gestor.
       setCurrentView('productList'); 
     }
   };
@@ -266,34 +262,9 @@ export default function HomePage() {
       return;
     }
 
-    // const currentUser = auth.currentUser; 
-    // const userEmailForAudit = currentUser?.email || "Usuario Desconocido";
-
-    // console.log("Firestore is currently inactive. Simulating exam save.");
-    // toast({ title: "Simulación de Guardado", description: "El examen ha sido 'guardado' localmente (Firestore inactivo)." });
-    
-    // if (userRole === 'admin') {
-    //     const now = new Date();
-    //     const examToSave : ExamInfo = {
-    //         ...examInfo,
-    //         id: editingExamId || `mock_${Date.now()}`,
-    //         products: products,
-    //         lastModifiedAt: now,
-    //         lastModifiedBy: userRole === 'admin' ? "TEST ADMIN USER" : userEmailForAudit,
-    //         ...(editingExamId ? {} : { createdAt: now, createdBy: examInfo.manager }),
-    //     };
-        
-    //     if (editingExamId) {
-    //         const index = mockSavedExams.findIndex(ex => ex.id === editingExamId);
-    //         if (index !== -1) mockSavedExams[index] = examToSave; else mockSavedExams.push(examToSave);
-    //     } else {
-    //         mockSavedExams.push(examToSave);
-    //     }
-    //     setRefreshExamsTrigger(prev => prev + 1);
-    // }
-
+    // console.log("Attempting to save exam data to Firestore.");
     try {
-      const managerName = examInfo.manager; // Gestor's name from the form
+      const managerName = examInfo.manager; 
       const currentUserEmail = auth.currentUser?.email || "Usuario Desconocido";
 
       if (editingExamId) {
@@ -306,14 +277,13 @@ export default function HomePage() {
         };
         
         delete updateData.id; 
-        // Ensure createdBy and createdAt are not overwritten if they exist
         if (examInfo.createdBy) updateData.createdBy = examInfo.createdBy;
         if (examInfo.createdAt) updateData.createdAt = examInfo.createdAt;
         
         await setDoc(examDocRef, updateData, { merge: true }); 
         toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado en la base de datos." });
       } else {
-        const newExamData: Omit<ExamInfo, 'id'> = { // id will be auto-generated by Firestore
+        const newExamData: Omit<ExamInfo, 'id'> = { 
           ...examInfo,
           products: products,
           createdBy: managerName, 
@@ -326,14 +296,14 @@ export default function HomePage() {
       }
 
       if (userRole === 'admin') {
-        setTimeout(() => { // Delay to allow Firestore to process
+        setTimeout(() => { 
           setRefreshExamsTrigger(prev => prev + 1);
         }, 500); 
       }
       
     } catch (error) {
-      console.error("Error saving exam data: ", error);
-      toast({ title: "Error al Guardar", description: "No se pudo guardar el examen.", variant: "destructive" });
+      console.error("Error saving exam data to Firestore: ", error);
+      // toast({ title: "Error al Guardar", description: "No se pudo guardar el examen.", variant: "destructive" });
     }
   };
   
@@ -366,15 +336,18 @@ export default function HomePage() {
       toast({ title: "Usuario Creado", description: `El usuario ${userData.email} con rol ${userData.role} ha sido creado.` });
       setIsAddUserModalOpen(false);
     } catch (error: any) {
-      console.error("Error creating user:", error.code, error.message);
+      console.error("Error creating user (Firebase):", error.code, error.message);
       let errorMessage = "No se pudo crear el usuario.";
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = "Este correo electrónico ya está en uso.";
+        toast({ title: "Error al Crear Usuario", description: errorMessage, variant: "destructive" });
       } else if (error.code === 'auth/weak-password') {
         errorMessage = "La contraseña es demasiado débil.";
+        toast({ title: "Error al Crear Usuario", description: errorMessage, variant: "destructive" });
+      } else {
+        // For other Firebase errors, only log to console.
+        // toast({ title: "Error al Crear Usuario", description: errorMessage, variant: "destructive" });
       }
-      // Reverted: UI toast for all Firebase user creation errors re-enabled
-      toast({ title: "Error al Crear Usuario", description: errorMessage, variant: "destructive" });
     }
   };
 
@@ -392,7 +365,6 @@ export default function HomePage() {
       ...examToEdit, 
       createdAt: examToEdit.createdAt instanceof Timestamp ? examToEdit.createdAt.toDate() : new Date(examToEdit.createdAt as any),
       lastModifiedAt: examToEdit.lastModifiedAt instanceof Timestamp ? examToEdit.lastModifiedAt.toDate() : new Date(examToEdit.lastModifiedAt as any),
-      // Ensure createdBy is carried over from the original document
       createdBy: examToEdit.createdBy || examToEdit.manager, 
     }); 
     setProducts(examToEdit.products || []); 

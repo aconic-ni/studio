@@ -65,22 +65,25 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
           // for now, we can signal success and close
           setIsLoginModalOpen(false); 
         } else {
-          throw new Error("Rol de usuario no encontrado en Firestore.");
+          console.error("Rol de usuario no encontrado en Firestore para UID:", user.uid);
+          // If role is critical and not found, could treat as an error or default
+          // For now, onAuthStateChanged in HomePage might handle default role assignment
+          setIsLoginModalOpen(false);
         }
       } else {
         console.warn(`Datos de usuario (rol) no encontrados en Firestore para UID: ${user.uid}. Podría ser un usuario de Firebase Auth sin perfil en Firestore o Firestore está inactivo.`);
-        // If Firestore is inactive or user doc doesn't exist, onAuthStateChanged will handle default role.
-        // We can consider this a successful AuthN, role will be default.
+        // Firestore might be inactive or user doc doesn't exist.
+        // onAuthStateChanged in HomePage will handle default role.
         setIsLoginModalOpen(false);
       }
     } catch (error: any) {
       console.error("Login error (Firebase):", error.code, error.message);
-      let errorMessage = "Error al iniciar sesión.";
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        errorMessage = "Usuario o contraseña incorrectos.";
+        toast({ title: "Error de Acceso", description: "Usuario o contraseña incorrectos.", variant: "destructive" });
+      } else {
+        // For other Firebase errors (network, service unavailable), only log to console.
+        // toast({ title: "Error de Acceso", description: "Error al iniciar sesión. Verifique su conexión o intente más tarde.", variant: "destructive" });
       }
-      // Reverted: UI toast for all Firebase login errors
-      toast({ title: "Error de Acceso", description: errorMessage, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }

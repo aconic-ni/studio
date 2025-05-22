@@ -15,7 +15,8 @@ interface HsCodeSuggestorProps {
 export function HsCodeSuggestor({ productDescription, onSuggestion }: HsCodeSuggestorProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<SuggestHsCodeOutput | null>(null);
-  const [error, setError] = useState<string | null>(null); // Error state is kept for console logging
+  // Error state is kept for console logging but not for UI display.
+  // const [error, setError] = useState<string | null>(null); 
 
   const handleSuggestHsCode = async () => {
     if (!productDescription || productDescription.trim() === "") {
@@ -26,7 +27,7 @@ export function HsCodeSuggestor({ productDescription, onSuggestion }: HsCodeSugg
     }
 
     setIsLoading(true);
-    setError(null);
+    // setError(null); // No UI error state to reset
     setSuggestion(null);
 
     try {
@@ -34,7 +35,6 @@ export function HsCodeSuggestor({ productDescription, onSuggestion }: HsCodeSugg
       const result = await suggestHsCodeFlow(input);
       setSuggestion(result);
       if(result.hsCode) {
-        // Split the result to separate code and explanation if they are combined
         const parts = result.hsCode.split(/:(.*)/s);
         const code = parts[0].trim();
         const explanation = parts[1] ? parts[1].trim() : "Explicación no proporcionada.";
@@ -43,7 +43,6 @@ export function HsCodeSuggestor({ productDescription, onSuggestion }: HsCodeSugg
     } catch (e: any) {
       console.error("Error suggesting HS Code:", e);
       // setError("No se pudo sugerir el código HS. Intente de nuevo. Detalle: " + (e.message || "Error desconocido")); // UI error removed
-      // The specific message "backend preview is disconnected" would have been set here or similar.
     } finally {
       setIsLoading(false);
     }
@@ -66,16 +65,7 @@ export function HsCodeSuggestor({ productDescription, onSuggestion }: HsCodeSugg
         Sugerir Código HS
       </Button>
       
-      {/* 
-      The Alert for displaying errors has been removed. 
-      Original error Alert:
-      {error && (
-        <Alert variant="destructive">
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )} 
-      */}
+      {/* UI Error Alert has been permanently removed. Errors are only console logged. */}
 
       {suggestion && suggestion.hsCode && (
         <Alert variant="default">
