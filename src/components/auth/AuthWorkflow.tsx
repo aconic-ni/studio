@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { localUsers } from '@/lib/localUsers';
+import { localUsers } from '@/lib/localUsers'; // Assuming localUsers.ts exists
 
 interface AuthWorkflowProps {
   onLoginSuccess: (role: UserRole) => void;
@@ -39,44 +39,51 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
     setIsLoading(true);
     console.log("[Login Attempt] Email:", data.email);
 
+    // 1. Check local users first
     const localUserMatch = localUsers.find(
       (user) => user.email === data.email && user.password === data.password
     );
 
     if (localUserMatch) {
       console.log("[Login Success] Local user matched:", localUserMatch.email, "Role:", localUserMatch.role);
-      toast({ title: "Acceso Local Concedido", description: `Bienvenido (local). Rol: ${localUserMatch.role?.toUpperCase()}` });
+      // toast({ title: "Acceso Local Concedido", description: `Bienvenido (local). Rol: ${localUserMatch.role?.toUpperCase()}` });
       onLoginSuccess(localUserMatch.role);
       setIsLoading(false);
       setIsLoginModalOpen(false);
       return;
     }
 
+    // 2. If no local match, attempt Firebase Auth
     console.log("[Login Attempt] No local user match, attempting Firebase Auth for:", data.email);
+    if (!auth || !db) {
+        console.error("[Login Error] Firebase auth or db instance is not available.");
+        toast({ title: "Error de Configuración", description: "Servicio de autenticación no disponible.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+
     try {
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
       console.log("[Firebase Auth] Signed in. User UID:", user.uid, "Email:", user.email);
 
       const userDocRef = doc(db, "users", user.uid);
-      console.log("[Firestore Role Check] Attempting to get doc:", `/users/${user.uid}`);
+      console.log("[AuthWorkflow - Firestore Role Check] Attempting to get doc:", `/users/${user.uid}`);
       const userDocSnap = await getDoc(userDocRef);
 
       if (userDocSnap.exists()) {
         const userData = userDocSnap.data();
         const role = userData.role as UserRole;
-        console.log(`[Firestore Role Check] Document for UID ${user.uid} exists. UserData:`, userData, "Role from Firestore:", role);
+        console.log(`[AuthWorkflow - Firestore Role Check] Document for UID ${user.uid} exists. UserData:`, userData, "Role from Firestore:", role);
         if (role) {
           onLoginSuccess(role);
         } else {
-          console.error(`[Firestore Role Check] Role field missing or empty in Firestore for UID: ${user.uid}. UserData:`, userData, "Defaulting to 'gestor' role.");
-          // toast({ title: "Error de Rol", description: "Rol no definido para este usuario.", variant: "destructive" });
-          onLoginSuccess('gestor');
+          console.warn(`[AuthWorkflow - Firestore Role Check] Role field missing or empty in Firestore for UID: ${user.uid}. UserData:`, userData, "Defaulting to 'gestor' role.");
+          onLoginSuccess('gestor'); // Default if role field is missing
         }
       } else {
-        console.warn(`[Firestore Role Check] Firestore document /users/${user.uid} NOT FOUND for authenticated user ${user.email}. Defaulting to 'gestor' role.`);
-        // toast({ title: "Perfil no encontrado", description: `No se encontró perfil en base de datos para ${user.email}. Consulte al administrador.`, variant: "destructive"});
-        onLoginSuccess('gestor');
+        console.warn(`[AuthWorkflow - Firestore Role Check] Firestore document /users/${user.uid} NOT FOUND for authenticated user ${user.email}. Defaulting to 'gestor' role.`);
+        onLoginSuccess('gestor'); // Default if user document doesn't exist
       }
       setIsLoginModalOpen(false);
 
@@ -86,8 +93,8 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
         toast({ title: "Error de Acceso", description: "Usuario o contraseña incorrectos.", variant: "destructive" });
       } else {
         // For other Firebase errors (network, service unavailable), only log to console.
-        // toast({ title: "Error al iniciar sesión", description: "Ocurrió un problema de conexión o del servicio.", variant: "destructive" });
-        console.error("Firebase login attempt failed with a non-credential error:", error);
+        console.error("Firebase login attempt failed with a non-credential error:", error.code, error.message);
+        // Do not show a toast for general backend errors here, as per previous requests.
       }
     } finally {
       setIsLoading(false);
@@ -170,3 +177,5 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
     </div>
   );
 }
+
+    

@@ -67,7 +67,7 @@ export default function HomePage() {
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
   const [isLoadingExams, setIsLoadingExams] = useState(false);
   const [refreshExamsTrigger, setRefreshExamsTrigger] = useState(0);
-  const [isAuthLoading, setIsAuthLoading] = useState(true); // New state for initial auth check
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
 
   const { toast } = useToast();
@@ -87,6 +87,12 @@ export default function HomePage() {
     if (userRole === 'admin') {
       setIsLoadingExams(true);
       console.log("[fetchExamsForAdmin] Fetching exams from Firestore...");
+      if (!db) {
+        console.warn("[fetchExamsForAdmin] Firestore db instance is not available. Using mock data.");
+        setSavedExams(mockSavedExams); // Fallback to mock if db is not available
+        setIsLoadingExams(false);
+        return;
+      }
       try {
         const examsCollectionRef = collection(db, "exams");
         const q = query(examsCollectionRef, orderBy("createdAt", "desc"));
@@ -111,40 +117,46 @@ export default function HomePage() {
   }, [userRole]); 
 
   useEffect(() => {
-    setIsAuthLoading(true); // Start with auth loading true
+    setIsAuthLoading(true);
     console.log("[Auth State] Setting up onAuthStateChanged listener.");
+    if (!auth || !db) {
+        console.warn("[Auth State] Firebase auth or db instance is not available for onAuthStateChanged listener. App may not function correctly.");
+        setIsAuthLoading(false); // Stop loading if Firebase isn't available
+        // Consider if you want to default to login or show an error state
+        handleLogout(false); // Default to logged out state
+        return;
+    }
     const unsubscribe = auth.onAuthStateChanged(async firebaseUser => {
       if (firebaseUser) {
         console.log("[Auth State] User is signed in via onAuthStateChanged. UID:", firebaseUser.uid, "Email:", firebaseUser.email);
         try {
             const userDocRef = doc(db, "users", firebaseUser.uid);
-            console.log("[Auth State] onAuthStateChanged: Attempting to get Firestore doc:", `/users/${firebaseUser.uid}`);
+            console.log("[Auth State - onAuthStateChanged] Attempting to get Firestore doc:", `/users/${firebaseUser.uid}`);
             const userDocSnap = await getDoc(userDocRef);
             if (userDocSnap.exists()) {
               const userData = userDocSnap.data();
               const role = userData.role as UserRole;
-              console.log(`[Auth State] onAuthStateChanged: Document for UID ${firebaseUser.uid} exists. UserData:`, userData, "Role from Firestore:", role);
-              if (!role) {
-                 console.warn(`[Auth State] onAuthStateChanged: UID: ${firebaseUser.uid}, Email: ${firebaseUser.email}, Role field missing or empty in Firestore. Defaulting to 'gestor'. UserData:`, userData);
-                 handleLoginSuccess('gestor');
+              console.log(`[Auth State - onAuthStateChanged] Document for UID ${firebaseUser.uid} exists. UserData:`, userData, "Role from Firestore:", role);
+              if (role) {
+                 handleLoginSuccess(role);
               } else {
-                handleLoginSuccess(role);
+                 console.warn(`[Auth State - onAuthStateChanged] UID: ${firebaseUser.uid}, Role field missing or empty in Firestore. Defaulting to 'gestor'. UserData:`, userData);
+                 handleLoginSuccess('gestor');
               }
             } else {
-              console.warn(`[Auth State] onAuthStateChanged: Firestore document /users/${firebaseUser.uid} NOT FOUND for authenticated user ${firebaseUser.email}. Defaulting to 'gestor' role.`);
-              handleLoginSuccess('gestor');
+              console.warn(`[Auth State - onAuthStateChanged] Firestore document /users/${firebaseUser.uid} NOT FOUND for authenticated user ${firebaseUser.email}. Defaulting to 'gestor' role.`);
+              handleLoginSuccess('gestor'); // Default if user document not found
             }
         } catch (error: any) {
-            console.error("[Auth State] onAuthStateChanged: Error fetching role from Firestore for UID:", firebaseUser.uid, "Error:", error.message, error);
-            // toast({ title: "Error de Autenticación", description: "No se pudo verificar el rol del usuario.", variant: "destructive"});
-            console.warn("[Auth State] onAuthStateChanged: Error fetching role, defaulting to 'gestor'.");
+            console.error("[Auth State - onAuthStateChanged] Error fetching role from Firestore for UID:", firebaseUser.uid, "Error:", error.message, error);
+            console.warn("[Auth State - onAuthStateChanged] Error fetching role, defaulting to 'gestor'.");
             handleLoginSuccess('gestor'); // Default to gestor if role fetch fails
         }
       } else {
-        console.log("[Auth State] onAuthStateChanged: No user signed in.");
+        console.log("[Auth State - onAuthStateChanged] No user signed in.");
         handleLogout(false); // false to not show toast on initial load if not logged in
       }
-      setIsAuthLoading(false); // Auth check finished
+      setIsAuthLoading(false);
     });
     return () => {
       console.log("[Auth State] Cleaning up onAuthStateChanged listener.");
@@ -171,16 +183,28 @@ export default function HomePage() {
     } else {
       setCurrentView('examForm');
     }
-    setIsAuthLoading(false); // Ensure auth loading is false after successful login
+    setIsAuthLoading(false);
   };
 
   const handleLogout = (showToast = true) => {
+    if (!auth) {
+        console.warn("[Logout] Firebase auth instance not available. Performing local logout.");
+        setIsLoggedIn(false);
+        setUserRole(null);
+        setExamInfo(null);
+        setProducts([]);
+        setEditingExamId(null);
+        setCurrentView('login');
+        if (showToast) {
+            toast({ title: "Sesión Cerrada (Local)", description: "Has salido de la aplicación." });
+        }
+        return;
+    }
     signOut(auth).then(() => {
       setIsLoggedIn(false);
       setUserRole(null);
       setExamInfo(null);
       setProducts([]);
-      // setSavedExams(mockSavedExams); // Keep fetched exams if admin logged out? or clear? For now, let's clear.
       setEditingExamId(null);
       setCurrentView('login');
       if (showToast) {
@@ -189,7 +213,7 @@ export default function HomePage() {
       console.log("[Logout] User signed out successfully.");
     }).catch((error) => {
       console.error("[Logout Error] Firebase sign out failed:", error.code, error.message);
-      // For other Firebase errors (network, service unavailable), only log to console.
+       // Only log to console, do not show UI toast for backend errors.
     });
   };
 
@@ -289,10 +313,19 @@ export default function HomePage() {
       toast({ title: "Sin Productos", description: "Debe agregar al menos un producto antes de guardar.", variant: "destructive" });
       return;
     }
+    
+    if (!db) {
+      console.warn("[Save Exam] Firestore db instance not available. Simulating save.");
+      toast({ title: "Examen Guardado (Local)", description: "El examen ha sido guardado localmente (simulación)." });
+       if (userRole === 'admin') {
+        setRefreshExamsTrigger(prev => prev + 1); // Trigger mock refresh for admin
+      }
+      return;
+    }
 
     try {
       const managerName = examInfo.manager;
-      const currentUserEmail = auth.currentUser?.email || "System"; 
+      const currentUserEmail = auth?.currentUser?.email; 
 
       if (editingExamId) {
         const examDocRef = doc(db, "exams", editingExamId);
@@ -300,12 +333,11 @@ export default function HomePage() {
           ...examInfo,
           products: products,
           lastModifiedAt: serverTimestamp(),
-          lastModifiedBy: userRole === 'admin' ? (auth.currentUser?.email || "TEST ADMIN USER") : managerName,
+          lastModifiedBy: userRole === 'admin' ? (currentUserEmail || "TEST ADMIN USER") : managerName,
         };
 
-        delete updateData.id; // Don't try to write the id field itself
+        delete updateData.id;
         
-        // Preserve original creator and creation time explicitly if they exist on examInfo
         if (examInfo.createdBy) updateData.createdBy = examInfo.createdBy;
         if (examInfo.createdAt) updateData.createdAt = examInfo.createdAt instanceof Date ? Timestamp.fromDate(examInfo.createdAt) : examInfo.createdAt;
 
@@ -360,8 +392,8 @@ export default function HomePage() {
 
   const handleCreateUser = async (userData: CreateUserFormData) => {
     console.log("[Create User Attempt] Data:", userData);
-    if (!db) {
-        console.error("Firestore db instance is not available for createUser");
+    if (!auth || !db) {
+        console.error("Firebase auth or db instance is not available for createUser");
         toast({ title: "Error de Configuración", description: "La base de datos no está disponible.", variant: "destructive" });
         return;
     }
@@ -390,6 +422,7 @@ export default function HomePage() {
         toast({ title: "Error al Crear Usuario", description: errorMessage, variant: "destructive" });
       } else {
         console.error("Firebase user creation failed with a non-specific error:", error);
+        // Only log to console for other backend errors
       }
     }
   };
@@ -412,7 +445,7 @@ export default function HomePage() {
 
     const examDataForEditing: ExamInfo = {
         ...examToEdit,
-        id: examToEdit.id, // Ensure ID is present
+        id: examToEdit.id, 
         ne: examToEdit.ne,
         reference: examToEdit.reference || '',
         manager: examToEdit.manager || '',
@@ -465,7 +498,7 @@ export default function HomePage() {
       {userRole && (
         <div className="text-white text-center mb-2 bg-primary/20 p-2 rounded-md">
           Rol Actual: <span className="font-semibold">{userRole.toUpperCase()}</span>
-          {auth.currentUser && <span className="text-xs"> ({auth.currentUser.email})</span>}
+          {auth?.currentUser && <span className="text-xs"> ({auth.currentUser.email})</span>}
         </div>
       )}
       <main className="flex-grow">
@@ -658,5 +691,7 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
 
     
