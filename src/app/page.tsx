@@ -13,33 +13,34 @@ import { PreviewModalContent } from '@/components/preview/PreviewModalContent';
 import { SuccessModalContent } from '@/components/common/SuccessModalContent';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { AddUserModalContent } from '@/components/admin/AddUserModalContent';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Download } from 'lucide-react';
 import { generateTxtReport, downloadFile, generateExcelReport } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-import { auth, db } from '@/lib/firebase'; // db import re-enabled
+import { auth, db } from '@/lib/firebase';
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, setDoc, Timestamp, getDoc } from 'firebase/firestore'; // Firestore imports re-enabled
+import { collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, setDoc, Timestamp, getDoc } from 'firebase/firestore';
 
 
 type AppView = 'login' | 'examForm' | 'productList' | 'adminDashboard';
 
-// Mock data if Firestore is inactive (will be overridden by actual data if Firestore is active and has data)
 const mockSavedExams: ExamInfo[] = [
   // Example:
-  // { 
-  //   id: 'mock1', 
-  //   ne: 'NXTEST1', 
-  //   reference: 'MOCKREF1', 
-  //   manager: 'Gestor Mock', 
-  //   location: 'Almacén Mock', 
+  // {
+  //   id: 'mock1',
+  //   ne: 'NXTEST1',
+  //   reference: 'MOCKREF1',
+  //   manager: 'Gestor Mock',
+  //   location: 'Almacén Mock',
   //   products: [
   //     { id: 'prodmock1', itemNumber: '001', description: 'Mock Product 1', quantityUnits: 10 }
-  //   ], 
-  //   createdBy: 'Gestor Mock', 
-  //   createdAt: new Date(), 
-  //   lastModifiedBy: 'Gestor Mock', 
-  //   lastModifiedAt: new Date() 
+  //   ],
+  //   createdBy: 'Gestor Mock',
+  //   createdAt: new Date(),
+  //   lastModifiedBy: 'Gestor Mock',
+  //   lastModifiedAt: new Date()
   // },
 ];
 
@@ -50,17 +51,17 @@ export default function HomePage() {
   const [currentView, setCurrentView] = useState<AppView>('login');
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
-  
+
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
-  
+
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-  
+
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
-  const [savedExams, setSavedExams] = useState<ExamInfo[]>(mockSavedExams); 
+  const [savedExams, setSavedExams] = useState<ExamInfo[]>(mockSavedExams);
   const [viewingExamDetail, setViewingExamDetail] = useState<ExamInfo | null>(null);
   const [isViewExamDetailModalOpen, setIsViewExamDetailModalOpen] = useState(false);
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
@@ -72,9 +73,9 @@ export default function HomePage() {
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (isLoggedIn && (examInfo || products.length > 0) && userRole !== 'admin' && !editingExamId) { 
+      if (isLoggedIn && (examInfo || products.length > 0) && userRole !== 'admin' && !editingExamId) {
         event.preventDefault();
-        event.returnValue = ''; 
+        event.returnValue = '';
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -91,7 +92,7 @@ export default function HomePage() {
         const fetchedExams: ExamInfo[] = querySnapshot.docs.map(docSnap => ({
           id: docSnap.id,
           ...docSnap.data(),
-          products: docSnap.data().products || [], 
+          products: docSnap.data().products || [],
           createdAt: docSnap.data().createdAt instanceof Timestamp ? docSnap.data().createdAt.toDate() : new Date(docSnap.data().createdAt),
           lastModifiedAt: docSnap.data().lastModifiedAt instanceof Timestamp ? docSnap.data().lastModifiedAt.toDate() : new Date(docSnap.data().lastModifiedAt),
         })) as ExamInfo[];
@@ -99,7 +100,7 @@ export default function HomePage() {
       } catch (error) {
         console.error("Error fetching exams: ", error);
         setSavedExams(mockSavedExams); // Fallback to mock on error
-        toast({ title: "Error", description: "No se pudieron cargar los exámenes desde la base de datos.", variant: "destructive" });
+        // toast({ title: "Error", description: "No se pudieron cargar los exámenes desde la base de datos.", variant: "destructive" });
       } finally {
         setIsLoadingExams(false);
       }
@@ -115,26 +116,26 @@ export default function HomePage() {
             if (userDocSnap.exists()) {
               const userData = userDocSnap.data();
               const role = userData.role as UserRole;
-              handleLoginSuccess(role); 
+              handleLoginSuccess(role);
             } else {
               console.warn(`Firestore user data for ${firebaseUser.email} not found. Defaulting to 'gestor' role.`);
-              toast({ title: "Perfil no encontrado", description: `No se encontró perfil en base de datos para ${firebaseUser.email}. Rol por defecto: gestor.`, variant: "destructive"});
+              // toast({ title: "Perfil no encontrado", description: `No se encontró perfil en base de datos para ${firebaseUser.email}. Rol por defecto: gestor.`, variant: "destructive"});
               handleLoginSuccess('gestor'); // Default role if Firestore doc doesn't exist
             }
         } catch (error) {
             console.error("Error processing auth state change (Firestore role check):", error);
-            toast({ title: "Error de Autenticación", description: "No se pudo verificar el rol del usuario.", variant: "destructive"});
+            // toast({ title: "Error de Autenticación", description: "No se pudo verificar el rol del usuario.", variant: "destructive"});
             if (!userRole) { // Only default if no role was set (e.g. by localUsers)
                 handleLoginSuccess('gestor'); // Default role on error
             }
         }
       } else {
-        handleLogout(false); 
+        handleLogout(false);
       }
     });
     return () => unsubscribe();
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // userRole removed from deps to let onAuthStateChanged always attempt role fetch if firebaseUser exists
+  }, []);
 
 
   useEffect(() => {
@@ -151,7 +152,7 @@ export default function HomePage() {
     if (role === 'admin') {
       setCurrentView('adminDashboard');
     } else {
-      setCurrentView('examForm'); 
+      setCurrentView('examForm');
     }
   };
 
@@ -161,7 +162,7 @@ export default function HomePage() {
       setUserRole(null);
       setExamInfo(null);
       setProducts([]);
-      setSavedExams(mockSavedExams); 
+      setSavedExams(mockSavedExams);
       setEditingExamId(null);
       setCurrentView('login');
       if (showToast) {
@@ -170,7 +171,6 @@ export default function HomePage() {
     }).catch((error) => {
       console.error("Error signing out (Firebase): ", error.code, error.message);
       // For other Firebase errors (network, service unavailable), only log to console.
-      // No UI toast will be displayed for these general errors.
     });
   };
 
@@ -180,10 +180,10 @@ export default function HomePage() {
         createdAt: examInfo.createdAt,
     } : {};
 
-    const submittedExamInfo = { 
-      ...(examInfo || {}), 
-      ...currentAuditFields, 
-      ...data 
+    const submittedExamInfo = {
+      ...(examInfo || {}),
+      ...currentAuditFields,
+      ...data
     };
     setExamInfo(submittedExamInfo);
     setCurrentView('productList');
@@ -212,7 +212,7 @@ export default function HomePage() {
     setEditingProduct(product);
     setIsAddEditModalOpen(true);
   };
-  
+
   const handleViewProduct = (product: Product) => {
     setViewingProduct(product);
     setIsDetailModalOpen(true);
@@ -242,7 +242,7 @@ export default function HomePage() {
   const handleStartNewExam = () => {
     setExamInfo(null);
     setProducts([]);
-    setEditingExamId(null); 
+    setEditingExamId(null);
     setCurrentView('examForm');
     setIsSuccessModalOpen(false);
   };
@@ -251,18 +251,18 @@ export default function HomePage() {
     setIsSuccessModalOpen(false);
     if (userRole === 'admin') {
       setCurrentView('adminDashboard');
-      if (editingExamId) { 
+      if (editingExamId) {
         setExamInfo(null);
         setProducts([]);
         setEditingExamId(null);
       }
     } else {
-      setCurrentView('productList'); 
+      setCurrentView('productList');
     }
   };
 
   const handleSaveExamData = async () => {
-    if (!examInfo || !examInfo.manager) { 
+    if (!examInfo || !examInfo.manager) {
       toast({ title: "Datos incompletos", description: "Falta información del gestor o del examen.", variant: "destructive" });
       return;
     }
@@ -272,50 +272,50 @@ export default function HomePage() {
     }
 
     try {
-      const managerName = examInfo.manager; 
-      const currentUserEmail = auth.currentUser?.email || "TEST ADMIN USER"; // Fallback for admin edits
+      const managerName = examInfo.manager;
+      const currentUserEmail = auth.currentUser?.email || "TEST ADMIN USER";
 
       if (editingExamId) {
         const examDocRef = doc(db, "exams", editingExamId);
         const updateData: Partial<ExamInfo> = {
-          ...examInfo, 
+          ...examInfo,
           products: products,
           lastModifiedAt: serverTimestamp(),
           lastModifiedBy: userRole === 'admin' ? currentUserEmail : managerName,
         };
-        
+
         delete updateData.id; // Don't save Firestore ID as a field within the document
         // Preserve original creator and creation time
         if (examInfo.createdBy) updateData.createdBy = examInfo.createdBy;
         if (examInfo.createdAt) updateData.createdAt = examInfo.createdAt;
-        
-        await setDoc(examDocRef, updateData, { merge: true }); 
+
+        await setDoc(examDocRef, updateData, { merge: true });
         toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado en la base de datos." });
       } else {
-        const newExamData: Omit<ExamInfo, 'id'> = { 
+        const newExamData: Omit<ExamInfo, 'id'> = {
           ...examInfo,
           products: products,
-          createdBy: managerName, 
+          createdBy: managerName,
           createdAt: serverTimestamp(),
-          lastModifiedBy: managerName, 
-          lastModifiedAt: serverTimestamp(), 
+          lastModifiedBy: managerName,
+          lastModifiedAt: serverTimestamp(),
         };
         await addDoc(collection(db, "exams"), newExamData);
         toast({ title: "Examen Guardado", description: "El examen ha sido guardado en la base de datos." });
       }
 
       if (userRole === 'admin') {
-        setTimeout(() => { 
+        setTimeout(() => {
           setRefreshExamsTrigger(prev => prev + 1);
-        }, 500); 
+        }, 500);
       }
-      
+
     } catch (error) {
       console.error("Error saving exam data: ", error);
-      toast({ title: "Error al Guardar", description: "No se pudo guardar el examen en la base de datos.", variant: "destructive" });
+      // toast({ title: "Error al Guardar", description: "No se pudo guardar el examen en la base de datos.", variant: "destructive" });
     }
   };
-  
+
   const handleDownloadTxt = () => {
     if (!examInfo) return;
     const reportContent = generateTxtReport(examInfo, products);
@@ -327,16 +327,21 @@ export default function HomePage() {
     if (!examInfo) return;
     generateExcelReport(examInfo, products);
   };
+  
+  const handleDownloadExcelForSavedExam = () => {
+    if (!viewingExamDetail) return;
+    generateExcelReport(viewingExamDetail, viewingExamDetail.products || []);
+  };
+
 
   const handleOpenAddUserModal = () => setIsAddUserModalOpen(true);
   const handleCloseAddUserModal = () => setIsAddUserModalOpen(false);
-  
+
   const handleCreateUser = async (userData: CreateUserFormData) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
       const user = userCredential.user;
-      
-      // Save user role to Firestore
+
       await setDoc(doc(db, "users", user.uid), {
         email: userData.email,
         role: userData.role,
@@ -355,7 +360,6 @@ export default function HomePage() {
         errorMessage = "La contraseña es demasiado débil.";
         toast({ title: "Error al Crear Usuario", description: errorMessage, variant: "destructive" });
       } else {
-        // For other Firebase errors, only log to console.
         console.error("Firebase user creation failed with a non-specific error:", error);
       }
     }
@@ -365,35 +369,35 @@ export default function HomePage() {
     setViewingExamDetail(exam);
     setIsViewExamDetailModalOpen(true);
   };
-  
+
   const handleEditSavedExam = (examToEdit: ExamInfo) => {
-    if (!examToEdit.id && !examToEdit.ne) { 
+    if (!examToEdit.id && !examToEdit.ne) {
         toast({ title: "Error", description: "ID o NE de examen no encontrado.", variant: "destructive" });
         return;
     }
-    const createdAtDate = examToEdit.createdAt instanceof Date ? examToEdit.createdAt : 
+    const createdAtDate = examToEdit.createdAt instanceof Date ? examToEdit.createdAt :
                          (examToEdit.createdAt as any)?.toDate ? (examToEdit.createdAt as any).toDate() : new Date(examToEdit.createdAt as any);
-    const lastModifiedAtDate = examToEdit.lastModifiedAt instanceof Date ? examToEdit.lastModifiedAt : 
+    const lastModifiedAtDate = examToEdit.lastModifiedAt instanceof Date ? examToEdit.lastModifiedAt :
                                (examToEdit.lastModifiedAt as any)?.toDate ? (examToEdit.lastModifiedAt as any).toDate() : new Date(examToEdit.lastModifiedAt as any);
 
-    setExamInfo({ 
-      ...examToEdit, 
+    setExamInfo({
+      ...examToEdit,
       createdAt: createdAtDate,
       lastModifiedAt: lastModifiedAtDate,
-      createdBy: examToEdit.createdBy || examToEdit.manager, 
-    }); 
-    setProducts(examToEdit.products || []); 
-    setEditingExamId(examToEdit.id || examToEdit.ne); 
-    setCurrentView('productList'); 
+      createdBy: examToEdit.createdBy || examToEdit.manager,
+    });
+    setProducts(examToEdit.products || []);
+    setEditingExamId(examToEdit.id || examToEdit.ne);
+    setCurrentView('productList');
     toast({ title: "Editando Examen", description: `Modificando examen NE: ${examToEdit.ne}` });
   };
 
   const handleBackNavigation = () => {
     if (userRole === 'admin' && editingExamId) {
       setCurrentView('adminDashboard');
-      setExamInfo(null); 
+      setExamInfo(null);
       setProducts([]);
-      setEditingExamId(null); 
+      setEditingExamId(null);
     } else {
       setCurrentView('examForm');
     }
@@ -419,14 +423,14 @@ export default function HomePage() {
             savedExams={savedExams}
             onAddNewUser={handleOpenAddUserModal}
             onViewExam={handleViewSavedExam}
-            onEditExam={handleEditSavedExam} 
+            onEditExam={handleEditSavedExam}
             isLoading={isLoadingExams}
           />
         )}
         {(currentView === 'examForm' && (userRole !== 'admin' || (userRole === 'admin' && editingExamId))) && (
-          <ExamForm 
-            onSubmitExamInfo={handleExamInfoSubmit} 
-            initialData={examInfo || undefined} 
+          <ExamForm
+            onSubmitExamInfo={handleExamInfoSubmit}
+            initialData={examInfo || undefined}
           />
         )}
         {(currentView === 'productList' && examInfo && (userRole !== 'admin' || (userRole === 'admin' && editingExamId))) && (
@@ -439,7 +443,7 @@ export default function HomePage() {
             onDeleteProduct={handleDeleteProduct}
             onFinalize={handleFinalize}
             onBackToExamForm={handleBackNavigation}
-            userRole={userRole} 
+            userRole={userRole}
             editingExamId={editingExamId}
           />
         )}
@@ -497,7 +501,7 @@ export default function HomePage() {
           </DialogContent>
         </Dialog>
       )}
-      
+
       {examInfo && (
          <Dialog open={isSuccessModalOpen} onOpenChange={setIsSuccessModalOpen}>
           <DialogContent className="sm:max-w-md p-0">
@@ -505,7 +509,7 @@ export default function HomePage() {
               managerName={examInfo.manager}
               onStartNew={handleStartNewExam}
               onReviewPrevious={handleReviewPreviousExam}
-              onSave={handleSaveExamData} 
+              onSave={handleSaveExamData}
             />
           </DialogContent>
         </Dialog>
@@ -521,7 +525,7 @@ export default function HomePage() {
             </DialogHeader>
             <div className="p-5 md:p-6 pt-0">
               <AddUserModalContent
-                onSubmitUser={handleCreateUser} 
+                onSubmitUser={handleCreateUser}
                 onClose={handleCloseAddUserModal}
               />
             </div>
@@ -590,9 +594,18 @@ export default function HomePage() {
                 )}
               </div>
             </div>
+            <DialogFooter className="p-5 md:p-6 pt-3 border-t">
+              <Button variant="outline" onClick={handleDownloadExcelForSavedExam}>
+                <Download className="mr-2 h-4 w-4" />
+                Descargar Excel
+              </Button>
+              <Button variant="outline" onClick={() => setIsViewExamDetailModalOpen(false)}>Cerrar</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
     </div>
   );
 }
+
+      
