@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-// import { doc, getDoc } from 'firebase/firestore'; // Firestore fetch commented out
+import { doc, getDoc } from 'firebase/firestore'; 
 import { auth, db } from '@/lib/firebase';
 import { localUsers } from '@/lib/localUsers'; 
 
@@ -37,7 +37,6 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
 
   const onSubmit: SubmitHandler<LoginFormData> = async (data) => { 
     setIsLoading(true);
-    // toast({ title: "Iniciando Sesión", description: "Verificando credenciales..." }); // Removed default loading toast
     
     const localUserMatch = localUsers.find(
       (user) => user.email === data.email && user.password === data.password
@@ -53,53 +52,35 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
-      // const user = userCredential.user;
+      const user = userCredential.user;
 
-      // Firestore role fetching is commented out, defaulting role in onAuthStateChanged or here
-      // const userDocRef = doc(db, "users", user.uid);
-      // const userDocSnap = await getDoc(userDocRef);
-      // if (userDocSnap.exists()) {
-      //   const userData = userDocSnap.data();
-      //   const role = userData.role as UserRole;
-      //   if (role) {
-      //     onLoginSuccess(role); // This is handled by onAuthStateChanged now
-      //     setIsLoginModalOpen(false);
-      //   } else {
-      //     throw new Error("Rol de usuario no encontrado en Firestore.");
-      //   }
-      // } else {
-      //   console.error("Datos de usuario (rol) no encontrados en Firestore para UID:", user.uid);
-      //   throw new Error("Datos de rol de usuario no encontrados. Contacte al administrador.");
-      // }
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
       
-      // If Firebase Auth is successful, onAuthStateChanged in HomePage will handle role fetching/defaulting.
-      // For now, we can assume onAuthStateChanged will pick it up.
-      // We can still trigger a loading state end here.
-      // onLoginSuccess might be called by onAuthStateChanged in HomePage.
-      // toast({ title: "Acceso Concedido", description: "Verificando rol..." }); // This could be premature
-      console.log(`Firebase Authentication successful for ${data.email}. Awaiting role processing.`);
-      setIsLoginModalOpen(false); // Close modal, onAuthStateChanged will handle view change
-
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const role = userData.role as UserRole;
+        if (role) {
+          // onLoginSuccess will be called by onAuthStateChanged in HomePage if this path is taken
+          // for now, we can signal success and close
+          setIsLoginModalOpen(false); 
+        } else {
+          throw new Error("Rol de usuario no encontrado en Firestore.");
+        }
+      } else {
+        console.warn(`Datos de usuario (rol) no encontrados en Firestore para UID: ${user.uid}. Podría ser un usuario de Firebase Auth sin perfil en Firestore o Firestore está inactivo.`);
+        // If Firestore is inactive or user doc doesn't exist, onAuthStateChanged will handle default role.
+        // We can consider this a successful AuthN, role will be default.
+        setIsLoginModalOpen(false);
+      }
     } catch (error: any) {
-      console.error("Login error (Firebase):", error.code, error.message); 
+      console.error("Login error (Firebase):", error.code, error.message);
       let errorMessage = "Error al iniciar sesión.";
-      let showErrorToast = false;
-
       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         errorMessage = "Usuario o contraseña incorrectos.";
-        showErrorToast = true;
-      } else {
-        // For any other Firebase error (network, service unavailable, etc.),
-        // we will only log it to the console and not show a UI toast.
-        console.error("An unexpected Firebase error occurred during login:", error.message);
-        // errorMessage is already "Error al iniciar sesión."
-        // showErrorToast remains false for these cases.
       }
-
-      if (showErrorToast) {
-        toast({ title: "Error de Acceso", description: errorMessage, variant: "destructive" });
-      }
-      
+      // Reverted: UI toast for all Firebase login errors
+      toast({ title: "Error de Acceso", description: errorMessage, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
