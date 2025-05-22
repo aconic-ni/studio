@@ -15,7 +15,7 @@ import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { AddUserModalContent } from '@/components/admin/AddUserModalContent';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { generateTxtReport, downloadFile, generateExcelReport } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -67,6 +67,7 @@ export default function HomePage() {
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
   const [isLoadingExams, setIsLoadingExams] = useState(false);
   const [refreshExamsTrigger, setRefreshExamsTrigger] = useState(0);
+  const [isAuthLoading, setIsAuthLoading] = useState(true); // New state for initial auth check
 
 
   const { toast } = useToast();
@@ -94,66 +95,63 @@ export default function HomePage() {
           id: docSnap.id,
           ...docSnap.data(),
           products: docSnap.data().products || [],
-          createdAt: docSnap.data().createdAt instanceof Timestamp ? docSnap.data().createdAt.toDate() : new Date(docSnap.data().createdAt),
-          lastModifiedAt: docSnap.data().lastModifiedAt instanceof Timestamp ? docSnap.data().lastModifiedAt.toDate() : new Date(docSnap.data().lastModifiedAt),
+          createdAt: docSnap.data().createdAt instanceof Timestamp ? docSnap.data().createdAt.toDate() : new Date(docSnap.data().createdAt || Date.now()),
+          lastModifiedAt: docSnap.data().lastModifiedAt instanceof Timestamp ? docSnap.data().lastModifiedAt.toDate() : new Date(docSnap.data().lastModifiedAt || Date.now()),
         })) as ExamInfo[];
         console.log("[fetchExamsForAdmin] Exams fetched:", fetchedExams.length);
         setSavedExams(fetchedExams);
       } catch (error) {
         console.error("[fetchExamsForAdmin] Error fetching exams: ", error);
-        setSavedExams(mockSavedExams); // Fallback to mock on error
         // toast({ title: "Error", description: "No se pudieron cargar los exámenes desde la base de datos.", variant: "destructive" });
       } finally {
         setIsLoadingExams(false);
       }
     }
-  }, [userRole]); // Removed toast from dependencies as it's stable
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userRole]); 
 
   useEffect(() => {
+    setIsAuthLoading(true); // Start with auth loading true
     console.log("[Auth State] Setting up onAuthStateChanged listener.");
     const unsubscribe = auth.onAuthStateChanged(async firebaseUser => {
       if (firebaseUser) {
-        console.log("[Auth State] User is signed in. UID:", firebaseUser.uid, "Email:", firebaseUser.email);
+        console.log("[Auth State] User is signed in via onAuthStateChanged. UID:", firebaseUser.uid, "Email:", firebaseUser.email);
         try {
             const userDocRef = doc(db, "users", firebaseUser.uid);
-            console.log("[Auth State] Attempting to get Firestore doc:", `/users/${firebaseUser.uid}`);
+            console.log("[Auth State] onAuthStateChanged: Attempting to get Firestore doc:", `/users/${firebaseUser.uid}`);
             const userDocSnap = await getDoc(userDocRef);
             if (userDocSnap.exists()) {
               const userData = userDocSnap.data();
               const role = userData.role as UserRole;
-              console.log(`[Auth State] Document for UID ${firebaseUser.uid} exists. UserData:`, userData, "Role from Firestore:", role);
+              console.log(`[Auth State] onAuthStateChanged: Document for UID ${firebaseUser.uid} exists. UserData:`, userData, "Role from Firestore:", role);
               if (!role) {
-                 console.warn(`[Auth State] UID: ${firebaseUser.uid}, Email: ${firebaseUser.email}, Role field missing or empty in Firestore. Defaulting to 'gestor'. UserData:`, userData);
+                 console.warn(`[Auth State] onAuthStateChanged: UID: ${firebaseUser.uid}, Email: ${firebaseUser.email}, Role field missing or empty in Firestore. Defaulting to 'gestor'. UserData:`, userData);
                  handleLoginSuccess('gestor');
               } else {
                 handleLoginSuccess(role);
               }
             } else {
-              console.warn(`[Auth State] Firestore document /users/${firebaseUser.uid} NOT FOUND for authenticated user ${firebaseUser.email}. Defaulting to 'gestor' role.`);
-              // toast({ title: "Perfil no encontrado", description: `No se encontró perfil en base de datos para ${firebaseUser.email}. Rol por defecto: gestor.`, variant: "destructive"});
+              console.warn(`[Auth State] onAuthStateChanged: Firestore document /users/${firebaseUser.uid} NOT FOUND for authenticated user ${firebaseUser.email}. Defaulting to 'gestor' role.`);
               handleLoginSuccess('gestor');
             }
-        } catch (error) {
-            console.error("[Auth State] Error processing auth state change (Firestore role check):", error);
+        } catch (error: any) {
+            console.error("[Auth State] onAuthStateChanged: Error fetching role from Firestore for UID:", firebaseUser.uid, "Error:", error.message, error);
             // toast({ title: "Error de Autenticación", description: "No se pudo verificar el rol del usuario.", variant: "destructive"});
-            if (!userRole) { // Only default if no role was set (e.g. by localUsers)
-                console.warn("[Auth State] Error fetching role, and no prior role set. Defaulting to 'gestor'.");
-                handleLoginSuccess('gestor');
-            } else {
-                console.warn("[Auth State] Error fetching role, but a role was already set:", userRole, "Retaining existing role.");
-            }
+            console.warn("[Auth State] onAuthStateChanged: Error fetching role, defaulting to 'gestor'.");
+            handleLoginSuccess('gestor'); // Default to gestor if role fetch fails
         }
       } else {
-        console.log("[Auth State] No user signed in.");
-        handleLogout(false);
+        console.log("[Auth State] onAuthStateChanged: No user signed in.");
+        handleLogout(false); // false to not show toast on initial load if not logged in
       }
+      setIsAuthLoading(false); // Auth check finished
     });
     return () => {
       console.log("[Auth State] Cleaning up onAuthStateChanged listener.");
       unsubscribe();
     };
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // No dependencies to ensure it runs only once on mount
+  }, []); 
 
 
   useEffect(() => {
@@ -167,12 +165,13 @@ export default function HomePage() {
     console.log("[Login Success Handler] Role received:", role);
     setIsLoggedIn(true);
     setUserRole(role);
-    // toast({ title: "Acceso Concedido", description: `Bienvenido. Rol: ${role?.toUpperCase()}` }); // Consider if this toast is too frequent
+    // toast({ title: "Acceso Concedido", description: `Bienvenido. Rol: ${role?.toUpperCase()}` });
     if (role === 'admin') {
       setCurrentView('adminDashboard');
     } else {
       setCurrentView('examForm');
     }
+    setIsAuthLoading(false); // Ensure auth loading is false after successful login
   };
 
   const handleLogout = (showToast = true) => {
@@ -181,7 +180,7 @@ export default function HomePage() {
       setUserRole(null);
       setExamInfo(null);
       setProducts([]);
-      setSavedExams(mockSavedExams);
+      // setSavedExams(mockSavedExams); // Keep fetched exams if admin logged out? or clear? For now, let's clear.
       setEditingExamId(null);
       setCurrentView('login');
       if (showToast) {
@@ -271,13 +270,12 @@ export default function HomePage() {
     setIsSuccessModalOpen(false);
     if (userRole === 'admin') {
       setCurrentView('adminDashboard');
-      if (editingExamId) { // Clear editing state if admin was editing
+      if (editingExamId) { 
         setExamInfo(null);
         setProducts([]);
         setEditingExamId(null);
       }
     } else {
-      // For gestor, return to product list of the current exam
       setCurrentView('productList');
     }
   };
@@ -294,7 +292,7 @@ export default function HomePage() {
 
     try {
       const managerName = examInfo.manager;
-      const currentUserEmail = auth.currentUser?.email || "Admin User"; // Fallback if email not available
+      const currentUserEmail = auth.currentUser?.email || "System"; 
 
       if (editingExamId) {
         const examDocRef = doc(db, "exams", editingExamId);
@@ -305,10 +303,11 @@ export default function HomePage() {
           lastModifiedBy: userRole === 'admin' ? (auth.currentUser?.email || "TEST ADMIN USER") : managerName,
         };
 
-        delete updateData.id;
-        // Preserve original creator and creation time explicitly
+        delete updateData.id; // Don't try to write the id field itself
+        
+        // Preserve original creator and creation time explicitly if they exist on examInfo
         if (examInfo.createdBy) updateData.createdBy = examInfo.createdBy;
-        if (examInfo.createdAt) updateData.createdAt = examInfo.createdAt;
+        if (examInfo.createdAt) updateData.createdAt = examInfo.createdAt instanceof Date ? Timestamp.fromDate(examInfo.createdAt) : examInfo.createdAt;
 
 
         await setDoc(examDocRef, updateData, { merge: true });
@@ -319,7 +318,7 @@ export default function HomePage() {
           products: products,
           createdBy: managerName,
           createdAt: serverTimestamp(),
-          lastModifiedBy: managerName, // On creation, lastModifiedBy is same as createdBy
+          lastModifiedBy: managerName, 
           lastModifiedAt: serverTimestamp(),
         };
         await addDoc(collection(db, "exams"), newExamData);
@@ -328,8 +327,8 @@ export default function HomePage() {
 
       if (userRole === 'admin') {
         setTimeout(() => {
-          setRefreshExamsTrigger(prev => prev + 1); // Trigger re-fetch for admin
-        }, 500); // Small delay to allow Firestore to process
+          setRefreshExamsTrigger(prev => prev + 1); 
+        }, 500); 
       }
 
     } catch (error) {
@@ -361,6 +360,11 @@ export default function HomePage() {
 
   const handleCreateUser = async (userData: CreateUserFormData) => {
     console.log("[Create User Attempt] Data:", userData);
+    if (!db) {
+        console.error("Firestore db instance is not available for createUser");
+        toast({ title: "Error de Configuración", description: "La base de datos no está disponible.", variant: "destructive" });
+        return;
+    }
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
       const user = userCredential.user;
@@ -385,7 +389,6 @@ export default function HomePage() {
         errorMessage = "La contraseña es demasiado débil.";
         toast({ title: "Error al Crear Usuario", description: errorMessage, variant: "destructive" });
       } else {
-        // For other Firebase errors (network, service unavailable), only log to console.
         console.error("Firebase user creation failed with a non-specific error:", error);
       }
     }
@@ -401,42 +404,55 @@ export default function HomePage() {
         toast({ title: "Error", description: "ID o NE de examen no encontrado.", variant: "destructive" });
         return;
     }
-    // Ensure dates are Date objects
+    
     const createdAtDate = examToEdit.createdAt instanceof Date ? examToEdit.createdAt :
-                         (examToEdit.createdAt as any)?.toDate ? (examToEdit.createdAt as any).toDate() : new Date(examToEdit.createdAt as any || Date.now());
+                         (examToEdit.createdAt as any)?.toDate ? (examToEdit.createdAt as any).toDate() : new Date((examToEdit.createdAt as any) || Date.now());
     const lastModifiedAtDate = examToEdit.lastModifiedAt instanceof Date ? examToEdit.lastModifiedAt :
-                               (examToEdit.lastModifiedAt as any)?.toDate ? (examToEdit.lastModifiedAt as any).toDate() : new Date(examToEdit.lastModifiedAt as any || Date.now());
+                               (examToEdit.lastModifiedAt as any)?.toDate ? (examToEdit.lastModifiedAt as any).toDate() : new Date((examToEdit.lastModifiedAt as any) || Date.now());
 
-    const examDataForEditing = {
+    const examDataForEditing: ExamInfo = {
         ...examToEdit,
+        id: examToEdit.id, // Ensure ID is present
+        ne: examToEdit.ne,
+        reference: examToEdit.reference || '',
+        manager: examToEdit.manager || '',
+        location: examToEdit.location || '',
+        products: examToEdit.products || [],
         createdAt: createdAtDate,
+        createdBy: examToEdit.createdBy || examToEdit.manager, 
         lastModifiedAt: lastModifiedAtDate,
-        createdBy: examToEdit.createdBy || examToEdit.manager, // Ensure createdBy is present
+        lastModifiedBy: examToEdit.lastModifiedBy || examToEdit.manager,
     };
 
     console.log("[Edit Saved Exam] Loading exam for editing:", examDataForEditing);
     setExamInfo(examDataForEditing);
     setProducts(examToEdit.products || []);
-    setEditingExamId(examToEdit.id || examToEdit.ne); // Use Firestore ID if available
-    setCurrentView('productList'); // Go to product list for editing
+    setEditingExamId(examToEdit.id || examToEdit.ne); 
+    setCurrentView('productList'); 
     toast({ title: "Editando Examen", description: `Modificando examen NE: ${examToEdit.ne}` });
   };
 
 
   const handleBackNavigation = () => {
     if (userRole === 'admin' && editingExamId) {
-      // Admin was editing, return to dashboard and clear editing state
       setCurrentView('adminDashboard');
       setExamInfo(null);
       setProducts([]);
       setEditingExamId(null);
       console.log("[Back Navigation] Admin returning to dashboard from edit.");
     } else {
-      // Gestor or other, return to exam form (previous step in current exam)
       setCurrentView('examForm');
        console.log("[Back Navigation] Returning to ExamForm.");
     }
   };
+
+  if (isAuthLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background/80 z-50">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
 
 
   if (!isLoggedIn || currentView === 'login') {
@@ -445,7 +461,7 @@ export default function HomePage() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl min-h-screen flex flex-col">
-      <AppHeader isLoggedIn={isLoggedIn} onLogout={handleLogout} />
+      <AppHeader isLoggedIn={isLoggedIn} onLogout={() => handleLogout(true)} />
       {userRole && (
         <div className="text-white text-center mb-2 bg-primary/20 p-2 rounded-md">
           Rol Actual: <span className="font-semibold">{userRole.toUpperCase()}</span>
@@ -642,3 +658,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
