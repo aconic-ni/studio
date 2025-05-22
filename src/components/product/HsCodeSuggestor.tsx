@@ -15,19 +15,16 @@ interface HsCodeSuggestorProps {
 export function HsCodeSuggestor({ productDescription, onSuggestion }: HsCodeSuggestorProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<SuggestHsCodeOutput | null>(null);
-  // Error state is kept for console logging but not for UI display.
-  // const [error, setError] = useState<string | null>(null); 
+  // Error state for UI display is removed. Errors are only console logged.
 
   const handleSuggestHsCode = async () => {
     if (!productDescription || productDescription.trim() === "") {
       console.error("HS Code Suggestion: Product description is empty.");
-      // setError("Por favor, ingrese una descripción del producto."); // UI error removed
       setSuggestion(null);
       return;
     }
 
     setIsLoading(true);
-    // setError(null); // No UI error state to reset
     setSuggestion(null);
 
     try {
@@ -41,8 +38,8 @@ export function HsCodeSuggestor({ productDescription, onSuggestion }: HsCodeSugg
         onSuggestion(code, explanation);
       }
     } catch (e: any) {
-      console.error("Error suggesting HS Code:", e);
-      // setError("No se pudo sugerir el código HS. Intente de nuevo. Detalle: " + (e.message || "Error desconocido")); // UI error removed
+      console.error("Error suggesting HS Code:", e?.message || e);
+      // No UI error is shown, only console logged.
     } finally {
       setIsLoading(false);
     }
