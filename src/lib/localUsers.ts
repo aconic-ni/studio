@@ -32,3 +32,4 @@ export const localUsers: LocalUser[] = [
     role: 'gestor',
   },
 ];
+
