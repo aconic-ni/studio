@@ -19,9 +19,20 @@ import { Download, Loader2 } from 'lucide-react';
 import { generateTxtReport, downloadFile, generateExcelReport } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-import { auth, db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase'; // Ensure db is imported
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, setDoc, Timestamp, getDoc } from 'firebase/firestore';
+import { 
+  collection, 
+  addDoc, 
+  getDocs, 
+  query, 
+  orderBy, 
+  serverTimestamp, 
+  doc, 
+  setDoc, 
+  Timestamp, 
+  getDoc 
+} from 'firebase/firestore'; // Ensure all are imported and uncommented
 
 
 type AppView = 'login' | 'examForm' | 'productList' | 'adminDashboard';
@@ -87,7 +98,7 @@ export default function HomePage() {
     if (userRole === 'admin') {
       setIsLoadingExams(true);
       console.log("[fetchExamsForAdmin] Fetching exams from Firestore...");
-      if (!db) {
+      if (!db) { // Check if db is available
         console.warn("[fetchExamsForAdmin] Firestore db instance is not available. Using mock data.");
         setSavedExams(mockSavedExams); // Fallback to mock if db is not available
         setIsLoadingExams(false);
@@ -101,8 +112,8 @@ export default function HomePage() {
           id: docSnap.id,
           ...docSnap.data(),
           products: docSnap.data().products || [],
-          createdAt: docSnap.data().createdAt instanceof Timestamp ? docSnap.data().createdAt.toDate() : new Date(docSnap.data().createdAt || Date.now()),
-          lastModifiedAt: docSnap.data().lastModifiedAt instanceof Timestamp ? docSnap.data().lastModifiedAt.toDate() : new Date(docSnap.data().lastModifiedAt || Date.now()),
+          createdAt: docSnap.data().createdAt instanceof Timestamp ? docSnap.data().createdAt.toDate() : new Date(docSnap.data().createdAt?.seconds * 1000 || Date.now()),
+          lastModifiedAt: docSnap.data().lastModifiedAt instanceof Timestamp ? docSnap.data().lastModifiedAt.toDate() : new Date(docSnap.data().lastModifiedAt?.seconds * 1000 || Date.now()),
         })) as ExamInfo[];
         console.log("[fetchExamsForAdmin] Exams fetched:", fetchedExams.length);
         setSavedExams(fetchedExams);
@@ -119,10 +130,9 @@ export default function HomePage() {
   useEffect(() => {
     setIsAuthLoading(true);
     console.log("[Auth State] Setting up onAuthStateChanged listener.");
-    if (!auth || !db) {
+    if (!auth || !db) { // Check if db is available
         console.warn("[Auth State] Firebase auth or db instance is not available for onAuthStateChanged listener. App may not function correctly.");
         setIsAuthLoading(false); // Stop loading if Firebase isn't available
-        // Consider if you want to default to login or show an error state
         handleLogout(false); // Default to logged out state
         return;
     }
@@ -133,6 +143,7 @@ export default function HomePage() {
             const userDocRef = doc(db, "users", firebaseUser.uid);
             console.log("[Auth State - onAuthStateChanged] Attempting to get Firestore doc:", `/users/${firebaseUser.uid}`);
             const userDocSnap = await getDoc(userDocRef);
+
             if (userDocSnap.exists()) {
               const userData = userDocSnap.data();
               const role = userData.role as UserRole;
@@ -141,15 +152,15 @@ export default function HomePage() {
                  handleLoginSuccess(role);
               } else {
                  console.warn(`[Auth State - onAuthStateChanged] UID: ${firebaseUser.uid}, Role field missing or empty in Firestore. Defaulting to 'gestor'. UserData:`, userData);
-                 handleLoginSuccess('gestor');
+                 handleLoginSuccess('gestor'); // Prioritize fetched role, then default
               }
             } else {
               console.warn(`[Auth State - onAuthStateChanged] Firestore document /users/${firebaseUser.uid} NOT FOUND for authenticated user ${firebaseUser.email}. Defaulting to 'gestor' role.`);
               handleLoginSuccess('gestor'); // Default if user document not found
             }
         } catch (error: any) {
-            console.error("[Auth State - onAuthStateChanged] Error fetching role from Firestore for UID:", firebaseUser.uid, "Error:", error.message, error);
-            console.warn("[Auth State - onAuthStateChanged] Error fetching role, defaulting to 'gestor'.");
+            console.error("[Auth State] onAuthStateChanged: Error fetching role from Firestore for UID:", firebaseUser.uid, "Error:", error.message, error);
+            console.warn("[Auth State] onAuthStateChanged: Error fetching role, defaulting to 'gestor'.");
             handleLoginSuccess('gestor'); // Default to gestor if role fetch fails
         }
       } else {
@@ -196,7 +207,7 @@ export default function HomePage() {
         setEditingExamId(null);
         setCurrentView('login');
         if (showToast) {
-            toast({ title: "Sesión Cerrada (Local)", description: "Has salido de la aplicación." });
+            // toast({ title: "Sesión Cerrada (Local)", description: "Has salido de la aplicación." });
         }
         return;
     }
@@ -213,7 +224,7 @@ export default function HomePage() {
       console.log("[Logout] User signed out successfully.");
     }).catch((error) => {
       console.error("[Logout Error] Firebase sign out failed:", error.code, error.message);
-       // Only log to console, do not show UI toast for backend errors.
+      // Only log to console, do not show UI toast for backend errors.
     });
   };
 
@@ -224,9 +235,9 @@ export default function HomePage() {
     } : {};
 
     const submittedExamInfo = {
-      ...(examInfo || {}),
-      ...currentAuditFields,
-      ...data
+      ...(examInfo || {}), // Preserves existing examInfo fields if editing
+      ...currentAuditFields, // Preserves original creation audit fields if editing
+      ...data // Applies new data from the form
     };
     setExamInfo(submittedExamInfo);
     setCurrentView('productList');
@@ -294,12 +305,14 @@ export default function HomePage() {
     setIsSuccessModalOpen(false);
     if (userRole === 'admin') {
       setCurrentView('adminDashboard');
+      // Clear editing context if admin was editing and now wants to review general list
       if (editingExamId) { 
         setExamInfo(null);
         setProducts([]);
         setEditingExamId(null);
       }
     } else {
+      // For non-admins, take them back to their current exam's product list
       setCurrentView('productList');
     }
   };
@@ -314,7 +327,7 @@ export default function HomePage() {
       return;
     }
     
-    if (!db) {
+    if (!db) { // Check if db is available
       console.warn("[Save Exam] Firestore db instance not available. Simulating save.");
       toast({ title: "Examen Guardado (Local)", description: "El examen ha sido guardado localmente (simulación)." });
        if (userRole === 'admin') {
@@ -324,23 +337,32 @@ export default function HomePage() {
     }
 
     try {
-      const managerName = examInfo.manager;
-      const currentUserEmail = auth?.currentUser?.email; 
+      const currentUserEmail = auth?.currentUser?.email || "Usuario Desconocido";
+      let finalCreatedBy = examInfo.createdBy || examInfo.manager; // Preserve original creator if editing
+      let finalLastModifiedBy = examInfo.manager; // Default for new or if gestor edits
+
+      if (userRole === 'admin' && editingExamId) {
+        finalLastModifiedBy = currentUserEmail; // Admin email if admin is editing
+      } else if (!editingExamId) { // New exam creation
+        finalCreatedBy = examInfo.manager;
+        finalLastModifiedBy = examInfo.manager;
+      }
+
 
       if (editingExamId) {
         const examDocRef = doc(db, "exams", editingExamId);
+        // Preserve existing createdBy and createdAt if they exist
+        const existingExamData = savedExams.find(ex => ex.id === editingExamId) || examInfo;
+
         const updateData: Partial<ExamInfo> = {
-          ...examInfo,
+          ...examInfo, // includes ne, reference, manager, location from form
           products: products,
           lastModifiedAt: serverTimestamp(),
-          lastModifiedBy: userRole === 'admin' ? (currentUserEmail || "TEST ADMIN USER") : managerName,
+          lastModifiedBy: finalLastModifiedBy,
+          createdBy: existingExamData.createdBy || finalCreatedBy, // Keep original creator
+          createdAt: existingExamData.createdAt instanceof Date ? Timestamp.fromDate(existingExamData.createdAt) : existingExamData.createdAt || serverTimestamp(), // Keep original creation date
         };
-
-        delete updateData.id;
-        
-        if (examInfo.createdBy) updateData.createdBy = examInfo.createdBy;
-        if (examInfo.createdAt) updateData.createdAt = examInfo.createdAt instanceof Date ? Timestamp.fromDate(examInfo.createdAt) : examInfo.createdAt;
-
+        delete updateData.id; // Don't save client-side ID if it's same as Firestore doc ID
 
         await setDoc(examDocRef, updateData, { merge: true });
         toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado en la base de datos." });
@@ -348,9 +370,9 @@ export default function HomePage() {
         const newExamData: Omit<ExamInfo, 'id'> = {
           ...examInfo,
           products: products,
-          createdBy: managerName,
+          createdBy: finalCreatedBy,
           createdAt: serverTimestamp(),
-          lastModifiedBy: managerName, 
+          lastModifiedBy: finalLastModifiedBy, 
           lastModifiedAt: serverTimestamp(),
         };
         await addDoc(collection(db, "exams"), newExamData);
@@ -392,7 +414,7 @@ export default function HomePage() {
 
   const handleCreateUser = async (userData: CreateUserFormData) => {
     console.log("[Create User Attempt] Data:", userData);
-    if (!auth || !db) {
+    if (!auth || !db) { // Check if auth and db are available
         console.error("Firebase auth or db instance is not available for createUser");
         toast({ title: "Error de Configuración", description: "La base de datos no está disponible.", variant: "destructive" });
         return;
@@ -438,10 +460,11 @@ export default function HomePage() {
         return;
     }
     
-    const createdAtDate = examToEdit.createdAt instanceof Date ? examToEdit.createdAt :
-                         (examToEdit.createdAt as any)?.toDate ? (examToEdit.createdAt as any).toDate() : new Date((examToEdit.createdAt as any) || Date.now());
-    const lastModifiedAtDate = examToEdit.lastModifiedAt instanceof Date ? examToEdit.lastModifiedAt :
-                               (examToEdit.lastModifiedAt as any)?.toDate ? (examToEdit.lastModifiedAt as any).toDate() : new Date((examToEdit.lastModifiedAt as any) || Date.now());
+    // Ensure dates are Date objects
+    const createdAtDate = examToEdit.createdAt instanceof Timestamp ? examToEdit.createdAt.toDate() :
+                         examToEdit.createdAt instanceof Date ? examToEdit.createdAt : new Date((examToEdit.createdAt as any)?.seconds * 1000 || Date.now());
+    const lastModifiedAtDate = examToEdit.lastModifiedAt instanceof Timestamp ? examToEdit.lastModifiedAt.toDate() :
+                               examToEdit.lastModifiedAt instanceof Date ? examToEdit.lastModifiedAt : new Date((examToEdit.lastModifiedAt as any)?.seconds * 1000 || Date.now());
 
     const examDataForEditing: ExamInfo = {
         ...examToEdit,
@@ -451,6 +474,7 @@ export default function HomePage() {
         manager: examToEdit.manager || '',
         location: examToEdit.location || '',
         products: examToEdit.products || [],
+        // Ensure audit fields from the loaded exam are preserved
         createdAt: createdAtDate,
         createdBy: examToEdit.createdBy || examToEdit.manager, 
         lastModifiedAt: lastModifiedAtDate,
@@ -636,9 +660,9 @@ export default function HomePage() {
                   <p><strong>Gestor:</strong> {viewingExamDetail.manager || 'N/A'}</p>
                   <p><strong>Ubicación:</strong> {viewingExamDetail.location || 'N/A'}</p>
                   <p><strong>Creado por:</strong> {viewingExamDetail.createdBy || 'N/A'}</p>
-                  <p><strong>Fecha Creación:</strong> {viewingExamDetail.createdAt ? (viewingExamDetail.createdAt instanceof Date ? viewingExamDetail.createdAt.toLocaleString() : String(viewingExamDetail.createdAt)) : 'N/A'}</p>
+                  <p><strong>Fecha Creación:</strong> {viewingExamDetail.createdAt ? (viewingExamDetail.createdAt instanceof Date ? viewingExamDetail.createdAt.toLocaleString() : (viewingExamDetail.createdAt as any)?.seconds ? new Date((viewingExamDetail.createdAt as any).seconds * 1000).toLocaleString() : String(viewingExamDetail.createdAt)) : 'N/A'}</p>
                   <p><strong>Modificado por:</strong> {viewingExamDetail.lastModifiedBy || 'N/A'}</p>
-                  <p><strong>Última Modificación:</strong> {viewingExamDetail.lastModifiedAt ? (viewingExamDetail.lastModifiedAt instanceof Date ? viewingExamDetail.lastModifiedAt.toLocaleString() : String(viewingExamDetail.lastModifiedAt)) : 'N/A'}</p>
+                  <p><strong>Última Modificación:</strong> {viewingExamDetail.lastModifiedAt ? (viewingExamDetail.lastModifiedAt instanceof Date ? viewingExamDetail.lastModifiedAt.toLocaleString() : (viewingExamDetail.lastModifiedAt as any)?.seconds ? new Date((viewingExamDetail.lastModifiedAt as any).seconds * 1000).toLocaleString() : String(viewingExamDetail.lastModifiedAt)) : 'N/A'}</p>
                 </div>
 
                 <h4 className="font-medium text-md pt-2">Productos ({viewingExamDetail.products?.length || 0})</h4>
@@ -691,7 +715,5 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
 
     
