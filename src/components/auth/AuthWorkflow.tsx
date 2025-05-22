@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore'; 
-import { auth, db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase'; // db import re-enabled
 import { localUsers } from '@/lib/localUsers'; 
 
 interface AuthWorkflowProps {
@@ -54,27 +54,24 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
 
-      // Firestore is currently commented out, so role fetching from Firestore is disabled.
-      // const userDocRef = doc(db, "users", user.uid);
-      // const userDocSnap = await getDoc(userDocRef);
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
       
-      // if (userDocSnap.exists()) {
-      //   const userData = userDocSnap.data();
-      //   const role = userData.role as UserRole;
-      //   if (role) {
-      //     onLoginSuccess(role);
-      //   } else {
-      //     console.error("Rol de usuario no encontrado en Firestore para UID:", user.uid);
-      //     onLoginSuccess('gestor'); // Default role if Firestore doc has no role
-      //   }
-      // } else {
-      //   console.warn(`Datos de usuario (rol) no encontrados en Firestore para UID: ${user.uid}. Podría ser un usuario de Firebase Auth sin perfil en Firestore o Firestore está inactivo.`);
-      //   onLoginSuccess('gestor'); // Default role if Firestore doc doesn't exist
-      // }
-      
-      // Defaulting role since Firestore is inactive
-      console.log(`Firebase Auth successful for ${user.email}. Firestore role check is currently disabled. Defaulting to 'gestor' or relying on onAuthStateChanged.`);
-      onLoginSuccess('gestor'); // Or let onAuthStateChanged handle it. For now, to unblock.
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const role = userData.role as UserRole;
+        if (role) {
+          onLoginSuccess(role);
+        } else {
+          console.error("Rol de usuario no encontrado en Firestore para UID:", user.uid);
+          toast({ title: "Error de Rol", description: "Rol no definido para este usuario.", variant: "destructive" });
+          onLoginSuccess('gestor'); // Default role if Firestore doc has no role
+        }
+      } else {
+        console.warn(`Datos de usuario (rol) no encontrados en Firestore para UID: ${user.uid}.`);
+        toast({ title: "Perfil no encontrado", description: `No se encontró perfil en base de datos para ${user.email}. Consulte al administrador.`, variant: "destructive"});
+        onLoginSuccess('gestor'); // Default role if Firestore doc doesn't exist
+      }
       setIsLoginModalOpen(false);
 
     } catch (error: any) {
@@ -83,7 +80,6 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
         toast({ title: "Error de Acceso", description: "Usuario o contraseña incorrectos.", variant: "destructive" });
       } else {
         // For other Firebase errors (network, service unavailable), only log to console.
-        // No UI toast will be displayed for these general errors.
         console.error("Firebase login attempt failed with a non-credential error:", error);
       }
     } finally {

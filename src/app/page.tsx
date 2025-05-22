@@ -17,14 +17,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { generateTxtReport, downloadFile, generateExcelReport } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-import { auth } from '@/lib/firebase'; // db removed as Firestore is inactive
+import { auth, db } from '@/lib/firebase'; // db import re-enabled
 import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-// import { collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, setDoc, Timestamp, getDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, setDoc, Timestamp, getDoc } from 'firebase/firestore'; // Firestore imports re-enabled
 
 
 type AppView = 'login' | 'examForm' | 'productList' | 'adminDashboard';
 
-// Mock data if Firestore is inactive
+// Mock data if Firestore is inactive (will be overridden by actual data if Firestore is active and has data)
 const mockSavedExams: ExamInfo[] = [
   // Example:
   // { 
@@ -84,51 +84,47 @@ export default function HomePage() {
   const fetchExamsForAdmin = useCallback(async () => {
     if (userRole === 'admin') {
       setIsLoadingExams(true);
-      console.log("Firestore is inactive. Using mock exams for admin.");
       try {
-        // const examsCollectionRef = collection(db, "exams");
-        // const q = query(examsCollectionRef, orderBy("createdAt", "desc"));
-        // const querySnapshot = await getDocs(q);
-        // const fetchedExams: ExamInfo[] = querySnapshot.docs.map(docSnap => ({
-        //   id: docSnap.id,
-        //   ...docSnap.data(),
-        //   products: docSnap.data().products || [], 
-        //   createdAt: docSnap.data().createdAt instanceof Timestamp ? docSnap.data().createdAt.toDate() : new Date(docSnap.data().createdAt),
-        //   lastModifiedAt: docSnap.data().lastModifiedAt instanceof Timestamp ? docSnap.data().lastModifiedAt.toDate() : new Date(docSnap.data().lastModifiedAt),
-        // })) as ExamInfo[];
-        // setSavedExams(fetchedExams);
-        setSavedExams(mockSavedExams); // Using mock data as Firestore is inactive
+        const examsCollectionRef = collection(db, "exams");
+        const q = query(examsCollectionRef, orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        const fetchedExams: ExamInfo[] = querySnapshot.docs.map(docSnap => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+          products: docSnap.data().products || [], 
+          createdAt: docSnap.data().createdAt instanceof Timestamp ? docSnap.data().createdAt.toDate() : new Date(docSnap.data().createdAt),
+          lastModifiedAt: docSnap.data().lastModifiedAt instanceof Timestamp ? docSnap.data().lastModifiedAt.toDate() : new Date(docSnap.data().lastModifiedAt),
+        })) as ExamInfo[];
+        setSavedExams(fetchedExams);
       } catch (error) {
-        console.error("Error fetching exams (Firestore inactive): ", error);
-        setSavedExams(mockSavedExams); 
+        console.error("Error fetching exams: ", error);
+        setSavedExams(mockSavedExams); // Fallback to mock on error
+        toast({ title: "Error", description: "No se pudieron cargar los exámenes desde la base de datos.", variant: "destructive" });
       } finally {
         setIsLoadingExams(false);
       }
     }
-  }, [userRole]); // toast removed from deps as it's not used here if firestore is off
+  }, [userRole, toast]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async firebaseUser => {
       if (firebaseUser) {
         try {
-            // Firestore user role fetching is currently disabled.
-            // const userDocRef = doc(db, "users", firebaseUser.uid);
-            // const userDocSnap = await getDoc(userDocRef);
-            // if (userDocSnap.exists()) {
-            //   const userData = userDocSnap.data();
-            //   const role = userData.role as UserRole;
-            //   handleLoginSuccess(role); 
-            // } else {
-            //   console.warn(`Firestore user data for ${firebaseUser.email} not found. Defaulting to 'gestor' role.`);
-            //   handleLoginSuccess('gestor'); // Default role if Firestore doc doesn't exist
-            // }
-            if (!userRole) { // Only if role not set by AuthWorkflow (localUsers)
-               console.warn(`Firebase Auth detected user ${firebaseUser.email}. Firestore role check is currently disabled. Defaulting to 'gestor' role for onAuthStateChanged.`);
-               handleLoginSuccess('gestor'); 
+            const userDocRef = doc(db, "users", firebaseUser.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+              const userData = userDocSnap.data();
+              const role = userData.role as UserRole;
+              handleLoginSuccess(role); 
+            } else {
+              console.warn(`Firestore user data for ${firebaseUser.email} not found. Defaulting to 'gestor' role.`);
+              toast({ title: "Perfil no encontrado", description: `No se encontró perfil en base de datos para ${firebaseUser.email}. Rol por defecto: gestor.`, variant: "destructive"});
+              handleLoginSuccess('gestor'); // Default role if Firestore doc doesn't exist
             }
         } catch (error) {
-            console.error("Error processing auth state change (Firestore role check disabled):", error);
-            if (!userRole) {
+            console.error("Error processing auth state change (Firestore role check):", error);
+            toast({ title: "Error de Autenticación", description: "No se pudo verificar el rol del usuario.", variant: "destructive"});
+            if (!userRole) { // Only default if no role was set (e.g. by localUsers)
                 handleLoginSuccess('gestor'); // Default role on error
             }
         }
@@ -138,7 +134,7 @@ export default function HomePage() {
     });
     return () => unsubscribe();
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userRole]); // userRole added to ensure it doesn't override a role from localUsers immediately
+  }, []); // userRole removed from deps to let onAuthStateChanged always attempt role fetch if firebaseUser exists
 
 
   useEffect(() => {
@@ -173,10 +169,8 @@ export default function HomePage() {
       }
     }).catch((error) => {
       console.error("Error signing out (Firebase): ", error.code, error.message);
-      if (showToast) {
-        // UI toast for logout errors removed, only console logged
-        console.error("Firebase sign-out attempt failed with a non-credential error:", error);
-      }
+      // For other Firebase errors (network, service unavailable), only log to console.
+      // No UI toast will be displayed for these general errors.
     });
   };
 
@@ -277,37 +271,37 @@ export default function HomePage() {
       return;
     }
 
-    console.log("Firestore is inactive. Simulating exam save.");
     try {
       const managerName = examInfo.manager; 
-      // const currentUserEmail = auth.currentUser?.email || "Usuario Desconocido";
+      const currentUserEmail = auth.currentUser?.email || "TEST ADMIN USER"; // Fallback for admin edits
 
       if (editingExamId) {
-        // const examDocRef = doc(db, "exams", editingExamId);
-        // const updateData: Partial<ExamInfo> = {
-        //   ...examInfo, 
-        //   products: products,
-        //   lastModifiedAt: serverTimestamp(),
-        //   lastModifiedBy: userRole === 'admin' ? (auth.currentUser?.email || "TEST ADMIN USER") : managerName,
-        // };
+        const examDocRef = doc(db, "exams", editingExamId);
+        const updateData: Partial<ExamInfo> = {
+          ...examInfo, 
+          products: products,
+          lastModifiedAt: serverTimestamp(),
+          lastModifiedBy: userRole === 'admin' ? currentUserEmail : managerName,
+        };
         
-        // delete updateData.id; 
-        // if (examInfo.createdBy) updateData.createdBy = examInfo.createdBy;
-        // if (examInfo.createdAt) updateData.createdAt = examInfo.createdAt;
+        delete updateData.id; // Don't save Firestore ID as a field within the document
+        // Preserve original creator and creation time
+        if (examInfo.createdBy) updateData.createdBy = examInfo.createdBy;
+        if (examInfo.createdAt) updateData.createdAt = examInfo.createdAt;
         
-        // await setDoc(examDocRef, updateData, { merge: true }); 
-        toast({ title: "Examen Actualizado (Simulado)", description: "El examen ha sido actualizado localmente." });
+        await setDoc(examDocRef, updateData, { merge: true }); 
+        toast({ title: "Examen Actualizado", description: "El examen ha sido actualizado en la base de datos." });
       } else {
-        // const newExamData: Omit<ExamInfo, 'id'> = { 
-        //   ...examInfo,
-        //   products: products,
-        //   createdBy: managerName, 
-        //   createdAt: serverTimestamp(),
-        //   lastModifiedBy: managerName, 
-        //   lastModifiedAt: serverTimestamp(), 
-        // };
-        // await addDoc(collection(db, "exams"), newExamData);
-        toast({ title: "Examen Guardado (Simulado)", description: "El examen ha sido guardado localmente." });
+        const newExamData: Omit<ExamInfo, 'id'> = { 
+          ...examInfo,
+          products: products,
+          createdBy: managerName, 
+          createdAt: serverTimestamp(),
+          lastModifiedBy: managerName, 
+          lastModifiedAt: serverTimestamp(), 
+        };
+        await addDoc(collection(db, "exams"), newExamData);
+        toast({ title: "Examen Guardado", description: "El examen ha sido guardado en la base de datos." });
       }
 
       if (userRole === 'admin') {
@@ -317,8 +311,8 @@ export default function HomePage() {
       }
       
     } catch (error) {
-      console.error("Error saving exam data (Firestore inactive): ", error);
-      toast({ title: "Error al Guardar (Simulado)", description: "No se pudo guardar el examen.", variant: "destructive" });
+      console.error("Error saving exam data: ", error);
+      toast({ title: "Error al Guardar", description: "No se pudo guardar el examen en la base de datos.", variant: "destructive" });
     }
   };
   
@@ -342,17 +336,17 @@ export default function HomePage() {
       const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
       const user = userCredential.user;
       
-      // Firestore is inactive
-      // await setDoc(doc(db, "users", user.uid), {
-      //   email: userData.email,
-      //   role: userData.role,
-      //   createdAt: serverTimestamp(),
-      // });
+      // Save user role to Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        email: userData.email,
+        role: userData.role,
+        createdAt: serverTimestamp(),
+      });
 
-      toast({ title: "Usuario Creado (Firebase Auth)", description: `El usuario ${userData.email} con rol ${userData.role} ha sido creado en Firebase Auth. Firestore inactivo.` });
+      toast({ title: "Usuario Creado", description: `El usuario ${userData.email} con rol ${userData.role} ha sido creado.` });
       setIsAddUserModalOpen(false);
     } catch (error: any) {
-      console.error("Error creating user (Firebase Auth):", error.code, error.message);
+      console.error("Error creating user (Firebase):", error.code, error.message);
       let errorMessage = "No se pudo crear el usuario.";
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = "Este correo electrónico ya está en uso.";
@@ -377,13 +371,13 @@ export default function HomePage() {
         toast({ title: "Error", description: "ID o NE de examen no encontrado.", variant: "destructive" });
         return;
     }
-    const createdAtDate = examToEdit.createdAt instanceof Date ? examToEdit.createdAt : new Date(examToEdit.createdAt as any);
-    const lastModifiedAtDate = examToEdit.lastModifiedAt instanceof Date ? examToEdit.lastModifiedAt : new Date(examToEdit.lastModifiedAt as any);
+    const createdAtDate = examToEdit.createdAt instanceof Date ? examToEdit.createdAt : 
+                         (examToEdit.createdAt as any)?.toDate ? (examToEdit.createdAt as any).toDate() : new Date(examToEdit.createdAt as any);
+    const lastModifiedAtDate = examToEdit.lastModifiedAt instanceof Date ? examToEdit.lastModifiedAt : 
+                               (examToEdit.lastModifiedAt as any)?.toDate ? (examToEdit.lastModifiedAt as any).toDate() : new Date(examToEdit.lastModifiedAt as any);
 
     setExamInfo({ 
       ...examToEdit, 
-      // createdAt: examToEdit.createdAt instanceof Timestamp ? examToEdit.createdAt.toDate() : new Date(examToEdit.createdAt as any),
-      // lastModifiedAt: examToEdit.lastModifiedAt instanceof Timestamp ? examToEdit.lastModifiedAt.toDate() : new Date(examToEdit.lastModifiedAt as any),
       createdAt: createdAtDate,
       lastModifiedAt: lastModifiedAtDate,
       createdBy: examToEdit.createdBy || examToEdit.manager, 
