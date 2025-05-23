@@ -27,22 +27,26 @@ function ensureFirebaseInitialized(): boolean {
     !firebaseConfig.authDomain ||
     !firebaseConfig.projectId
   ) {
-    if (process.env.NODE_ENV === 'development' || (typeof window !== 'undefined' && window.location.hostname === 'localhost')) {
-      // Log error more visibly during local development or if explicitly on localhost
-      console.error(
-        'Essential Firebase config keys (apiKey, authDomain, projectId) are missing. Firebase will not be initialized. Ensure NEXT_PUBLIC_FIREBASE_... variables are set in your .env.local file and the development server was restarted.'
-      );
-    } else if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PHASE !== 'phase-production-build') {
-      // Log a less alarming message during other non-production builds if keys are missing
-      // console.warn('Firebase config keys missing, Firebase services may not be available.');
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+    const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
+
+    const message = `Essential Firebase config keys (apiKey, authDomain, projectId) are missing. Firebase will not be initialized. API Key: ${firebaseConfig.apiKey ? 'Exists' : 'MISSING'}, Auth Domain: ${firebaseConfig.authDomain ? 'Exists' : 'MISSING'}, Project ID: ${firebaseConfig.projectId ? 'Exists' : 'MISSING'}. Ensure NEXT_PUBLIC_FIREBASE_... variables are set.`;
+
+    if (isDevelopment || isLocalhost) {
+      console.error(`[Firebase Init Check - DEV] ${message}`);
+    } else if (!isBuildPhase) {
+      // console.warn(`[Firebase Init Check - NON-PROD-BUILD] ${message}`);
+    } else {
+      // During production build, log this for debugging build issues specifically
+      // console.log(`[Firebase Init Check - PROD-BUILD] ${message}`);
     }
-    // During production build (NEXT_PHASE === 'phase-production-build'), we might not want to log an error
-    // if Firebase is intended to initialize only on the client.
     return false; 
   }
 
   if (getApps().length === 0) {
     try {
+      // console.log('[Firebase Build Check] Attempting to initialize Firebase with config during build/runtime:', JSON.stringify({apiKey: firebaseConfig.apiKey ? '***' : 'MISSING', authDomain: firebaseConfig.authDomain, projectId: firebaseConfig.projectId}));
       app = initializeApp(firebaseConfig);
       // console.log("Firebase App initialized successfully.");
     } catch (error) {
@@ -64,7 +68,7 @@ export function getFirebaseApp(): FirebaseApp | null {
 }
 
 export function getFirebaseAuth(): Auth | null {
-  if (!ensureFirebaseInitialized() || !app) {
+  if (!ensureFirebaseInitialized() || !app) { // Check app explicitly here
     return null;
   }
   if (!authInstance) {
@@ -79,7 +83,7 @@ export function getFirebaseAuth(): Auth | null {
 }
 
 export function getFirebaseFirestore(): Firestore | null {
-  if (!ensureFirebaseInitialized() || !app) {
+  if (!ensureFirebaseInitialized() || !app) { // Check app explicitly here
     return null;
   }
   if (!dbInstance) {
@@ -94,25 +98,21 @@ export function getFirebaseFirestore(): Firestore | null {
 }
 
 export function getFirebaseAnalytics(): Analytics | null {
-  if (!ensureFirebaseInitialized() || !app) {
+  if (!ensureFirebaseInitialized() || !app) { // Check app explicitly here
     return null;
   }
-  // Defer analytics initialization to when it's actually supported and needed,
-  // and only on the client side.
   if (!analyticsInstance && typeof window !== 'undefined') {
     isAnalyticsSupported().then(supported => {
-      if (supported && app) { // ensure app is not null
+      if (supported && app) {
         try {
           analyticsInstance = getAnalytics(app);
         } catch (error) {
           // console.warn("Could not initialize Firebase Analytics:", error);
           analyticsInstance = null;
         }
-      } else {
-        // console.log("Firebase Analytics is not supported in this environment or app not initialized.");
       }
     }).catch(error => {
-       // console.warn("Error checking Analytics support:", error);
+       // console.warn("Error checking Analytics support for Firebase:", error);
     });
   }
   return analyticsInstance;

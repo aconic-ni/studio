@@ -35,8 +35,8 @@ const nextConfig: NextConfig = {
       // This prevents them from being included in the browser bundle.
       config.externals = {
         ...(config.externals || {}), // Spread existing externals if any
-        '@/ai/flows/hs-code-suggestion': 'commonjs @/ai/flows/hs-code-suggestion',
-        '@/ai/genkit': 'commonjs @/ai/genkit',
+        // Do not externalize local application files like '@ai/flows/...' here.
+        // Rely on server-only package and API routes for proper separation.
         'genkit': 'commonjs genkit', // Externalize the main genkit package
         '@genkit-ai/core': 'commonjs @genkit-ai/core', // Externalize genkit core
         'dotprompt': 'commonjs dotprompt', // Externalize dotprompt
