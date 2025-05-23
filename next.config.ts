@@ -1,18 +1,17 @@
-import type {NextConfig} from 'next';
-import type {Configuration as WebpackConfiguration} from 'webpack';
+import type { NextConfig } from 'next';
+import type { Configuration as WebpackConfiguration } from 'webpack';
 
 interface NextJsWebpackConfigContext {
   isServer: boolean;
-  webpack: any; // Using 'any' for simplicity, can be typed more strictly
 }
 
 const nextConfig: NextConfig = {
   output: 'export', // <-- ADDED FOR STATIC EXPORT
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: true, // Consider setting this to false in production for better type safety
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: true, // Consider setting this to false in production for better linting
   },
   images: {
     remotePatterns: [
@@ -30,13 +29,12 @@ const nextConfig: NextConfig = {
     { isServer }: NextJsWebpackConfigContext
   ): WebpackConfiguration => {
     if (!isServer) {
-      config.externals = {
-        ...(config.externals || {}),
-        'genkit': 'commonjs genkit',
-        '@genkit-ai/core': 'commonjs @genkit-ai/core',
-        'dotprompt': 'commonjs dotprompt',
-        'handlebars': 'commonjs handlebars',
-      };
+      // Safer way to merge externals
+      config.externals = Array.isArray(config.externals)
+        ? [...config.externals, 'genkit', '@genkit-ai/core', 'dotprompt', 'handlebars']
+        : config.externals
+          ? [config.externals, 'genkit', '@genkit-ai/core', 'dotprompt', 'handlebars']
+          : ['genkit', '@genkit-ai/core', 'dotprompt', 'handlebars'];
     }
     return config;
   },
