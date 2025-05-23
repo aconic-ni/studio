@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm, type SubmitHandler, Controller } from 'react-hook-form';
@@ -49,12 +50,9 @@ export function AddProductModalContent({ onSubmitProduct, onClose, initialData }
 
   const handleSuggestion = (hsCode: string, explanation: string) => {
     form.setValue("hsCode", hsCode);
-    // You could also store explanation if needed, e.g., in observation or a new field
-    if(form.getValues("observation")){
-        form.setValue("observation", `${form.getValues("observation")}\nExplicación HS: ${explanation}`);
-    } else {
-        form.setValue("observation", `Explicación HS: ${explanation}`);
-    }
+    // The explanation will no longer be added to the observation field.
+    // If you need to store the explanation, consider a dedicated field in your ProductSchema.
+    // console.log("HS Code Explanation (not added to observations):", explanation); 
   };
 
   const handleSubmit: SubmitHandler<Product> = (data) => {
