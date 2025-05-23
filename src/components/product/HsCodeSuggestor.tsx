@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -14,17 +15,16 @@ interface HsCodeSuggestorProps {
 export function HsCodeSuggestor({ productDescription, onSuggestion }: HsCodeSuggestorProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [suggestion, setSuggestion] = useState<SuggestHsCodeOutput | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // Error state for UI display is removed. Errors are only console logged.
 
   const handleSuggestHsCode = async () => {
     if (!productDescription || productDescription.trim() === "") {
-      setError("Por favor, ingrese una descripción del producto.");
+      console.error("HS Code Suggestion: Product description is empty.");
       setSuggestion(null);
       return;
     }
 
     setIsLoading(true);
-    setError(null);
     setSuggestion(null);
 
     try {
@@ -32,15 +32,14 @@ export function HsCodeSuggestor({ productDescription, onSuggestion }: HsCodeSugg
       const result = await suggestHsCodeFlow(input);
       setSuggestion(result);
       if(result.hsCode) {
-        // Split the result to separate code and explanation if they are combined
         const parts = result.hsCode.split(/:(.*)/s);
         const code = parts[0].trim();
         const explanation = parts[1] ? parts[1].trim() : "Explicación no proporcionada.";
         onSuggestion(code, explanation);
       }
-    } catch (e) {
-      console.error("Error suggesting HS Code:", e);
-      setError("No se pudo sugerir el código HS. Intente de nuevo.");
+    } catch (e: any) {
+      console.error("Error suggesting HS Code:", e?.message || e);
+      // No UI error is shown, only console logged.
     } finally {
       setIsLoading(false);
     }
@@ -63,12 +62,8 @@ export function HsCodeSuggestor({ productDescription, onSuggestion }: HsCodeSugg
         Sugerir Código HS
       </Button>
       
-      {error && (
-        <Alert variant="destructive">
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+      {/* UI Error Alert has been permanently removed. Errors are only console logged. */}
+
       {suggestion && suggestion.hsCode && (
         <Alert variant="default">
            <Wand2 className="h-4 w-4" />
