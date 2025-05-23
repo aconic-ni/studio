@@ -19,57 +19,59 @@ let authInstance: Auth | null = null;
 let dbInstance: Firestore | null = null;
 let analyticsInstance: Analytics | null = null;
 
-function initializeFirebase() {
-  if (app) return; // Already initialized or attempted
+function ensureFirebaseInitialized(): boolean {
+  if (app) return true; // Already initialized
 
   if (
     !firebaseConfig.apiKey ||
     !firebaseConfig.authDomain ||
     !firebaseConfig.projectId
   ) {
-    console.error(
-      'Firebase config keys (apiKey, authDomain, projectId) are missing. Firebase will not be initialized. Ensure they are set in your environment variables (e.g., .env.local).'
-    );
-    // Crucially, do not proceed to initializeApp if config is missing
-    return; 
+    if (process.env.NODE_ENV === 'development' || (typeof window !== 'undefined' && window.location.hostname === 'localhost')) {
+      // Log error more visibly during local development or if explicitly on localhost
+      console.error(
+        'Essential Firebase config keys (apiKey, authDomain, projectId) are missing. Firebase will not be initialized. Ensure NEXT_PUBLIC_FIREBASE_... variables are set in your .env.local file and the development server was restarted.'
+      );
+    } else if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PHASE !== 'phase-production-build') {
+      // Log a less alarming message during other non-production builds if keys are missing
+      // console.warn('Firebase config keys missing, Firebase services may not be available.');
+    }
+    // During production build (NEXT_PHASE === 'phase-production-build'), we might not want to log an error
+    // if Firebase is intended to initialize only on the client.
+    return false; 
   }
 
   if (getApps().length === 0) {
     try {
       app = initializeApp(firebaseConfig);
-      console.log("Firebase App initialized successfully.");
+      // console.log("Firebase App initialized successfully.");
     } catch (error) {
-      console.error("Error initializing Firebase App:", error);
-      app = null; // Ensure app is null if initialization fails
+      // console.error("Error initializing Firebase App:", error);
+      app = null; 
     }
   } else {
     app = getApps()[0];
     // console.log("Firebase App already initialized (retrieved existing instance).");
   }
+  return app !== null;
 }
 
-// Call initialization at module load. It will guard itself against multiple calls 
-// and missing configuration.
-initializeFirebase();
-
-
 export function getFirebaseApp(): FirebaseApp | null {
-  // If app is still null here, it means initialization failed (e.g. due to missing config)
-  // or initializeFirebase() hasn't run for some reason (unlikely with module-level call).
-  return app;
+  if (ensureFirebaseInitialized()) {
+    return app;
+  }
+  return null;
 }
 
 export function getFirebaseAuth(): Auth | null {
-  if (!app) {
-    // console.warn("Firebase App not initialized. Cannot get Auth instance.");
+  if (!ensureFirebaseInitialized() || !app) {
     return null;
   }
   if (!authInstance) {
     try {
       authInstance = getAuth(app);
     } catch (error) {
-      // This can happen during SSR/prerender if auth relies on browser APIs or if app init failed.
-      // console.warn("Could not initialize Firebase Auth, possibly due to non-browser environment or app init failure:", error);
+      // console.warn("Could not initialize Firebase Auth:", error);
       authInstance = null;
     }
   }
@@ -77,15 +79,14 @@ export function getFirebaseAuth(): Auth | null {
 }
 
 export function getFirebaseFirestore(): Firestore | null {
-  if (!app) {
-    // console.warn("Firebase App not initialized. Cannot get Firestore instance.");
+  if (!ensureFirebaseInitialized() || !app) {
     return null;
   }
   if (!dbInstance) {
     try {
       dbInstance = getFirestore(app);
     } catch (error) {
-       // console.warn("Could not initialize Firebase Firestore:", error);
+      // console.warn("Could not initialize Firebase Firestore:", error);
       dbInstance = null;
     }
   }
@@ -93,14 +94,14 @@ export function getFirebaseFirestore(): Firestore | null {
 }
 
 export function getFirebaseAnalytics(): Analytics | null {
-  if (!app) {
-    // console.warn("Firebase App not initialized. Cannot get Analytics instance.");
+  if (!ensureFirebaseInitialized() || !app) {
     return null;
   }
+  // Defer analytics initialization to when it's actually supported and needed,
+  // and only on the client side.
   if (!analyticsInstance && typeof window !== 'undefined') {
-    // Defer analytics initialization to when it's actually supported and needed.
     isAnalyticsSupported().then(supported => {
-      if (supported) {
+      if (supported && app) { // ensure app is not null
         try {
           analyticsInstance = getAnalytics(app);
         } catch (error) {
@@ -108,7 +109,7 @@ export function getFirebaseAnalytics(): Analytics | null {
           analyticsInstance = null;
         }
       } else {
-        // console.log("Firebase Analytics is not supported in this environment.");
+        // console.log("Firebase Analytics is not supported in this environment or app not initialized.");
       }
     }).catch(error => {
        // console.warn("Error checking Analytics support:", error);
