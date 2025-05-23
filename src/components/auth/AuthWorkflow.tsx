@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from '@/hooks/use-toast';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase';
 import { localUsers } from '@/lib/localUsers'; // Assuming localUsers.ts exists
 
 interface AuthWorkflowProps {
@@ -55,6 +55,9 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
 
     // 2. If no local match, attempt Firebase Auth
     console.log("[Login Attempt] No local user match, attempting Firebase Auth for:", data.email);
+    const auth = getFirebaseAuth();
+    const db = getFirebaseFirestore();
+
     if (!auth || !db) {
         console.error("[Login Error] Firebase auth or db instance is not available.");
         toast({ title: "Error de Configuración", description: "Servicio de autenticación no disponible.", variant: "destructive" });
@@ -65,7 +68,7 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
       const user = userCredential.user;
-      console.log("[Firebase Auth] Signed in. User UID:", user.uid, "Email:", user.email);
+      console.log("[AuthWorkflow - Firebase Auth] Signed in. User UID:", user.uid, "Email:", user.email);
 
       const userDocRef = doc(db, "users", user.uid);
       console.log("[AuthWorkflow - Firestore Role Check] Attempting to get doc:", `/users/${user.uid}`);
@@ -94,7 +97,7 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
       } else {
         // For other Firebase errors (network, service unavailable), only log to console.
         console.error("Firebase login attempt failed with a non-credential error:", error.code, error.message);
-        // Do not show a toast for general backend errors here, as per previous requests.
+        // Do not show a toast for general backend errors here.
       }
     } finally {
       setIsLoading(false);
@@ -177,5 +180,4 @@ export function AuthWorkflow({ onLoginSuccess }: AuthWorkflowProps) {
     </div>
   );
 }
-
     

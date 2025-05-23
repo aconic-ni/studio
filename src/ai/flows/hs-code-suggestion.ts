@@ -1,6 +1,7 @@
-
 // src/ai/flows/hs-code-suggestion.ts
 'use server';
+import "server-only"; // Ensures this module is only used on the server
+
 /**
  * @fileOverview An HS code suggestion AI agent.
  *
@@ -59,4 +60,3 @@ const suggestHsCodeFlow = ai.defineFlow(
     return output!;
   }
 );
-

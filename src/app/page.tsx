@@ -19,8 +19,8 @@ import { Download, Loader2 } from 'lucide-react';
 import { generateTxtReport, downloadFile, generateExcelReport } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
-import { auth, db } from '@/lib/firebase'; // Ensure db is imported
-import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase'; 
+import { createUserWithEmailAndPassword, signOut, type User as FirebaseUser } from 'firebase/auth';
 import { 
   collection, 
   addDoc, 
@@ -59,6 +59,7 @@ const mockSavedExams: ExamInfo[] = [
 export default function HomePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>(null);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<AppView>('login');
   const [examInfo, setExamInfo] = useState<ExamInfo | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -85,7 +86,7 @@ export default function HomePage() {
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (isLoggedIn && (examInfo || products.length > 0) && userRole !== 'admin' && !editingExamId) {
+      if (isLoggedIn && (examInfo || products.length > 0) && userRole !== 'admin' && userRole !== 'ejecutivo' && !editingExamId) {
         event.preventDefault();
         event.returnValue = '';
       }
@@ -95,13 +96,13 @@ export default function HomePage() {
   }, [isLoggedIn, examInfo, products, userRole, editingExamId]);
 
   const fetchExamsForAdmin = useCallback(async () => {
-    // This function is also used by 'ejecutivo' role to view exams.
     if (userRole === 'admin' || userRole === 'ejecutivo') {
       setIsLoadingExams(true);
       console.log("[fetchExamsForAdmin] Fetching exams from Firestore for role:", userRole);
+      const db = getFirebaseFirestore();
       if (!db) { 
         console.warn("[fetchExamsForAdmin] Firestore db instance is not available. Using mock data if any.");
-        setSavedExams(mockSavedExams); // Fallback to mock if db is not available
+        setSavedExams(mockSavedExams); 
         setIsLoadingExams(false);
         return;
       }
@@ -130,15 +131,26 @@ export default function HomePage() {
   useEffect(() => {
     setIsAuthLoading(true);
     console.log("[Auth State] Setting up onAuthStateChanged listener.");
-    if (!auth || !db) { 
-        console.warn("[Auth State] Firebase auth or db instance is not available for onAuthStateChanged listener. App may not function correctly.");
+    const auth = getFirebaseAuth();
+    const db = getFirebaseFirestore();
+
+    if (!auth) {
+        console.warn("[Auth State] Firebase auth instance not available for onAuthStateChanged listener. App may not function correctly.");
         setIsAuthLoading(false); 
         handleLogout(false); 
         return;
     }
-    const unsubscribe = auth.onAuthStateChanged(async firebaseUser => {
+
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         console.log("[Auth State - onAuthStateChanged] User is signed in. UID:", firebaseUser.uid, "Email:", firebaseUser.email);
+        setCurrentUserEmail(firebaseUser.email);
+        if (!db) {
+            console.warn(`[Auth State - onAuthStateChanged] Firestore db instance not available. Cannot fetch role for UID ${firebaseUser.uid}. Defaulting to 'gestor'.`);
+            handleLoginSuccess('gestor');
+            setIsAuthLoading(false);
+            return;
+        }
         try {
             const userDocRef = doc(db, "users", firebaseUser.uid);
             console.log("[Auth State - onAuthStateChanged] Attempting to get Firestore doc:", `/users/${firebaseUser.uid}`);
@@ -165,6 +177,7 @@ export default function HomePage() {
         }
       } else {
         console.log("[Auth State - onAuthStateChanged] No user signed in.");
+        setCurrentUserEmail(null);
         handleLogout(false); 
       }
       setIsAuthLoading(false);
@@ -173,12 +186,12 @@ export default function HomePage() {
       console.log("[Auth State] Cleaning up onAuthStateChanged listener.");
       unsubscribe();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
 
   useEffect(() => {
     if (isLoggedIn && (currentView === 'adminDashboard' || (userRole === 'ejecutivo' && currentView === 'login'))) {
-      // If 'ejecutivo' logs in, their view will be set to 'adminDashboard', triggering this.
       fetchExamsForAdmin();
     }
   }, [isLoggedIn, currentView, userRole, fetchExamsForAdmin, refreshExamsTrigger]);
@@ -188,16 +201,16 @@ export default function HomePage() {
     console.log("[Login Success Handler] Role received:", role);
     setIsLoggedIn(true);
     setUserRole(role);
-    // toast({ title: "Acceso Concedido", description: `Bienvenido. Rol: ${role?.toUpperCase()}` });
     if (role === 'admin' || role === 'ejecutivo') {
       setCurrentView('adminDashboard');
-    } else { // gestor or null
+    } else { 
       setCurrentView('examForm');
     }
     setIsAuthLoading(false);
   };
 
   const handleLogout = (showToast = true) => {
+    const auth = getFirebaseAuth();
     if (!auth) {
         console.warn("[Logout] Firebase auth instance not available. Performing local logout.");
     } else {
@@ -205,11 +218,15 @@ export default function HomePage() {
         console.log("[Logout] User signed out successfully from Firebase.");
       }).catch((error) => {
         console.error("[Logout Error] Firebase sign out failed:", error.code, error.message);
+        if (showToast) {
+           // toast({ title: "Error al Salir", description: "No se pudo cerrar la sesión correctamente.", variant: "destructive" });
+           console.error("Logout Error: No se pudo cerrar la sesión correctamente.");
+        }
       });
     }
-    // Common logout actions regardless of Firebase status
     setIsLoggedIn(false);
     setUserRole(null);
+    setCurrentUserEmail(null);
     setExamInfo(null);
     setProducts([]);
     setEditingExamId(null);
@@ -316,6 +333,9 @@ export default function HomePage() {
       return;
     }
     
+    const db = getFirebaseFirestore();
+    const auth = getFirebaseAuth();
+
     if (!db) { 
       console.warn("[Save Exam] Firestore db instance not available. Simulating save.");
       toast({ title: "Examen Guardado (Local)", description: "El examen ha sido guardado localmente (simulación)." });
@@ -326,12 +346,11 @@ export default function HomePage() {
     }
 
     try {
-      const currentUserEmail = auth?.currentUser?.email || "Usuario Desconocido";
       let finalCreatedBy = examInfo.createdBy || examInfo.manager; 
       let finalLastModifiedBy = examInfo.manager; 
 
-      if (userRole === 'admin' && editingExamId) {
-        finalLastModifiedBy = currentUserEmail; 
+      if (editingExamId && userRole === 'admin') {
+        finalLastModifiedBy = auth?.currentUser?.email || "TEST ADMIN USER"; 
       } else if (!editingExamId) { 
         finalCreatedBy = examInfo.manager;
         finalLastModifiedBy = examInfo.manager;
@@ -402,6 +421,9 @@ export default function HomePage() {
 
   const handleCreateUser = async (userData: CreateUserFormData) => {
     console.log("[Create User Attempt] Data:", userData);
+    const auth = getFirebaseAuth();
+    const db = getFirebaseFirestore();
+
     if (!auth || !db) { 
         console.error("[Create User Error] Firebase auth or db instance is not available.");
         toast({ title: "Error de Configuración", description: "La base de datos no está disponible.", variant: "destructive" });
@@ -483,7 +505,6 @@ export default function HomePage() {
       setEditingExamId(null);
       console.log("[Back Navigation] Admin returning to dashboard from edit.");
     } else {
-      // For gestor, or admin creating new (though admin new flow is not primary)
       setCurrentView('examForm');
        console.log("[Back Navigation] Returning to ExamForm.");
     }
@@ -508,7 +529,7 @@ export default function HomePage() {
       {userRole && (
         <div className="text-white text-center mb-2 bg-primary/20 p-2 rounded-md">
           Rol Actual: <span className="font-semibold">{userRole.toUpperCase()}</span>
-          {auth?.currentUser && <span className="text-xs"> ({auth.currentUser.email})</span>}
+          {currentUserEmail && <span className="text-xs"> ({currentUserEmail})</span>}
         </div>
       )}
       <main className="flex-grow">
@@ -702,7 +723,5 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
 
     
