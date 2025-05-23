@@ -7,6 +7,7 @@ interface NextJsWebpackConfigContext {
 }
 
 const nextConfig: NextConfig = {
+  output: 'export', // <-- ADDED FOR STATIC EXPORT
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -22,29 +23,21 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+    unoptimized: true, // <-- ADDED: Necessary for next export with next/image
   },
   webpack: (
     config: WebpackConfiguration,
     { isServer }: NextJsWebpackConfigContext
   ): WebpackConfiguration => {
-    // This function runs twice: once for the server bundle (isServer: true)
-    // and once for the client bundle (isServer: false).
-
     if (!isServer) {
-      // For client-side bundle, externalize Genkit and its problematic dependencies
-      // This prevents them from being included in the browser bundle.
       config.externals = {
-        ...(config.externals || {}), // Spread existing externals if any
-        // Do not externalize local application files like '@ai/flows/...' here.
-        // Rely on server-only package and API routes for proper separation.
-        'genkit': 'commonjs genkit', // Externalize the main genkit package
-        '@genkit-ai/core': 'commonjs @genkit-ai/core', // Externalize genkit core
-        'dotprompt': 'commonjs dotprompt', // Externalize dotprompt
-        'handlebars': 'commonjs handlebars', // Externalize handlebars
+        ...(config.externals || {}),
+        'genkit': 'commonjs genkit',
+        '@genkit-ai/core': 'commonjs @genkit-ai/core',
+        'dotprompt': 'commonjs dotprompt',
+        'handlebars': 'commonjs handlebars',
       };
     }
-
-    // Always return the modified configuration
     return config;
   },
 };
