@@ -53,6 +53,11 @@ jobs:
         with:
           node-version: "20"
           cache: ${{ steps.detect-package-manager.outputs.manager }}
+
+      # Added step to install webpack and types
+      - name: Install Webpack and Types
+        run: npm install --save-dev webpack @types/webpack # Use npm as detected
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
