@@ -7,7 +7,7 @@ import { es } from 'date-fns/locale';
 
 
 export function downloadTxtFile(examData: ExamData, products: Product[]) {
-  let content = `SOLICITUD DE CHEQUE - CustomsEX-p\n`;
+  let content = `SOLICITUD DE CHEQUE - CustomsFA-L\n`;
   content += `===========================================\n\n`;
   content += `INFORMACIÓN GENERAL:\n`;
   content += `NE: ${examData.ne}\n`;
@@ -63,7 +63,7 @@ export function downloadExcelFile(data: ExportableExamData) {
 
   // --- Hoja 1: Detalles de la Solicitud y Productos/Servicios ---
   const examDetailsSheetData: (string | number | Date | null | undefined | XLSX.CellObject)[][] = [
-    ['SOLICITUD DE CHEQUE - CustomsEX-p'],
+    ['SOLICITUD DE CHEQUE - CustomsFA-L'],
     [],
     ['INFORMACIÓN GENERAL DE LA SOLICITUD:'],
     ['NE (Tracking):', data.ne],

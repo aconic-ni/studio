@@ -61,7 +61,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
     try {
       await signInWithEmailAndPassword(auth as Auth, email, password);
       setStaticUser(null); // Ensure no static user is set if Firebase login succeeds
-      toast({ title: 'Inicio de sesión exitoso', description: 'Bienvenido a CustomsEX-p.' });
+      toast({ title: 'Inicio de sesión exitoso', description: 'Bienvenido a CustomsFA-L.' });
       onLoginSuccess(false); // Pass false for Firebase user
       onClose();
     } catch (err: any) {
@@ -85,7 +85,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md glass-effect text-foreground border-border/30">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-foreground">CustomsEX-p</DialogTitle>
+          <DialogTitle className="text-2xl font-bold text-foreground">CustomsFA-L</DialogTitle>
           <button
             onClick={onClose}
             className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"

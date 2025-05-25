@@ -61,7 +61,7 @@ export default function HomePage() {
           <FileText className="h-32 w-32 text-white" strokeWidth={1.5} />
         </div>
         <header className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold">CustomsEX-p</h1>
+          <h1 className="text-4xl md:text-5xl font-bold">CustomsFA-L</h1>
           <p className="text-blue-200 mt-1 text-sm md:text-base">Sistema de EXAMENES PREVIOS</p>
         </header>
         <Button 
