@@ -2,7 +2,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Loader2 } from 'lucide-react';
+import { Building2, FileText, Loader2 } from 'lucide-react'; // Added Building2
 import { LoginModal } from '@/components/auth/LoginModal';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -51,22 +51,22 @@ export default function HomePage() {
       <main className="flex flex-col items-center text-center">
         <div
           id="appLogo"
-          className="logo-pulse mb-8 cursor-pointer"
+          className="logo-pulse mb-8 cursor-pointer block mx-auto"
           onClick={() => setIsLoginModalOpen(true)}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => e.key === 'Enter' && setIsLoginModalOpen(true)}
           aria-label="Abrir inicio de sesión"
         >
-          <FileText className="h-32 w-32 text-white" strokeWidth={1.5} />
+          <Building2 data-ai-hint="office building" className="h-32 w-32 text-white block mx-auto" strokeWidth={1.5} />
         </div>
         <header className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold">CustomsFA-L</h1>
-          <p className="text-blue-200 mt-1 text-sm md:text-base">Sistema de EXAMENES PREVIOS</p>
+          <p className="text-blue-200 mt-1 text-sm md:text-base">Sistema de FACTURACIÓN LOCAL</p>
         </header>
         <Button 
           onClick={() => setIsLoginModalOpen(true)} 
-          className="btn-primary text-lg px-8 py-4"
+          className="text-white bg-foreground hover:bg-foreground/90 text-lg px-8 py-4"
           size="lg"
         >
           Iniciar Sesión
