@@ -39,7 +39,7 @@ export function AddProductModal() {
       monto: undefined,
       montoMoneda: 'cordoba',
       cantidadEnLetras: '',
-      consignatario: '', // Added default
+      consignatario: '', 
       declaracionNumero: '',
       unidadRecaudadora: '',
       codigo1: '',
@@ -92,7 +92,7 @@ export function AddProductModal() {
           ...editingSolicitud,
           monto: editingSolicitud.monto !== undefined ? Number(editingSolicitud.monto) : undefined,
           correo: editingSolicitud.correo || defaultCorreo,
-          consignatario: editingSolicitud.consignatario || '', // Added for edit
+          consignatario: editingSolicitud.consignatario || '', 
         } as SolicitudFormData);
         setShowBancoOtros(editingSolicitud.banco === 'Otros');
         setShowMonedaCuentaOtros(editingSolicitud.monedaCuenta === 'Otros');
@@ -101,7 +101,7 @@ export function AddProductModal() {
           monto: undefined,
           montoMoneda: 'cordoba',
           cantidadEnLetras: '',
-          consignatario: '', // Added for new
+          consignatario: '', 
           declaracionNumero: '',
           unidadRecaudadora: '',
           codigo1: '',
@@ -241,7 +241,7 @@ export function AddProductModal() {
               <h4 className="text-md font-medium text-primary mb-2">Información Adicional de Solicitud</h4>
               <FormField control={form.control} name="consignatario" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center"><User className="mr-2 h-4 w-4 text-primary" />CONSIGNATARIO</FormLabel>
+                  <FormLabel className="flex items-center"><User className="mr-2 h-4 w-4 text-primary" />Consignatario</FormLabel>
                   <FormControl><Input placeholder="Nombre del consignatario" {...field} value={field.value ?? ''} /></FormControl><FormMessage />
                 </FormItem>
               )}/>
@@ -441,3 +441,5 @@ export function AddProductModal() {
     </Dialog>
   );
 }
+
+    
