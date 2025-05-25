@@ -16,7 +16,7 @@ import type { SolicitudFormData } from './FormParts/zodSchemas';
 import { solicitudSchema } from './FormParts/zodSchemas';
 import type { SolicitudData } from '@/types';
 import { useAuth } from '@/context/AuthContext';
-import { X, Hash, Weight, FileText, Tag, Puzzle, Ruler, Fingerprint, Globe, Barcode, Package, Box, ShieldCheck, MessageSquare, Banknote, Info, Building, Code, Landmark, Mail, FilePlus, DollarSign, Euro, ListFilter } from 'lucide-react';
+import { X, Hash, FileText, Tag, Landmark, Mail, FilePlus, DollarSign, Euro, ListFilter, Building, Code, MessageSquare, Banknote } from 'lucide-react';
 // Placeholder for numberToWords, actual implementation would be more complex
 // import { numberToWords } from '@/lib/numberToWords';
 
@@ -25,9 +25,9 @@ export function AddProductModal() {
   const {
     isAddProductModalOpen,
     closeAddProductModal,
-    addProduct, // This will now add a SolicitudData
-    updateProduct, // This will now update a SolicitudData
-    editingProduct // This will be a SolicitudData
+    addSolicitud,
+    updateSolicitud,
+    editingSolicitud
   } = useAppContext();
   const { user } = useAuth();
   const [showBancoOtros, setShowBancoOtros] = useState(false);
@@ -68,18 +68,14 @@ export function AddProductModal() {
   const watchedMonedaCuenta = form.watch("monedaCuenta");
   const watchedImpuestosPagados = form.watch("impuestosPagadosCliente");
   const watchedConstanciasNoRetencion = form.watch("constanciasNoRetencion");
-  // const watchedMonto = form.watch("monto");
-  // const watchedMontoMoneda = form.watch("montoMoneda");
 
   useEffect(() => {
     setShowBancoOtros(watchedBanco === 'Otros');
     if (watchedBanco === 'ACCION POR CHEQUE/NO APLICA BANCO') {
-      // Clear and disable related bank fields if "NO APLICA BANCO" is selected
       form.setValue('bancoOtros', '');
       form.setValue('numeroCuenta', '');
       form.setValue('monedaCuenta', undefined);
       form.setValue('monedaCuentaOtros', '');
-      // Consider disabling these fields visually as well if needed
     }
   }, [watchedBanco, form]);
 
@@ -87,28 +83,17 @@ export function AddProductModal() {
     setShowMonedaCuentaOtros(watchedMonedaCuenta === 'Otros');
   }, [watchedMonedaCuenta]);
 
-  // useEffect(() => {
-  //   if (watchedMonto && watchedMontoMoneda) {
-  //     // Placeholder: Implement actual numberToWords logic here
-  //     // form.setValue("cantidadEnLetras", numberToWords(Number(watchedMonto), watchedMontoMoneda));
-  //     form.setValue("cantidadEnLetras", `Cantidad en letras para ${watchedMonto} ${watchedMontoMoneda} (auto)`);
-  //   } else {
-  //     form.setValue("cantidadEnLetras", "");
-  //   }
-  // }, [watchedMonto, watchedMontoMoneda, form]);
-
-
   useEffect(() => {
     if (isAddProductModalOpen) {
       const defaultCorreo = user?.email || '';
-      if (editingProduct) {
+      if (editingSolicitud) {
         form.reset({
-          ...editingProduct,
-          monto: editingProduct.monto !== undefined ? Number(editingProduct.monto) : undefined,
-          correo: editingProduct.correo || defaultCorreo,
-        } as SolicitudFormData); // Cast to SolicitudFormData
-        setShowBancoOtros(editingProduct.banco === 'Otros');
-        setShowMonedaCuentaOtros(editingProduct.monedaCuenta === 'Otros');
+          ...editingSolicitud,
+          monto: editingSolicitud.monto !== undefined ? Number(editingSolicitud.monto) : undefined,
+          correo: editingSolicitud.correo || defaultCorreo,
+        } as SolicitudFormData);
+        setShowBancoOtros(editingSolicitud.banco === 'Otros');
+        setShowMonedaCuentaOtros(editingSolicitud.monedaCuenta === 'Otros');
       } else {
         form.reset({
           monto: undefined,
@@ -141,7 +126,7 @@ export function AddProductModal() {
         setShowMonedaCuentaOtros(false);
       }
     }
-  }, [editingProduct, form, isAddProductModalOpen, user]);
+  }, [editingSolicitud, form, isAddProductModalOpen, user]);
 
   function onSubmit(data: SolicitudFormData) {
     const solicitudData = {
@@ -149,10 +134,10 @@ export function AddProductModal() {
         monto: data.monto !== undefined ? Number(data.monto) : undefined,
     };
 
-    if (editingProduct && editingProduct.id) {
-      updateProduct({ ...solicitudData, id: editingProduct.id } as SolicitudData);
+    if (editingSolicitud && editingSolicitud.id) {
+      updateSolicitud({ ...solicitudData, id: editingSolicitud.id } as SolicitudData);
     } else {
-      addProduct(solicitudData as Omit<SolicitudData, 'id'>);
+      addSolicitud(solicitudData as Omit<SolicitudData, 'id'>);
     }
     closeAddProductModal();
   }
@@ -161,15 +146,14 @@ export function AddProductModal() {
 
   const isBancoNoAplica = watchedBanco === 'ACCION POR CHEQUE/NO APLICA BANCO';
 
-
   return (
     <Dialog open={isAddProductModalOpen} onOpenChange={(open) => !open && closeAddProductModal()}>
-      <DialogContent className="max-w-4xl w-full p-0"> {/* Increased width */}
+      <DialogContent className="max-w-4xl w-full p-0">
         <ScrollArea className="max-h-[85vh]">
         <div className="p-6">
         <DialogHeader className="mb-6">
           <DialogTitle className="text-xl font-semibold text-foreground">
-            {editingProduct ? 'Editar Solicitud' : 'Nueva solicitud'}
+            {editingSolicitud ? 'Editar Solicitud' : 'Nueva solicitud'}
           </DialogTitle>
            <button
             onClick={closeAddProductModal}
@@ -181,6 +165,38 @@ export function AddProductModal() {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Error Summary Block */}
+            {Object.keys(form.formState.errors).length > 0 && (
+              <div className="p-3 mb-4 text-sm text-destructive bg-destructive/10 rounded-md border border-destructive/30" role="alert">
+                <p className="font-bold">Por favor, corrija los siguientes errores:</p>
+                <ul className="list-disc list-inside mt-1">
+                  {Object.entries(form.formState.errors).map(([fieldName, errorObject]) => {
+                    const fieldError = errorObject as any; // Type assertion
+                    if (fieldError && fieldError.message) {
+                        // Attempt to map field names to more readable labels
+                        let readableFieldName = fieldName;
+                        const fieldNameMap: { [key: string]: string } = {
+                            bancoOtros: "Otro Banco",
+                            monedaCuentaOtros: "Otra Moneda de Cuenta",
+                            elaborarChequeA: "Beneficiario (Cheque)",
+                            elaborarTransferenciaA: "Beneficiario (Transferencia)",
+                            monto: "Monto Solicitado",
+                            // Add other field name mappings as needed
+                        };
+                        readableFieldName = fieldNameMap[fieldName] || fieldName.replace(/([A-Z])/g, ' $1').toLowerCase();
+
+
+                        return (
+                            <li key={fieldName}>
+                                <span className="capitalize">{readableFieldName}</span>: {fieldError.message}
+                            </li>
+                        );
+                    }
+                    return null;
+                  })}
+                </ul>
+              </div>
+            )}
 
             {/* Section 1: Monto y Cantidad */}
             <div className="space-y-4 p-4 border rounded-md">
@@ -405,7 +421,7 @@ export function AddProductModal() {
 
             <DialogFooter className="pt-6 gap-3">
               <Button type="button" variant="outline" onClick={closeAddProductModal}>Cancelar</Button>
-              <Button type="submit" className="btn-primary">{editingProduct ? 'Guardar Cambios' : 'Guardar Solicitud'}</Button>
+              <Button type="submit" className="btn-primary">{editingSolicitud ? 'Guardar Cambios' : 'Guardar Solicitud'}</Button>
             </DialogFooter>
           </form>
         </Form>
@@ -415,3 +431,5 @@ export function AddProductModal() {
     </Dialog>
   );
 }
+
+    
