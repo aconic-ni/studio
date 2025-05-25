@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale'; 
+import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 // Helper function to extract and format name from email
@@ -22,7 +22,7 @@ function extractNameFromEmail(email?: string | null): string {
   if (!email) return "";
   try {
     const localPart = email.substring(0, email.lastIndexOf('@'));
-    const nameParts = localPart.split(/[._-]/); 
+    const nameParts = localPart.split(/[._-]/);
     const formattedName = nameParts
       .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
       .join(' ');
@@ -56,7 +56,7 @@ function onSubmit(data: InitialInfoFormData) {
   setExamData({
     ...existingExamData, // Preserve any existing data not in this form
     ...data,
-    reference: data.reference || "", 
+    reference: data.reference || "",
   });
   setCurrentStep(ExamStep.PRODUCT_LIST);
 }
@@ -79,15 +79,35 @@ function onSubmit(data: InitialInfoFormData) {
                     <FormControl>
                       <Input placeholder="Destinatario o Departamento" {...field} value={field.value ?? ''} />
                     </FormControl>
+                    <div className="flex flex-wrap gap-2 mt-1">
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={() => form.setValue('recipient', 'Contabilidad', { shouldValidate: true })}
-                        className="mt-1 text-xs"
+                        className="text-xs"
                       >
                         Contabilidad
                       </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => form.setValue('recipient', 'Harol Ampie - Contabilidad', { shouldValidate: true })}
+                        className="text-xs"
+                      >
+                        Harol Ampie - Contabilidad
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => form.setValue('recipient', 'Jose Daniel Cerros - Contabilidad', { shouldValidate: true })}
+                        className="text-xs"
+                      >
+                        Jose Daniel Cerros - Contabilidad
+                      </Button>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -109,7 +129,7 @@ function onSubmit(data: InitialInfoFormData) {
                 control={form.control}
                 name="date"
                 render={({ field }) => (
-                  <FormItem> {/* Removed flex flex-col here */}
+                  <FormItem>
                     <FormLabel>Fecha *</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
