@@ -23,6 +23,10 @@ const formatCurrencyForExport = (amount?: number | string, currency?: string) =>
     return `${prefix}${num.toFixed(2)}`;
 };
 
+const formatBooleanForExport = (value?: boolean): string => {
+  return value ? 'Sí' : 'No';
+};
+
 
 export function downloadTxtFile(examData: ExamData, solicitudes: SolicitudData[]) {
   let content = `SOLICITUD DE CHEQUE - CustomsFA-L\n`;
@@ -44,25 +48,38 @@ export function downloadTxtFile(examData: ExamData, solicitudes: SolicitudData[]
     content += `Unidad Recaudadora: ${solicitud.unidadRecaudadora || 'N/A'}\n`;
     content += `Código 1: ${solicitud.codigo1 || 'N/A'}\n`;
     content += `Código 2: ${solicitud.codigo2 || 'N/A'}\n`;
-    content += `Banco: ${solicitud.banco === 'Otros' ? solicitud.bancoOtros : solicitud.banco || 'N/A'}\n`;
+    
+    let bancoDisplay = solicitud.banco || 'N/A';
+    if (solicitud.banco === 'Otros' && solicitud.bancoOtros) {
+      bancoDisplay = `${solicitud.bancoOtros} (Otros)`;
+    } else if (solicitud.banco === 'ACCION POR CHEQUE/NO APLICA BANCO') {
+      bancoDisplay = 'Acción por Cheque / No Aplica Banco';
+    }
+    content += `Banco: ${bancoDisplay}\n`;
+
     if (solicitud.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO') {
         content += `Número de Cuenta: ${solicitud.numeroCuenta || 'N/A'}\n`;
-        content += `Moneda de la Cuenta: ${solicitud.monedaCuenta === 'Otros' ? solicitud.monedaCuentaOtros : solicitud.monedaCuenta || 'N/A'}\n`;
+        let monedaCuentaDisplay = solicitud.monedaCuenta || 'N/A';
+        if (solicitud.monedaCuenta === 'Otros' && solicitud.monedaCuentaOtros) {
+          monedaCuentaDisplay = `${solicitud.monedaCuentaOtros} (Otros)`;
+        }
+        content += `Moneda de la Cuenta: ${monedaCuentaDisplay}\n`;
     }
     content += `Elaborar Cheque A: ${solicitud.elaborarChequeA || 'N/A'}\n`;
     content += `Elaborar Transferencia A: ${solicitud.elaborarTransferenciaA || 'N/A'}\n`;
-    content += `Impuestos Pagados Cliente: ${solicitud.impuestosPagadosCliente ? 'Sí' : 'No'}\n`;
+    
+    content += `Impuestos Pagados Cliente: ${formatBooleanForExport(solicitud.impuestosPagadosCliente)}\n`;
     if (solicitud.impuestosPagadosCliente) {
         content += `  R/C: ${solicitud.impuestosPagadosRC || 'N/A'}\n`;
         content += `  T/B: ${solicitud.impuestosPagadosTB || 'N/A'}\n`;
         content += `  Cheque: ${solicitud.impuestosPagadosCheque || 'N/A'}\n`;
     }
-    content += `Impuestos Pendientes Cliente: ${solicitud.impuestosPendientesCliente ? 'Sí' : 'No'}\n`;
-    content += `Documentos Adjuntos: ${solicitud.documentosAdjuntos ? 'Sí' : 'No'}\n`;
-    content += `Constancias de No Retención: ${solicitud.constanciasNoRetencion ? 'Sí' : 'No'}\n`;
+    content += `Impuestos Pendientes Cliente: ${formatBooleanForExport(solicitud.impuestosPendientesCliente)}\n`;
+    content += `Documentos Adjuntos: ${formatBooleanForExport(solicitud.documentosAdjuntos)}\n`;
+    content += `Constancias de No Retención: ${formatBooleanForExport(solicitud.constanciasNoRetencion)}\n`;
     if (solicitud.constanciasNoRetencion) {
-        content += `  1%: ${solicitud.constanciasNoRetencion1 ? 'Sí' : 'No'}\n`;
-        content += `  2%: ${solicitud.constanciasNoRetencion2 ? 'Sí' : 'No'}\n`;
+        content += `  1%: ${formatBooleanForExport(solicitud.constanciasNoRetencion1)}\n`;
+        content += `  2%: ${formatBooleanForExport(solicitud.constanciasNoRetencion2)}\n`;
     }
     content += `Correo Notificación: ${solicitud.correo || 'N/A'}\n`;
     content += `Observación: ${solicitud.observation || 'N/A'}\n`;
@@ -80,68 +97,102 @@ export function downloadTxtFile(examData: ExamData, solicitudes: SolicitudData[]
 }
 
 export function downloadExcelFile(data: ExportableExamData) {
-  const now = new Date();
-  const fechaHoraExportacion = `${now.toLocaleString('es-NI', { dateStyle: 'long', timeStyle: 'short' })}`;
-
-  // --- Hoja 1: Detalles Generales del Examen ---
-  const examDetailsSheetData: (string | number | Date | null | undefined | XLSX.CellObject)[][] = [
-    ['SOLICITUD DE CHEQUE - CustomsFA-L'],
-    [],
-    ['INFORMACIÓN GENERAL DEL EXAMEN:'],
-    ['NE (Tracking):', data.ne],
-    ['Referencia:', data.reference || 'N/A'],
-    ['De (Colaborador):', data.manager],
-    ['A (Destinatario):', data.recipient],
-    ['Fecha de Examen:', formatDate(data.date)],
-    [],
-    ['DETALLES DE EXPORTACIÓN:'],
-    ['Fecha y Hora de Exportación:', fechaHoraExportacion],
-  ];
-  if (data.savedBy) examDetailsSheetData.push(['Guardado por (correo):', data.savedBy]);
-  if (data.savedAt) examDetailsSheetData.push(['Fecha y Hora de Guardado:', formatDate(data.savedAt)]);
-  
-  const ws_exam_details = XLSX.utils.aoa_to_sheet(examDetailsSheetData);
-  ws_exam_details['!cols'] = [ {wch: 30}, {wch: 50} ];
-
-
-  // --- Hoja 2: Lista de Solicitudes ---
-  const solicitudHeaders = [
-    'Monto', 'Moneda Monto', 'Cantidad en Letras', 
-    'Declaración Número', 'Unidad Recaudadora', 'Código 1', 'Código 2',
-    'Banco', 'Otro Banco', 'Número de Cuenta', 'Moneda Cuenta', 'Otra Moneda Cuenta',
-    'Elaborar Cheque A', 'Elaborar Transferencia A',
-    'Imp. Pagados Cliente', 'Imp. Pagados R/C', 'Imp. Pagados T/B', 'Imp. Pagados Cheque',
-    'Imp. Pendientes Cliente', 'Documentos Adjuntos',
-    'Const. No Retención', 'Const. No Ret. 1%', 'Const. No Ret. 2%',
-    'Correo Notificación', 'Observación'
-  ];
-  
-  const solicitudRows = (Array.isArray(data.products) ? data.products : []).map(solicitud => {
-    return [
-      formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda), solicitud.montoMoneda, solicitud.cantidadEnLetras,
-      solicitud.declaracionNumero, solicitud.unidadRecaudadora, solicitud.codigo1, solicitud.codigo2,
-      solicitud.banco, solicitud.bancoOtros, solicitud.numeroCuenta, solicitud.monedaCuenta, solicitud.monedaCuentaOtros,
-      solicitud.elaborarChequeA, solicitud.elaborarTransferenciaA,
-      solicitud.impuestosPagadosCliente ? 'Sí' : 'No', solicitud.impuestosPagadosRC, solicitud.impuestosPagadosTB, solicitud.impuestosPagadosCheque,
-      solicitud.impuestosPendientesCliente ? 'Sí' : 'No', solicitud.documentosAdjuntos ? 'Sí' : 'No',
-      solicitud.constanciasNoRetencion ? 'Sí' : 'No', solicitud.constanciasNoRetencion1 ? 'Sí' : 'No', solicitud.constanciasNoRetencion2 ? 'Sí' : 'No',
-      solicitud.correo, solicitud.observatio    ];
-  });
-
-  const ws_solicitudes_data = [solicitudHeaders, ...solicitudRows];
-  const ws_solicitudes = XLSX.utils.aoa_to_sheet(ws_solicitudes_data);
-
-  const solicitudColWidths = solicitudHeaders.map((header, i) => ({
-    wch: Math.max(
-      header.length,
-      ...solicitudRows.map(row => row[i] ? String(row[i]).length : 0)
-    ) + 2 
-  }));
-  ws_solicitudes['!cols'] = solicitudColWidths;
-
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws_exam_details, `Info General ${data.ne || 'S_NE'}`);
-  XLSX.utils.book_append_sheet(wb, ws_solicitudes, `Solicitudes ${data.ne || 'S_NE'}`);
+  const examInfo = data; // data contains ExamData fields directly
+
+  (Array.isArray(data.products) ? data.products : []).forEach((solicitud, index) => {
+    const sheetData: (string | number | Date | null | undefined)[][] = [];
+
+    // --- General Exam Information ---
+    sheetData.push(['SOLICITUD DE CHEQUE - CustomsFA-L']);
+    sheetData.push([]); // Empty row for spacing
+    sheetData.push(['INFORMACIÓN GENERAL DEL EXAMEN:']);
+    sheetData.push(['NE (Tracking NX1):', examInfo.ne]);
+    sheetData.push(['Referencia:', examInfo.reference || 'N/A']);
+    sheetData.push(['De (Colaborador):', examInfo.manager]);
+    sheetData.push(['A (Destinatario):', examInfo.recipient]);
+    sheetData.push(['Fecha de Examen:', formatDate(examInfo.date)]);
+    if (examInfo.savedBy) sheetData.push(['Guardado por (correo):', examInfo.savedBy]);
+    if (examInfo.savedAt) sheetData.push(['Fecha y Hora de Guardado:', formatDate(examInfo.savedAt)]);
+    sheetData.push([]); // Empty row for spacing
+
+    // --- Solicitud Details ---
+    sheetData.push(['DETALLES DE LA SOLICITUD:']);
+    sheetData.push([]);
+
+    sheetData.push(['Monto y Cantidad:']);
+    sheetData.push(['  Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:', formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda)]);
+    sheetData.push(['  Cantidad en Letras:', solicitud.cantidadEnLetras || 'N/A']);
+    sheetData.push([]);
+
+    sheetData.push(['Información Adicional de Solicitud:']);
+    sheetData.push(['  Declaración Número:', solicitud.declaracionNumero || 'N/A']);
+    sheetData.push(['  Unidad Recaudadora:', solicitud.unidadRecaudadora || 'N/A']);
+    sheetData.push(['  Código 1:', solicitud.codigo1 || 'N/A']);
+    sheetData.push(['  Código 2:', solicitud.codigo2 || 'N/A']);
+    sheetData.push([]);
+
+    sheetData.push(['Cuenta Bancaria:']);
+    let bancoDisplay = solicitud.banco || 'N/A';
+    if (solicitud.banco === 'Otros' && solicitud.bancoOtros) {
+      bancoDisplay = `${solicitud.bancoOtros} (Otros)`;
+    } else if (solicitud.banco === 'ACCION POR CHEQUE/NO APLICA BANCO') {
+      bancoDisplay = 'Acción por Cheque / No Aplica Banco';
+    }
+    sheetData.push(['  Banco:', bancoDisplay]);
+    
+    if (solicitud.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO') {
+      sheetData.push(['  Número de Cuenta:', solicitud.numeroCuenta || 'N/A']);
+      let monedaCuentaDisplay = solicitud.monedaCuenta || 'N/A';
+      if (solicitud.monedaCuenta === 'Otros' && solicitud.monedaCuentaOtros) {
+        monedaCuentaDisplay = `${solicitud.monedaCuentaOtros} (Otros)`;
+      }
+      sheetData.push(['  Moneda de la Cuenta:', monedaCuentaDisplay]);
+    }
+    sheetData.push([]);
+
+    sheetData.push(['Beneficiario del Pago:']);
+    sheetData.push(['  Elaborar Cheque A:', solicitud.elaborarChequeA || 'N/A']);
+    sheetData.push(['  Elaborar Transferencia A:', solicitud.elaborarTransferenciaA || 'N/A']);
+    sheetData.push([]);
+    
+    sheetData.push(['Detalles Adicionales y Documentación:']);
+    sheetData.push(['  Impuestos pagados por el cliente mediante:', formatBooleanForExport(solicitud.impuestosPagadosCliente)]);
+    if (solicitud.impuestosPagadosCliente) {
+      sheetData.push(['    R/C No.:', solicitud.impuestosPagadosRC || 'N/A']);
+      sheetData.push(['    T/B No.:', solicitud.impuestosPagadosTB || 'N/A']);
+      sheetData.push(['    Cheque No.:', solicitud.impuestosPagadosCheque || 'N/A']);
+    }
+    sheetData.push(['  Impuestos pendientes de pago por el cliente:', formatBooleanForExport(solicitud.impuestosPendientesCliente)]);
+    sheetData.push(['  Se añaden documentos adjuntos:', formatBooleanForExport(solicitud.documentosAdjuntos)]);
+    sheetData.push(['  Constancias de no retención:', formatBooleanForExport(solicitud.constanciasNoRetencion)]);
+    if (solicitud.constanciasNoRetencion) {
+      sheetData.push(['    1%:', formatBooleanForExport(solicitud.constanciasNoRetencion1)]);
+      sheetData.push(['    2%:', formatBooleanForExport(solicitud.constanciasNoRetencion2)]);
+    }
+    sheetData.push([]);
+
+    sheetData.push(['Comunicación y Observaciones:']);
+    sheetData.push(['  Correos de Notificación:', solicitud.correo || 'N/A']);
+    sheetData.push(['  Observación:', solicitud.observation || 'N/A']);
+
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    
+    // Basic column widths (can be customized further)
+    const colWidths = [ {wch: 50}, {wch: 50} ]; // Label column, Value column
+    ws['!cols'] = colWidths;
+    
+    // Attempt to merge the main title cell
+    if (ws['A1']) { // Check if cell A1 exists
+        ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }]; // Merge A1:B1
+        // Optional: Add styling to the merged cell (more advanced)
+        // ws['A1'].s = { font: { bold: true, sz: 14 }, alignment: { horizontal: 'center' } };
+    }
+
+
+    XLSX.utils.book_append_sheet(wb, ws, `Solicitud ${index + 1}`);
+  });
   
-  XLSX.writeFile(wb, `SolicitudCheque_${data.ne || 'SIN_NE'}_${new Date().toISOString().split('T')[0]}.xlsx`);
+  const fileName = `SolicitudesCheque_${examInfo.ne || 'SIN_NE'}_${new Date().toISOString().split('T')[0]}.xlsx`;
+  XLSX.writeFile(wb, fileName);
 }
