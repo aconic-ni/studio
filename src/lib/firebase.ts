@@ -1,10 +1,9 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
-import { getAnalytics, type Analytics } from "firebase/analytics";
 
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+// Import the functions you need from the SDKs you need
+import { initializeApp, getApp, getApps, type FirebaseApp } from "firebase/app";
+import { getAuth, type Auth } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
+import { getAnalytics, type Analytics } from "firebase/analytics";
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -20,24 +19,28 @@ const firebaseConfig = {
 
 // Initialize Firebase
 let app: FirebaseApp;
-let auth: Auth;
-let analytics: Analytics | undefined = undefined; // Optional
-
-try {
+if (!getApps().length) {
   app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  if (typeof window !== 'undefined') {
-    // Initialize Analytics only on the client side
-    analytics = getAnalytics(app);
-  }
-} catch (error) {
-  console.error("Error initializing Firebase:", error);
-  // Fallback or error handling if Firebase initialization fails
-  // For example, you might want to throw the error or set app/auth to null
-  // to prevent further Firebase-dependent operations.
-  // For now, we'll let it throw if critical, or you can handle it.
-  // For a Next.js app, ensure this doesn't break server-side rendering if not handled carefully.
-  // The check `typeof window !== 'undefined'` for analytics helps.
+} else {
+  app = getApp(); // Use existing app if already initialized
 }
 
-export { app, auth, analytics };
+const authInstance: Auth = getAuth(app);
+const firestoreInstance: Firestore = getFirestore(app);
+
+let analytics: Analytics | undefined;
+// Initialize Analytics only on the client side
+if (typeof window !== 'undefined') {
+  try {
+    // Check if measurementId is provided before initializing analytics
+    if (firebaseConfig.measurementId) {
+      analytics = getAnalytics(app);
+    } else {
+      console.warn("Firebase Analytics not initialized because measurementId is missing from firebaseConfig.");
+    }
+  } catch (error) {
+    console.warn("Firebase Analytics could not be initialized.", error);
+  }
+}
+
+export { app, authInstance as auth, firestoreInstance as db, analytics };
