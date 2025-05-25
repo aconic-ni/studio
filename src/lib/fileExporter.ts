@@ -188,99 +188,88 @@ export function downloadExcelFile(data: ExportableExamData) {
 
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
     
-    // Styling pass
+    // Base alignment for all content cells in A and B
+    const baseAlignment = { wrapText: true, vertical: 'top' };
+
     sheetData.forEach((row, rIndex) => {
         const cellAddressA = XLSX.utils.encode_cell({ r: rIndex, c: 0 });
         const cellAddressB = XLSX.utils.encode_cell({ r: rIndex, c: 1 });
 
-        // Ensure cells and style objects exist
+        // Ensure cells exist and apply base alignment
         [cellAddressA, cellAddressB].forEach((cellAddress, cIndex) => {
-            if (!ws[cellAddress]) { // If cell doesn't exist from aoa_to_sheet (e.g. empty second column)
-                ws[cellAddress] = { t: 's', v: row[cIndex] ?? '' }; // Create it
-            }
+            if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: row[cIndex] ?? '' };
+            if (!ws[cellAddress].s) ws[cellAddress].s = {};
+            
+            // Set cell type
             if (typeof row[cIndex] === 'number') ws[cellAddress].t = 'n';
             else if (typeof row[cIndex] === 'boolean') ws[cellAddress].t = 'b';
             else if (row[cIndex] instanceof Date) {
                 ws[cellAddress].t = 'd';
-                ws[cellAddress].z = XLSX.SSF.get_table()[14];
+                ws[cellAddress].z = XLSX.SSF.get_table()[14]; // Default date format
             } else {
-                 ws[cellAddress].t = 's'; // Default to string if not created by aoa_to_sheet or other types
+                 ws[cellAddress].t = 's';
             }
-            
-            if (!ws[cellAddress].s) ws[cellAddress].s = {};
-            if (!ws[cellAddress].s.alignment) ws[cellAddress].s.alignment = {};
 
-            // Apply base wrapText and vertical: 'top' to all content cells
-            ws[cellAddress].s.alignment.wrapText = true;
-            ws[cellAddress].s.alignment.vertical = 'top';
-            // Default horizontal alignment
-            if (ws[cellAddress].s.alignment.horizontal === undefined) {
-                 ws[cellAddress].s.alignment.horizontal = (cIndex === 0 ? 'left' : 'left');
-            }
+            ws[cellAddress].s.alignment = { ...baseAlignment, horizontal: (cIndex === 0 ? 'left' : 'left') }; // Default horizontal
         });
 
         const cellValueA = String(row[0] ?? '').trim();
         const cellValueB = String(row[1] ?? '').trim();
+        const isUserInputA = cellValueA && cellValueA !== 'N/A' && !cellValueA.endsWith(':') && cellValueA !== cellValueA.toUpperCase();
+        const isUserInputB = cellValueB && cellValueB !== 'N/A';
 
-        // --- Main Title Styling ---
+        // Main Title Styling (Row 0)
         if (rIndex === 0 && cellValueA === 'SOLICITUD DE CHEQUE - CustomsFA-L') {
-            ws[cellAddressA].s.font = { ...ws[cellAddressA].s.font, bold: true, sz: 14 };
-            ws[cellAddressA].s.alignment.horizontal = 'center';
-            ws[cellAddressA].s.alignment.vertical = 'center'; // Override for title
-            if (ws[cellAddressB]) { // Ensure cell B1 styling is cleared for merge
-                ws[cellAddressB].s = { alignment: { wrapText: true, vertical: 'center', horizontal: 'center' }};
-                if (ws[cellAddressB].v === undefined) ws[cellAddressB].v = ''; // Ensure value for merge
+            ws[cellAddressA].s.font = { bold: true, sz: 14 };
+            ws[cellAddressA].s.alignment = { ...baseAlignment, horizontal: 'center', vertical: 'center' };
+            if (ws[cellAddressB]) {
+                 ws[cellAddressB].s = { alignment: { ...baseAlignment, horizontal: 'center', vertical: 'center' } }; // Clear for merge
+                 if (ws[cellAddressB].v === undefined) ws[cellAddressB].v = '';
             }
         }
-        // --- Section Headers Styling (merged) ---
+        // Section Headers Styling (merged)
         else if (
             cellValueA.endsWith(':') && cellValueA === cellValueA.toUpperCase() &&
             (cellValueB === '' || typeof row[1] === 'undefined') &&
             rIndex !== 0
         ) {
-            ws[cellAddressA].s.font = { ...ws[cellAddressA].s.font, bold: true, sz: 12 };
-            // horizontal 'left' is already default from above
-            if (ws[cellAddressB]) { // Ensure cell B styling is cleared for merge
-                ws[cellAddressB].s = { alignment: { wrapText: true, vertical: 'top', horizontal: 'left' }};
-                if (ws[cellAddressB].v === undefined) ws[cellAddressB].v = ''; // Ensure value for merge
+            ws[cellAddressA].s.font = { bold: true, sz: 12 };
+            ws[cellAddressA].s.alignment.horizontal = 'left'; // Explicitly left for section headers
+            if (ws[cellAddressB]) {
+                ws[cellAddressB].s = { alignment: { ...baseAlignment, horizontal: 'left'} };
+                if (ws[cellAddressB].v === undefined) ws[cellAddressB].v = '';
             }
         }
-        // --- Label-Value Pairs & Standalone Values Styling ---
+        // Label-Value Pairs & Standalone Values Styling
         else {
-            // For Column A (labels or standalone values)
-            if (cellValueA && cellValueA !== 'N/A') {
-                if (cellValueA.endsWith(':')) { // It's a label
-                    // Labels are not bold by default, handled by base font if any
-                } else { // It's a standalone value in Column A
+            // Column A: User input (standalone values) or labels
+            if (cellValueA) {
+                if (isUserInputA) { // Standalone user input in Col A
                     if (!ws[cellAddressA].s.font) ws[cellAddressA].s.font = {};
                     ws[cellAddressA].s.font.bold = true;
                 }
+                // Labels (ending with ':') in Col A are not bold by default unless they are section headers (handled above)
             }
-            // For Column B (values)
-            if (cellValueB && cellValueB !== 'N/A') {
-                 if (!ws[cellAddressB].s.font) ws[cellAddressB].s.font = {};
-                 ws[cellAddressB].s.font.bold = true;
+            // Column B: User input values
+            if (isUserInputB) {
+                if (!ws[cellAddressB].s.font) ws[cellAddressB].s.font = {};
+                ws[cellAddressB].s.font.bold = true;
             }
         }
     });
     
-    // Specific justification for the "Cantidad en Letras" value cell (Column B of its row)
+    // Specific justification for "Cantidad en Letras" value cell
     const cantidadEnLetrasLabelRowIndex = sheetData.findIndex(r => String(r[0] ?? '').trim() === "Cantidad en Letras:");
     if (cantidadEnLetrasLabelRowIndex !== -1) {
-        const cellBAddressForCantidad = XLSX.utils.encode_cell({ r: cantidadEnLetrasLabelRowIndex, c: 1 }); // Column B
+        const cellBAddressForCantidad = XLSX.utils.encode_cell({ r: cantidadEnLetrasLabelRowIndex, c: 1 });
         if (ws[cellBAddressForCantidad]) {
             if (!ws[cellBAddressForCantidad].s) ws[cellBAddressForCantidad].s = {};
-            if (!ws[cellBAddressForCantidad].s.alignment) ws[cellBAddressForCantidad].s.alignment = {};
-            
-            ws[cellBAddressForCantidad].s.alignment.wrapText = true; // Ensure wrapText
-            ws[cellBAddressForCantidad].s.alignment.vertical = 'top'; // Ensure vertical top
-            ws[cellBAddressForCantidad].s.alignment.horizontal = 'justify'; // Specific horizontal justification
-            
-            // Re-apply bold as this is a user-entered value
+            ws[cellBAddressForCantidad].s.alignment = { ...baseAlignment, horizontal: 'justify' }; // Justify and keep wrap/vertical top
+            // Re-apply bold if it's user input
             const cellValue = String(ws[cellBAddressForCantidad].v ?? '').trim();
             if (cellValue && cellValue !== 'N/A') {
-                if (!ws[cellBAddressForCantidad].s.font) ws[cellBAddressForCantidad].s.font = {};
-                ws[cellBAddressForCantidad].s.font.bold = true;
+                 if (!ws[cellBAddressForCantidad].s.font) ws[cellBAddressForCantidad].s.font = {};
+                 ws[cellBAddressForCantidad].s.font.bold = true;
             }
         }
     }
@@ -299,27 +288,38 @@ export function downloadExcelFile(data: ExportableExamData) {
 
     sheetData.forEach((row, rIndex) => {
         const cellValueColA = String(row[0] ?? '').trim();
-         if (
-            (cellValueColA.endsWith(':') && cellValueColA === cellValueColA.toUpperCase() && (typeof row[1] === 'undefined' || String(row[1]).trim() === '')) || // Section header
-            (cellValueColA === 'Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:') // Specific phrase to merge
+        if (
+            (cellValueColA.endsWith(':') && cellValueColA === cellValueColA.toUpperCase() && (typeof row[1] === 'undefined' || String(row[1]).trim() === '')) ||
+            (cellValueColA === 'Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:')
         ) {
-            if (rIndex !== 0) { // Don't re-merge main title
+            if (rIndex !== 0) { 
                  addMergeIfNotExists({ s: { r: rIndex, c: 0 }, e: { r: rIndex, c: 1 } });
             }
         }
     });
 
-    ws['!cols'] = [ {wch: 35}, {wch: 45} ]; // Column A width, Column B width
-    const numRows = sheetData.length;
+    ws['!cols'] = [ {wch: 35}, {wch: 45} ];
+    
+    // Set specific row heights
+    if (!ws['!rows']) ws['!rows'] = [];
+    // Excel Row 14 (0-indexed 13)
+    if (ws['!rows'].length <= 13) { while(ws['!rows'].length <= 13) ws['!rows'].push({}); } // Ensure array is long enough
+    ws['!rows'][13] = { ...ws['!rows'][13], hpt: 72.90 };
+
+    // Excel Row 40 (0-indexed 39)
+    if (ws['!rows'].length <= 39) { while(ws['!rows'].length <= 39) ws['!rows'].push({}); } // Ensure array is long enough
+    ws['!rows'][39] = { ...ws['!rows'][39], hpt: 72.90 };
     
     ws['!printSetup'] = {
-        printArea: `A1:B50`, // Print area up to row 50
-        fitToWidth: 1,    // Fit content to the width of 1 page
-        fitToHeight: 0,   // Allow content to flow to multiple pages vertically if it exceeds 1 page
+        printArea: `A1:B45`,
+        fitToWidth: 1,
+        fitToHeight: 1, // Force fit to single page height
         paperSize: 1,     // 1 for US Letter
         orientation: 'portrait'
     };
-    ws['!ref'] = `A1:B${numRows}`; // Define the actual data range of the sheet
+    const numRows = sheetData.length;
+    ws['!ref'] = `A1:B${Math.min(numRows, 45)}`;
+
 
     const sheetName = `Solicitud ${index + 1}`;
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
@@ -328,3 +328,5 @@ export function downloadExcelFile(data: ExportableExamData) {
   const fileName = `SolicitudesCheque_${examInfo.ne || 'SIN_NE'}_${new Date().toISOString().split('T')[0]}.xlsx`;
   XLSX.writeFile(wb, fileName);
 }
+
+    
