@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale'; // Import Spanish locale
+import { es } from 'date-fns/locale'; 
 import { cn } from '@/lib/utils';
 
 // Helper function to extract and format name from email
@@ -22,7 +22,7 @@ function extractNameFromEmail(email?: string | null): string {
   if (!email) return "";
   try {
     const localPart = email.substring(0, email.lastIndexOf('@'));
-    const nameParts = localPart.split(/[._-]/); // Split by dot, underscore, or hyphen
+    const nameParts = localPart.split(/[._-]/); 
     const formattedName = nameParts
       .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
       .join(' ');
@@ -54,6 +54,7 @@ export function InitialInfoForm() {
 
 function onSubmit(data: InitialInfoFormData) {
   setExamData({
+    ...existingExamData, // Preserve any existing data not in this form
     ...data,
     reference: data.reference || "", 
   });
@@ -108,7 +109,7 @@ function onSubmit(data: InitialInfoFormData) {
                 control={form.control}
                 name="date"
                 render={({ field }) => (
-                  <FormItem className="flex flex-col">
+                  <FormItem> {/* Removed flex flex-col here */}
                     <FormLabel>Fecha *</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
