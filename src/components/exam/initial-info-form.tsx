@@ -12,12 +12,11 @@ import { initialInfoSchema } from '@/lib/schemas/exam-schemas';
 import { useClientAuth } from '@/hooks/use-client-auth';
 import { useEffect } from 'react';
 
-// Helper function to extract and format name from email
 function extractNameFromEmail(email?: string | null): string {
   if (!email) return "";
   try {
     const localPart = email.substring(0, email.lastIndexOf('@'));
-    const nameParts = localPart.split(/[._-]/); // Split by dot, underscore, or hyphen
+    const nameParts = localPart.split(/[._-]/); 
     const formattedName = nameParts
       .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
       .join(' ');
@@ -62,11 +61,13 @@ export function InitialInfoForm() {
   }
 
   return (
-    <Card className="w-full max-w-3xl mx-auto shadow-xl border">
-      <CardHeader>
-        <CardTitle className="text-xl md:text-2xl font-semibold">Nuevo Examen</CardTitle>
+    <Card className="w-full max-w-3xl mx-auto custom-shadow bg-card text-card-foreground"> {/* Matched HTML: bg-white, custom-shadow */}
+      <CardHeader className="p-5 md:p-8 pb-0"> {/* Matched HTML: p-5 md:p-8 */}
+        <CardTitle className="text-xl md:text-2xl font-semibold mb-6 text-foreground"> {/* Matched HTML: text-gray-800 */}
+          Nuevo Examen
+        </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-5 md:p-8 pt-0"> {/* Matched HTML: p-5 md:p-8 for content area */}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -75,9 +76,9 @@ export function InitialInfoForm() {
                 name="ne"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>NE (Seguimiento NX1) *</FormLabel>
+                    <FormLabel className="block text-sm font-medium text-foreground/80 mb-1">NE (Seguimiento NX1) *</FormLabel> {/* Matched HTML: text-gray-700 */}
                     <FormControl>
-                      <Input placeholder="Ej: NX1-12345" {...field} />
+                      <Input placeholder="Ej: NX1-12345" {...field} className="w-full px-4 py-3 border-input focus:ring-primary" /> {/* Matched HTML styles */}
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -88,9 +89,9 @@ export function InitialInfoForm() {
                 name="reference"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Referencia (Contenedor, Guía, BL, Factura...)</FormLabel>
+                    <FormLabel className="block text-sm font-medium text-foreground/80 mb-1">Referencia (Contenedor, Guía, BL, Factura...)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ej: MSKU1234567" {...field} />
+                      <Input placeholder="Ej: MSKU1234567" {...field} className="w-full px-4 py-3 border-input focus:ring-primary" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -101,9 +102,9 @@ export function InitialInfoForm() {
                 name="manager"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nombre del Gestor *</FormLabel>
+                    <FormLabel className="block text-sm font-medium text-foreground/80 mb-1">Nombre del Gestor *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nombre completo del gestor" {...field} />
+                      <Input placeholder="Nombre completo del gestor" {...field} className="w-full px-4 py-3 border-input focus:ring-primary" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -114,9 +115,9 @@ export function InitialInfoForm() {
                 name="location"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Ubicación de la Mercancía *</FormLabel>
+                    <FormLabel className="block text-sm font-medium text-foreground/80 mb-1">Ubicación de la Mercancía *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ej: Almacén Central, Bodega 5" {...field} />
+                      <Input placeholder="Ej: Almacén Central, Bodega 5" {...field} className="w-full px-4 py-3 border-input focus:ring-primary" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -124,7 +125,7 @@ export function InitialInfoForm() {
               />
             </div>
             <div className="flex justify-end pt-2">
-              <Button type="submit" size="lg">
+              <Button type="submit" className="btn-primary text-white px-6 py-3 rounded-md font-medium"> {/* Matched HTML button style */}
                 Continuar
               </Button>
             </div>

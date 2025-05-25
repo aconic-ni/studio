@@ -14,19 +14,23 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"; // Keep Card for non-modal structure
 import { useClientAuth } from '@/hooks/use-client-auth';
 import { useRouter } from 'next/navigation';
-import { Building2, LogIn } from 'lucide-react';
+import { LogIn } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { AuthError } from 'firebase/auth'; // Import AuthError for specific error handling
+import { AuthError } from 'firebase/auth'; 
 
 const formSchema = z.object({
   email: z.string().email({ message: "Por favor, introduce una dirección de correo válida." }).min(1, { message: "El correo es requerido." }),
   password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
 });
 
-export function LoginForm() {
+interface LoginFormProps {
+  inModalContext?: boolean; // To adjust styling if inside the new glass modal
+}
+
+export function LoginForm({ inModalContext = false }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useClientAuth();
   const router = useRouter();
@@ -81,54 +85,75 @@ export function LoginForm() {
     }
   }
 
+  const formContent = (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-4"> {/* Added mt-4 if in modal */}
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium text-white mb-1 leading-none">
+            Solicitar Acceso a: ( <a href="https://wa.me/+50588102647" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline leading-none"> «clic aquí» </a> ):
+          </label>
+        </div>
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className={inModalContext ? "text-white" : ""}>Correo</FormLabel>
+              <FormControl>
+                <Input 
+                  placeholder="tu@correo.aconic" 
+                  {...field} 
+                  className={inModalContext ? "bg-white/20 text-white placeholder:text-gray-300 border-white/30 focus:ring-blue-500" : ""}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className={inModalContext ? "text-white" : ""}>Contraseña</FormLabel>
+              <FormControl>
+                <Input 
+                  type="password" 
+                  placeholder="••••••••" 
+                  {...field} 
+                  className={inModalContext ? "bg-white/20 text-white placeholder:text-gray-300 border-white/30 focus:ring-blue-500" : ""}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" className="w-full btn-primary text-white px-8 py-3 rounded-md font-medium" disabled={isLoading}>
+          {isLoading ? (
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-solid border-primary-foreground border-t-transparent mr-2"></div>
+          ) : (
+            <LogIn className="mr-2 h-4 w-4" />
+          )}
+          Ingresar {/* Changed from Iniciar Sesión */}
+        </Button>
+      </form>
+    </Form>
+  );
+
+  if (inModalContext) {
+    return formContent; // Return only form if in modal, header is handled by Dialog
+  }
+
   return (
     <Card className="w-full max-w-md shadow-xl">
       <CardHeader className="space-y-1">
-        <div className="flex items-center gap-2">
-          <Building2 className="h-6 w-6 text-primary" />
-          <CardTitle className="text-2xl">ACONIC Facturación Local</CardTitle>
-        </div>
+         {/* Title "CustomsEX-p" will be part of the DialogTitle in login/page.tsx */}
+         {/* This CardHeader can be simplified or removed if only modal view is used */}
+        <CardTitle className="text-2xl">CustomsEX-p</CardTitle>
         <CardDescription>Accede con tu correo electrónico de ACONIC</CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Correo</FormLabel>
-                  <FormControl>
-                    <Input placeholder="tu@correo.aconic" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Contraseña</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-solid border-primary-foreground border-t-transparent mr-2"></div>
-              ) : (
-                <LogIn className="mr-2 h-4 w-4" />
-              )}
-              Iniciar Sesión
-            </Button>
-          </form>
-        </Form>
+        {formContent}
       </CardContent>
     </Card>
   );

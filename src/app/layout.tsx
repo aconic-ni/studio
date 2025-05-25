@@ -1,21 +1,24 @@
+
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Inter } from 'next/font/google'; // Changed from Geist to Inter
 import './globals.css';
 import { AppProviders } from '@/components/auth-provider';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const inter = Inter({ // Changed from geistSans to inter
+  variable: '--font-inter', // Changed variable name
   subsets: ['latin'],
 });
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
+// Geist Mono can be removed if not explicitly needed elsewhere, or kept if desired for mono spacing
+// For now, let's assume Inter is the primary font for everything.
+// const geistMono = Geist_Mono({
+//   variable: '--font-geist-mono',
+//   subsets: ['latin'],
+// });
 
 export const metadata: Metadata = {
-  title: 'ACONIC Facturación Local',
-  description: 'Manage and export item information locally.',
+  title: 'CustomsEX-p | Facturación local', // Updated title
+  description: 'Sistema de EXAMENES PREVIOS para facturación local.', // Updated description
 };
 
 export default function RootLayout({
@@ -24,8 +27,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang="es" suppressHydrationWarning>
+      <body className={`${inter.variable} antialiased`}> {/* Using Inter font variable */}
         <AppProviders>
           {children}
         </AppProviders>
