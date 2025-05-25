@@ -42,7 +42,7 @@ export function downloadTxtFile(examData: ExamData, solicitudes: SolicitudData[]
 
   (Array.isArray(solicitudes) ? solicitudes : []).forEach((solicitud, index) => {
     content += `\n--- Solicitud ${index + 1} ---\n`;
-    content += `Monto Solicitado: ${formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda)}\n`;
+    content += `Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de: ${formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda)}\n`;
     content += `Cantidad en Letras: ${solicitud.cantidadEnLetras || 'N/A'}\n`;
     content += `Consignatario: ${solicitud.consignatario || 'N/A'}\n`;
     content += `Declaración Número: ${solicitud.declaracionNumero || 'N/A'}\n`;
@@ -104,34 +104,26 @@ export function downloadExcelFile(data: ExportableExamData) {
   (Array.isArray(data.products) ? data.products : []).forEach((solicitud, index) => {
     const sheetData: (string | number | Date | null | undefined)[][] = [];
     
-    // Helper to find row index by label in column A
-    const findRowIndexByLabel = (label: string): number => {
-        for (let i = 0; i < sheetData.length; i++) {
-            if (sheetData[i][0] === label) {
-                return i;
-            }
-        }
-        return -1;
-    };
-
-    // Populate sheetData
-    sheetData.push(['SOLICITUD DE CHEQUE - CustomsFA-L']);
-    sheetData.push([]); 
-    sheetData.push(['INFORMACIÓN GENERAL:']);
-    sheetData.push(['A (Destinatario):', examInfo.recipient]);
-    sheetData.push(['De (Colaborador):', examInfo.manager]);
-    sheetData.push(['Fecha de Examen:', formatDate(examInfo.date)]);
-    sheetData.push(['NE (Tracking NX1):', examInfo.ne]);
-    sheetData.push(['Referencia:', examInfo.reference || 'N/A']);
+    sheetData.push(['SOLICITUD DE CHEQUE - CustomsFA-L']); // Row 1
+    sheetData.push([]); // Row 2 (Empty Separator)
+    sheetData.push(['INFORMACIÓN GENERAL:']); // Row 3
+    sheetData.push(['A (Destinatario):', examInfo.recipient]); // Row 4
+    sheetData.push(['De (Colaborador):', examInfo.manager]); // Row 5
+    sheetData.push(['Fecha de Examen:', formatDate(examInfo.date)]); // Row 6
+    sheetData.push(['NE (Tracking NX1):', examInfo.ne]); // Row 7
+    sheetData.push(['Referencia:', examInfo.reference || 'N/A']); // Row 8
     if (examInfo.savedBy) sheetData.push(['Guardado por (correo):', examInfo.savedBy]);
     if (examInfo.savedAt) sheetData.push(['Fecha y Hora de Guardado:', formatDate(examInfo.savedAt)]);
-    sheetData.push([]); 
-    sheetData.push(['DETALLES DE LA SOLICITUD:']);
-    sheetData.push([]); 
-    sheetData.push(['Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:']);
-    sheetData.push([formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda)]);
-    sheetData.push(['Cantidad en Letras:', solicitud.cantidadEnLetras || 'N/A']);
-    sheetData.push([]);
+    sheetData.push([]); // Empty Separator
+    sheetData.push(['DETALLES DE LA SOLICITUD:']); // Section Title
+    sheetData.push([]); // Empty Separator
+
+    // Monto y Cantidad en Letras section
+    sheetData.push(['Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:']); // Label for Monto
+    sheetData.push([formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda)]); // Monto value
+    sheetData.push(['Cantidad en Letras:', solicitud.cantidadEnLetras || 'N/A']); // Cantidad en Letras label and value
+
+    sheetData.push([]); // Empty Separator
     sheetData.push(['INFORMACIÓN ADICIONAL DE SOLICITUD:']);
     sheetData.push(['  Consignatario:', solicitud.consignatario || 'N/A']);
     sheetData.push(['  Declaración Número:', solicitud.declaracionNumero || 'N/A']);
@@ -179,135 +171,122 @@ export function downloadExcelFile(data: ExportableExamData) {
     sheetData.push(['  Correos de Notificación:', solicitud.correo || 'N/A']);
     sheetData.push(['  Observación:', solicitud.observation || 'N/A']);
     
-    // Pad to at least 50 rows for print area consistency if needed, though dynamic is better
-    const currentNumRows = sheetData.length;
-    // while (sheetData.length < 50) {
-    //     sheetData.push([]);
-    // }
-
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
-    if (!ws['!merges']) ws['!merges'] = [];
 
     // --- STYLING ---
-    const boldFont = { name: 'Arial', sz: 10, bold: true };
-    const normalFont = { name: 'Arial', sz: 10 };
-    const titleFont = { name: 'Arial', sz: 14, bold: true };
+    const boldFont = { name: 'Calibri', sz: 11, bold: true };
+    const normalFont = { name: 'Calibri', sz: 11 };
+    const titleFont = { name: 'Calibri', sz: 14, bold: true };
 
-    for (let r = 0; r < currentNumRows; r++) {
-        for (let c = 0; c < 2; c++) { // Only columns A (0) and B (1)
-            const cellAddress = XLSX.utils.encode_cell({ r, c });
-            const cellValue = sheetData[r][c];
-
-            if (typeof cellValue !== 'undefined' && cellValue !== null) {
-                if (!ws[cellAddress]) { // If cell object doesn't exist, create it
-                    ws[cellAddress] = { v: cellValue };
-                }
-                // Ensure type is string for text wrapping, unless it's clearly a number/boolean
-                if (typeof cellValue === 'string') {
-                    ws[cellAddress].t = 's';
-                } else if (typeof cellValue === 'number') {
-                    ws[cellAddress].t = 'n';
-                } else if (typeof cellValue === 'boolean') {
-                    ws[cellAddress].t = 'b';
-                }
-
-
-                if (!ws[cellAddress].s) ws[cellAddress].s = {};
-                if (!ws[cellAddress].s.alignment) ws[cellAddress].s.alignment = {};
-
-                // Default: Wrap Text, Top Align, Left Align
-                ws[cellAddress].s.alignment.wrapText = true;
-                ws[cellAddress].s.alignment.vertical = 'top';
-                ws[cellAddress].s.alignment.horizontal = 'left';
-                ws[cellAddress].s.font = { ...normalFont };
-
-
-                // Bolding for user-entered values (Column B generally, or Column A if B is empty and it's not a label)
-                const isValueCell = (c === 1 && cellValue !== 'N/A' && String(cellValue).trim() !== '') ||
-                                    (c === 0 && (typeof sheetData[r][1] === 'undefined' || String(sheetData[r][1]).trim() === '') &&
-                                     cellValue !== 'N/A' && String(cellValue).trim() !== '' &&
-                                     !String(cellValue).endsWith(':') &&
-                                     !String(cellValue).toUpperCase().startsWith("SOLICITUD DE CHEQUE") &&
-                                     !String(cellValue).toUpperCase().startsWith("POR ESTE MEDIO"));
-                if (isValueCell) {
-                    ws[cellAddress].s.font = { ...boldFont };
-                }
-
-                // Style section headers (all caps, ends with ':')
-                if (c === 0 && typeof cellValue === 'string' && cellValue.endsWith(':') && cellValue === cellValue.toUpperCase()) {
-                    ws[cellAddress].s.font = { ...boldFont };
-                    ws[cellAddress].s.alignment.vertical = 'middle';
-                    if (!ws['!merges'].some(m => m.s.r === r && m.s.c === 0 && m.e.r === r && m.e.c === 1)) {
-                        ws['!merges'].push({ s: { r, c: 0 }, e: { r, c: 1 } });
-                    }
-                }
+    // Helper to find row index by label in column A
+    const findRowIndexByLabel = (label: string): number => {
+        for (let i = 0; i < sheetData.length; i++) {
+            if (sheetData[i][0] === label) {
+                return i;
             }
         }
-    }
+        return -1;
+    };
     
-    // Specific styling for "Cantidad en Letras" VALUE cell
-    const rowIndexCantidadLetras = findRowIndexByLabel('Cantidad en Letras:');
-    if (rowIndexCantidadLetras !== -1) {
-        const cellBCantidadLetras = XLSX.utils.encode_cell({ r: rowIndexCantidadLetras, c: 1 });
-        if (ws[cellBCantidadLetras]) {
-             if(!ws[cellBCantidadLetras].s) ws[cellBCantidadLetras].s = {}; // Ensure style object
-            ws[cellBCantidadLetras].t = 's'; // Crucial: Ensure it's treated as text
-            ws[cellBCantidadLetras].s.alignment = {
-                wrapText: true, // CRUCIAL
-                vertical: 'top',
-                horizontal: 'left' // As per your last request for left alignment
-            };
-            if (solicitud.cantidadEnLetras && solicitud.cantidadEnLetras !== 'N/A') {
-                 if(!ws[cellBCantidadLetras].s.font) ws[cellBCantidadLetras].s.font = {};
-                ws[cellBCantidadLetras].s.font.bold = true;
-            }
-        }
-    }
+    // Remove ALL explicit row height settings to allow auto-height for wrapped text
+    ws['!rows'] = [];
 
-    // Specific styling for "Observación" VALUE cell
-    const rowIndexObservacion = findRowIndexByLabel('  Observación:');
-    if (rowIndexObservacion !== -1) {
-        const cellBObservacion = XLSX.utils.encode_cell({ r: rowIndexObservacion, c: 1 });
-        if (ws[cellBObservacion]) {
-            if(!ws[cellBObservacion].s) ws[cellBObservacion].s = {}; // Ensure style object
-            ws[cellBObservacion].t = 's'; // Crucial: Ensure it's treated as text
-            ws[cellBObservacion].s.alignment = {
-                wrapText: true, // CRUCIAL
-                vertical: 'top',
-                horizontal: 'left'
-            };
-             if (solicitud.observation && solicitud.observation !== 'N/A') {
-                if(!ws[cellBObservacion].s.font) ws[cellBObservacion].s.font = {};
-                ws[cellBObservacion].s.font.bold = true;
-            }
-        }
-    }
+    // General cell styling loop (type setting, base alignment, bolding)
+    sheetData.forEach((row, rIndex) => {
+      row.forEach((cellValue, cIndex) => {
+        if (cIndex < 2) { // Only columns A and B
+          const cellAddress = XLSX.utils.encode_cell({ r: rIndex, c: cIndex });
+          if (!ws[cellAddress]) { // Ensure cell object exists
+             // If value is null/undefined, create an empty cell of type string to apply styles
+            ws[cellAddress] = { t: 's', v: cellValue === null || cellValue === undefined ? "" : cellValue };
+          }
+          
+          // Explicitly set cell type to string if it's a string, helps with wrap text
+          if (typeof cellValue === 'string') {
+            ws[cellAddress].t = 's';
+          }
 
-    // Main title styling
-    const mainTitleCellAddress = XLSX.utils.encode_cell({ r: 0, c: 0 });
+          if (!ws[cellAddress].s) ws[cellAddress].s = {};
+          if (!ws[cellAddress].s.alignment) ws[cellAddress].s.alignment = {};
+
+          // Base alignment: wrap text, top align, left align
+          ws[cellAddress].s.alignment.wrapText = true; 
+          ws[cellAddress].s.alignment.vertical = 'top';
+          ws[cellAddress].s.alignment.horizontal = 'left';
+          ws[cellAddress].s.font = { ...normalFont };
+
+          // Bolding for user-entered values (Column B, or Column A if B is empty and it's not a label)
+          const isValueCell = (cIndex === 1 && cellValue !== 'N/A' && String(cellValue).trim() !== '') ||
+                              (cIndex === 0 && (typeof row[1] === 'undefined' || String(row[1]).trim() === '') &&
+                               cellValue !== 'N/A' && String(cellValue).trim() !== '' &&
+                               !String(cellValue).endsWith(':') &&
+                               !String(cellValue).toUpperCase().startsWith("SOLICITUD DE CHEQUE") &&
+                               !String(cellValue).toUpperCase().startsWith("POR ESTE MEDIO"));
+          if (isValueCell) {
+            ws[cellAddress].s.font = { ...boldFont };
+          }
+
+          // Style section headers (all caps, ends with ':')
+          if (cIndex === 0 && typeof cellValue === 'string' && cellValue.endsWith(':') && cellValue === cellValue.toUpperCase()) {
+            ws[cellAddress].s.font = { ...boldFont };
+            ws[cellAddress].s.alignment.vertical = 'middle';
+          }
+        }
+      });
+    });
+
+    // Main title styling (Row 1, Col A)
+    const mainTitleCellAddress = 'A1';
     if (ws[mainTitleCellAddress]) {
         ws[mainTitleCellAddress].s = {
             font: { ...titleFont },
             alignment: { horizontal: 'center', vertical: 'middle', wrapText: true }
         };
-        if (!ws['!merges'].some(m => m.s.r === 0 && m.s.c === 0 && m.e.r === 0 && m.e.c === 1)) {
-            ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } });
-        }
+    }
+     if (!ws['!merges']) ws['!merges'] = [];
+     ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }); // Merge A1:B1
+
+    // Specific styling for "Cantidad en Letras" value cell
+    const rowIndexCantidadLetras = findRowIndexByLabel('Cantidad en Letras:');
+    if (rowIndexCantidadLetras !== -1) {
+        const cellAddressCL = XLSX.utils.encode_cell({ r: rowIndexCantidadLetras, c: 1 }); // Column B
+        if (!ws[cellAddressCL]) ws[cellAddressCL] = { t: 's', v: solicitud.cantidadEnLetras || 'N/A'};
+        else ws[cellAddressCL].v = solicitud.cantidadEnLetras || 'N/A'; // Ensure value is set
+        ws[cellAddressCL].t = 's'; // Force type to string
+        ws[cellAddressCL].s = { 
+            alignment: { wrapText: true, vertical: 'top', horizontal: 'left' }, // IMPORTANT: wrapText
+            font: (solicitud.cantidadEnLetras && solicitud.cantidadEnLetras !== 'N/A') ? { ...boldFont } : { ...normalFont }
+        };
+    }
+
+    // Specific styling for "Observación" value cell
+    const rowIndexObservacion = findRowIndexByLabel('  Observación:');
+    if (rowIndexObservacion !== -1) {
+        const cellAddressObs = XLSX.utils.encode_cell({ r: rowIndexObservacion, c: 1 }); // Column B
+        if (!ws[cellAddressObs]) ws[cellAddressObs] = { t: 's', v: solicitud.observation || 'N/A' };
+        else ws[cellAddressObs].v = solicitud.observation || 'N/A'; // Ensure value is set
+        ws[cellAddressObs].t = 's'; // Force type to string
+        ws[cellAddressObs].s = {
+            alignment: { wrapText: true, vertical: 'top', horizontal: 'left' }, // IMPORTANT: wrapText
+            font: (solicitud.observation && solicitud.observation !== 'N/A') ? { ...boldFont } : { ...normalFont }
+        };
     }
     
-    ws['!cols'] = [{ wch: 35 }, { wch: 45 }];
-    ws['!rows'] = []; // IMPORTANT: Remove ALL explicit row height settings to allow auto-fit
+    ws['!cols'] = [{ wch: 35 }, { wch: 45 }]; // Column widths
 
     // Print Setup: Fit Sheet on One Page
     ws['!printSetup'] = {
+      printArea: `A1:B${Math.min(sheetData.length, 50)}`, // Print up to 50 rows
       fitToWidth: 1,
       fitToHeight: 1, // CRUCIAL for "Imprimir hoja en una sola hoja"
-      paperSize: 9,   // US Letter (9 is common for xlsx library)
+      paperSize: 9,   // US Letter
       orientation: 'portrait',
-      printArea: 'A1:B50' // Max print area to consider for fitting
+      // No scale property, fitToHeight:1 and fitToWidth:1 handle scaling
     };
     
-    ws['!ref'] = XLSX.utils.encode_range({ s: { c: 0, r: 0 }, e: { c: 1, r: Math.min(currentNumRows - 1, 49) }});
+    // Define the actual data range of the sheet
+    const numRows = sheetData.length;
+    ws['!ref'] = XLSX.utils.encode_range({ s: { c: 0, r: 0 }, e: { c: 1, r: Math.min(numRows - 1, 49) }});
 
 
     const sheetName = `Solicitud ${index + 1}`;
@@ -317,4 +296,3 @@ export function downloadExcelFile(data: ExportableExamData) {
   const fileName = `SolicitudesCheque_${examInfo.ne || 'SIN_NE'}_${new Date().toISOString().split('T')[0]}.xlsx`;
   XLSX.writeFile(wb, fileName);
 }
-
