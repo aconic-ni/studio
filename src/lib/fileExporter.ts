@@ -106,7 +106,7 @@ export function downloadExcelFile(data: ExportableExamData) {
 
     // --- Main Title ---
     sheetData.push(['SOLICITUD DE CHEQUE - CustomsFA-L']);
-    sheetData.push([]);
+    sheetData.push([]); // Empty separator row
 
     // --- General Exam Information ---
     sheetData.push(['INFORMACIÓN GENERAL:']);
@@ -117,20 +117,20 @@ export function downloadExcelFile(data: ExportableExamData) {
     sheetData.push(['Fecha de Examen:', formatDate(examInfo.date)]);
     if (examInfo.savedBy) sheetData.push(['Guardado por (correo):', examInfo.savedBy]);
     if (examInfo.savedAt) sheetData.push(['Fecha y Hora de Guardado:', formatDate(examInfo.savedAt)]);
-    sheetData.push([]);
+    sheetData.push([]); // Empty separator row
 
     // --- Solicitud Details Title ---
     sheetData.push(['DETALLES DE LA SOLICITUD:']);
-    sheetData.push([]);
-
-    // --- Monto y Cantidad (Revised based on user request) ---
-    sheetData.push(['Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:']); // Label in Col A
-    sheetData.push([formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda)]); // Value in Col A
-    sheetData.push(['Cantidad en Letras:', solicitud.cantidadEnLetras || 'N/A']); // Label in Col A, Value in Col B
+    sheetData.push([]); // Empty separator row
+    
+    // --- Monto y Cantidad (Revised for specific layout) ---
+    sheetData.push(['Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:']);
+    sheetData.push([formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda)]);
+    sheetData.push(['Cantidad en Letras:', solicitud.cantidadEnLetras || 'N/A']);
     sheetData.push([]); // Empty row after this section
 
     // --- Información Adicional de Solicitud ---
-    sheetData.push(['Información Adicional de Solicitud:']);
+    sheetData.push(['INFORMACIÓN ADICIONAL DE SOLICITUD:']);
     sheetData.push(['  Consignatario:', solicitud.consignatario || 'N/A']);
     sheetData.push(['  Declaración Número:', solicitud.declaracionNumero || 'N/A']);
     sheetData.push(['  Unidad Recaudadora:', solicitud.unidadRecaudadora || 'N/A']);
@@ -139,7 +139,7 @@ export function downloadExcelFile(data: ExportableExamData) {
     sheetData.push([]);
 
     // --- Cuenta Bancaria ---
-    sheetData.push(['Cuenta Bancaria:']);
+    sheetData.push(['CUENTA BANCARIA:']);
     let bancoDisplay = solicitud.banco || 'N/A';
     if (solicitud.banco === 'Otros' && solicitud.bancoOtros) {
       bancoDisplay = `${solicitud.bancoOtros} (Otros)`;
@@ -159,13 +159,13 @@ export function downloadExcelFile(data: ExportableExamData) {
     sheetData.push([]);
 
     // --- Beneficiario del Pago ---
-    sheetData.push(['Beneficiario del Pago:']);
+    sheetData.push(['BENEFICIARIO DEL PAGO:']);
     sheetData.push(['  Elaborar Cheque A:', solicitud.elaborarChequeA || 'N/A']);
     sheetData.push(['  Elaborar Transferencia A:', solicitud.elaborarTransferenciaA || 'N/A']);
     sheetData.push([]);
 
     // --- Detalles Adicionales y Documentación ---
-    sheetData.push(['Detalles Adicionales y Documentación:']);
+    sheetData.push(['DETALLES ADICIONALES Y DOCUMENTACIÓN:']);
     sheetData.push(['  Impuestos pagados por el cliente mediante:', formatBooleanForExport(solicitud.impuestosPagadosCliente)]);
     if (solicitud.impuestosPagadosCliente) {
       sheetData.push(['    R/C No.:', solicitud.impuestosPagadosRC || 'N/A']);
@@ -182,36 +182,76 @@ export function downloadExcelFile(data: ExportableExamData) {
     sheetData.push([]);
 
     // --- Comunicación y Observaciones ---
-    sheetData.push(['Comunicación y Observaciones:']);
+    sheetData.push(['COMUNICACIÓN Y OBSERVACIONES:']);
     sheetData.push(['  Correos de Notificación:', solicitud.correo || 'N/A']);
     sheetData.push(['  Observación:', solicitud.observation || 'N/A']);
 
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
 
-    const colWidths = [ {wch: 60}, {wch: 60} ];
+    const colWidths = [ {wch: 60}, {wch: 60} ]; // Default width for columns A and B
     ws['!cols'] = colWidths;
 
-    if (ws['A1']) {
-        ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
-    }
-    // Additional merges for other headers if they are single-column
-    const headersToMerge = [
-        'INFORMACIÓN GENERAL:',
-        'DETALLES DE LA SOLICITUD:',
-        'Información Adicional de Solicitud:',
-        'Cuenta Bancaria:',
-        'Beneficiario del Pago:',
-        'Detalles Adicionales y Documentación:',
-        'Comunicación y Observaciones:'
-    ];
-    
+    // Style for bold text
+    const boldStyle = { font: { bold: true } };
+
     sheetData.forEach((row, rIndex) => {
-        if (row.length === 1 && headersToMerge.includes(String(row[0]))) {
-            if (!ws['!merges']) ws['!merges'] = [];
-            ws['!merges'].push({ s: { r: rIndex, c: 0 }, e: { r: rIndex, c: 1 } });
+      const excelRowIndex = rIndex + 1; // 1-based index for Excel
+
+      if (row.length === 2) {
+        // Label-value pair: ['Label:', Value]
+        const valueCellAddress = `B${excelRowIndex}`;
+        if (typeof row[0] === 'string' && row[0].trim() !== '' &&
+            row[1] !== 'N/A' && row[1] !== undefined && row[1] !== null && String(row[1]).trim() !== '') {
+          if (ws[valueCellAddress]) {
+            ws[valueCellAddress].s = boldStyle;
+          }
+        }
+      } else if (row.length === 1) {
+        // Single value row or a section/main title
+        const cellValue = String(row[0]); // Ensure it's a string for checks
+        if (cellValue.trim() !== '') {
+          const isMainTitle = cellValue === 'SOLICITUD DE CHEQUE - CustomsFA-L';
+          // Regex for section titles (all caps, may contain spaces and accented chars, ends with ':')
+          const isSectionHeader = /^[A-ZÁÉÍÓÚÑ\s]+:$/.test(cellValue.trim());
+
+          const currentCellAddress = `A${excelRowIndex}`;
+          if (ws[currentCellAddress]) {
+            if (isMainTitle) {
+              ws[currentCellAddress].s = { font: { bold: true, sz: 14 }, alignment: { horizontal: 'center' } };
+            } else if (isSectionHeader) {
+              ws[currentCellAddress].s = boldStyle; // Section headers also bold
+            } else {
+              // Assumed to be a user-entered value (like the numeric 'monto' or other single-line values)
+              ws[currentCellAddress].s = boldStyle;
+            }
+          }
+        }
+      }
+    });
+    
+    // Merges
+    if (!ws['!merges']) {
+        ws['!merges'] = [];
+    }
+    const addMergeIfNotExists = (newMerge: XLSX.Range) => {
+        const exists = ws['!merges']!.some(m => 
+            m.s.r === newMerge.s.r && m.s.c === newMerge.s.c &&
+            m.e.r === newMerge.e.r && m.e.c === newMerge.e.c
+        );
+        if (!exists) {
+            ws['!merges']!.push(newMerge);
+        }
+    };
+    
+    // Merge main title (A1:B1)
+    addMergeIfNotExists({ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } });
+
+    // Merge section headers (Col A to Col B for that row)
+    sheetData.forEach((row, rIndex) => {
+        if (row.length === 1 && typeof row[0] === 'string' && /^[A-ZÁÉÍÓÚÑ\s]+:$/.test(String(row[0]).trim())) {
+             addMergeIfNotExists({ s: { r: rIndex, c: 0 }, e: { r: rIndex, c: 1 } });
         }
     });
-
 
     XLSX.utils.book_append_sheet(wb, ws, `Solicitud ${index + 1}`);
   });
@@ -219,3 +259,5 @@ export function downloadExcelFile(data: ExportableExamData) {
   const fileName = `SolicitudesCheque_${examInfo.ne || 'SIN_NE'}_${new Date().toISOString().split('T')[0]}.xlsx`;
   XLSX.writeFile(wb, fileName);
 }
+
+    
