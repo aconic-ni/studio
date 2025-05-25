@@ -7,7 +7,7 @@ import { es } from 'date-fns/locale';
 
 const formatDate = (dateValue: Date | Timestamp | string | null | undefined): string => {
   if (!dateValue) return 'N/A';
-  if (typeof dateValue === 'string') return dateValue; 
+  if (typeof dateValue === 'string') return dateValue;
   const dateObj = dateValue instanceof Date ? dateValue : (dateValue as Timestamp).toDate();
   return format(dateObj, "PPP", { locale: es });
 };
@@ -15,7 +15,7 @@ const formatDate = (dateValue: Date | Timestamp | string | null | undefined): st
 const formatCurrencyForExport = (amount?: number | string, currency?: string) => {
     if (amount === undefined || amount === null || amount === '') return 'N/A';
     const num = Number(amount);
-    if (isNaN(num)) return String(amount); 
+    if (isNaN(num)) return String(amount);
     let prefix = '';
     if (currency === 'cordoba') prefix = 'C$';
     else if (currency === 'dolar') prefix = 'US$';
@@ -31,13 +31,13 @@ const formatBooleanForExport = (value?: boolean): string => {
 export function downloadTxtFile(examData: ExamData, solicitudes: SolicitudData[]) {
   let content = `SOLICITUD DE CHEQUE - CustomsFA-L\n`;
   content += `===========================================\n\n`;
-  content += `INFORMACIÓN GENERAL:\n`; // Changed title
+  content += `INFORMACIÓN GENERAL:\n`;
   content += `NE: ${examData.ne}\n`;
   content += `Referencia: ${examData.reference || 'N/A'}\n`;
   content += `De (Colaborador): ${examData.manager}\n`;
   content += `A (Destinatario): ${examData.recipient}\n`;
   content += `Fecha: ${formatDate(examData.date)}\n\n`;
-  
+
   content += `SOLICITUDES (${solicitudes.length}):\n`;
 
   (Array.isArray(solicitudes) ? solicitudes : []).forEach((solicitud, index) => {
@@ -49,7 +49,7 @@ export function downloadTxtFile(examData: ExamData, solicitudes: SolicitudData[]
     content += `Unidad Recaudadora: ${solicitud.unidadRecaudadora || 'N/A'}\n`;
     content += `Código 1: ${solicitud.codigo1 || 'N/A'}\n`;
     content += `Código 2: ${solicitud.codigo2 || 'N/A'}\n`;
-    
+
     let bancoDisplay = solicitud.banco || 'N/A';
     if (solicitud.banco === 'Otros' && solicitud.bancoOtros) {
       bancoDisplay = `${solicitud.bancoOtros} (Otros)`;
@@ -68,7 +68,7 @@ export function downloadTxtFile(examData: ExamData, solicitudes: SolicitudData[]
     }
     content += `Elaborar Cheque A: ${solicitud.elaborarChequeA || 'N/A'}\n`;
     content += `Elaborar Transferencia A: ${solicitud.elaborarTransferenciaA || 'N/A'}\n`;
-    
+
     content += `Impuestos Pagados Cliente: ${formatBooleanForExport(solicitud.impuestosPagadosCliente)}\n`;
     if (solicitud.impuestosPagadosCliente) {
         content += `  R/C: ${solicitud.impuestosPagadosRC || 'N/A'}\n`;
@@ -99,17 +99,17 @@ export function downloadTxtFile(examData: ExamData, solicitudes: SolicitudData[]
 
 export function downloadExcelFile(data: ExportableExamData) {
   const wb = XLSX.utils.book_new();
-  const examInfo = data; 
+  const examInfo = data;
 
   (Array.isArray(data.products) ? data.products : []).forEach((solicitud, index) => {
     const sheetData: (string | number | Date | null | undefined)[][] = [];
 
     // --- Main Title ---
     sheetData.push(['SOLICITUD DE CHEQUE - CustomsFA-L']);
-    sheetData.push([]); 
+    sheetData.push([]);
 
     // --- General Exam Information ---
-    sheetData.push(['INFORMACIÓN GENERAL:']); // Changed Title
+    sheetData.push(['INFORMACIÓN GENERAL:']);
     sheetData.push(['NE (Tracking NX1):', examInfo.ne]);
     sheetData.push(['Referencia:', examInfo.reference || 'N/A']);
     sheetData.push(['De (Colaborador):', examInfo.manager]);
@@ -117,24 +117,17 @@ export function downloadExcelFile(data: ExportableExamData) {
     sheetData.push(['Fecha de Examen:', formatDate(examInfo.date)]);
     if (examInfo.savedBy) sheetData.push(['Guardado por (correo):', examInfo.savedBy]);
     if (examInfo.savedAt) sheetData.push(['Fecha y Hora de Guardado:', formatDate(examInfo.savedAt)]);
-    sheetData.push([]); 
+    sheetData.push([]);
 
     // --- Solicitud Details Title ---
     sheetData.push(['DETALLES DE LA SOLICITUD:']);
-    sheetData.push([]); 
-
-    // --- Monto y Cantidad ---
-    // This will be Excel Row 14 (index 13 of sheetData)
-    sheetData.push([
-        formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda), // Column A
-        'Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:' // Column B
-    ]);
-    // This will be Excel Row 15 (index 14 of sheetData)
-    sheetData.push([
-        solicitud.cantidadEnLetras || 'N/A', // Column A
-        'Cantidad en Letras:' // Column B
-    ]);
     sheetData.push([]);
+
+    // --- Monto y Cantidad (Revised based on user request) ---
+    sheetData.push(['Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:']); // Label in Col A
+    sheetData.push([formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda)]); // Value in Col A
+    sheetData.push(['Cantidad en Letras:', solicitud.cantidadEnLetras || 'N/A']); // Label in Col A, Value in Col B
+    sheetData.push([]); // Empty row after this section
 
     // --- Información Adicional de Solicitud ---
     sheetData.push(['Información Adicional de Solicitud:']);
@@ -154,7 +147,7 @@ export function downloadExcelFile(data: ExportableExamData) {
       bancoDisplay = 'Acción por Cheque / No Aplica Banco';
     }
     sheetData.push(['  Banco:', bancoDisplay]);
-    
+
     if (solicitud.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO') {
       sheetData.push(['  Número de Cuenta:', solicitud.numeroCuenta || 'N/A']);
       let monedaCuentaDisplay = solicitud.monedaCuenta || 'N/A';
@@ -170,7 +163,7 @@ export function downloadExcelFile(data: ExportableExamData) {
     sheetData.push(['  Elaborar Cheque A:', solicitud.elaborarChequeA || 'N/A']);
     sheetData.push(['  Elaborar Transferencia A:', solicitud.elaborarTransferenciaA || 'N/A']);
     sheetData.push([]);
-    
+
     // --- Detalles Adicionales y Documentación ---
     sheetData.push(['Detalles Adicionales y Documentación:']);
     sheetData.push(['  Impuestos pagados por el cliente mediante:', formatBooleanForExport(solicitud.impuestosPagadosCliente)]);
@@ -194,17 +187,35 @@ export function downloadExcelFile(data: ExportableExamData) {
     sheetData.push(['  Observación:', solicitud.observation || 'N/A']);
 
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
-    
-    const colWidths = [ {wch: 60}, {wch: 60} ]; 
+
+    const colWidths = [ {wch: 60}, {wch: 60} ];
     ws['!cols'] = colWidths;
-    
-    if (ws['A1']) { 
-        ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }]; 
+
+    if (ws['A1']) {
+        ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }];
     }
+    // Additional merges for other headers if they are single-column
+    const headersToMerge = [
+        'INFORMACIÓN GENERAL:',
+        'DETALLES DE LA SOLICITUD:',
+        'Información Adicional de Solicitud:',
+        'Cuenta Bancaria:',
+        'Beneficiario del Pago:',
+        'Detalles Adicionales y Documentación:',
+        'Comunicación y Observaciones:'
+    ];
+    
+    sheetData.forEach((row, rIndex) => {
+        if (row.length === 1 && headersToMerge.includes(String(row[0]))) {
+            if (!ws['!merges']) ws['!merges'] = [];
+            ws['!merges'].push({ s: { r: rIndex, c: 0 }, e: { r: rIndex, c: 1 } });
+        }
+    });
+
 
     XLSX.utils.book_append_sheet(wb, ws, `Solicitud ${index + 1}`);
   });
-  
+
   const fileName = `SolicitudesCheque_${examInfo.ne || 'SIN_NE'}_${new Date().toISOString().split('T')[0]}.xlsx`;
   XLSX.writeFile(wb, fileName);
 }
