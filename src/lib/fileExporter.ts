@@ -105,32 +105,29 @@ export function downloadExcelFile(data: ExportableExamData) {
     const sheetData: (string | number | Date | null | undefined)[][] = [];
 
     // --- Main Title ---
-    sheetData.push(['SOLICITUD DE CHEQUE - CustomsFA-L']); // Row 1 (index 0)
-    sheetData.push([]); // Row 2 (index 1) - Empty separator row
+    sheetData.push(['SOLICITUD DE CHEQUE - CustomsFA-L']);
+    sheetData.push([]);
 
     // --- General Exam Information ---
-    sheetData.push(['INFORMACIÓN GENERAL:']); // Row 3 (index 2)
-    sheetData.push(['NE (Tracking NX1):', examInfo.ne]); // Row 4 (index 3)
-    sheetData.push(['Referencia:', examInfo.reference || 'N/A']); // Row 5 (index 4)
-    sheetData.push(['De (Colaborador):', examInfo.manager]); // Row 6 (index 5)
-    sheetData.push(['A (Destinatario):', examInfo.recipient]); // Row 7 (index 6)
-    sheetData.push(['Fecha de Examen:', formatDate(examInfo.date)]); // Row 8 (index 7)
+    sheetData.push(['INFORMACIÓN GENERAL:']);
+    sheetData.push(['NE (Tracking NX1):', examInfo.ne]);
+    sheetData.push(['Referencia:', examInfo.reference || 'N/A']);
+    sheetData.push(['De (Colaborador):', examInfo.manager]);
+    sheetData.push(['A (Destinatario):', examInfo.recipient]);
+    sheetData.push(['Fecha de Examen:', formatDate(examInfo.date)]);
     if (examInfo.savedBy) sheetData.push(['Guardado por (correo):', examInfo.savedBy]);
     if (examInfo.savedAt) sheetData.push(['Fecha y Hora de Guardado:', formatDate(examInfo.savedAt)]);
-    sheetData.push([]); // Empty separator row
+    sheetData.push([]);
 
     // --- Solicitud Details Title ---
-    sheetData.push(['DETALLES DE LA SOLICITUD:']); // index depends on savedBy/At
-    sheetData.push([]); // Empty separator row
+    sheetData.push(['DETALLES DE LA SOLICITUD:']);
+    sheetData.push([]);
     
-    // --- Monto y Cantidad (Revised for specific layout) ---
-    // Row N (e.g. index 11 if savedBy/At not present): "Por este medio..."
+    // --- Monto y Cantidad (Revised as per new request) ---
     sheetData.push(['Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:']);
-    // Row N+1 (e.g. index 12): Monto value
     sheetData.push([formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda)]);
-    // Row N+2 (e.g. index 13): "Cantidad en Letras:" and its value
     sheetData.push(['Cantidad en Letras:', solicitud.cantidadEnLetras || 'N/A']);
-    sheetData.push([]); // Empty row after this section
+    sheetData.push([]);
 
     // --- Información Adicional de Solicitud ---
     sheetData.push(['INFORMACIÓN ADICIONAL DE SOLICITUD:']);
@@ -189,85 +186,69 @@ export function downloadExcelFile(data: ExportableExamData) {
     sheetData.push(['  Correos de Notificación:', solicitud.correo || 'N/A']);
     sheetData.push(['  Observación:', solicitud.observation || 'N/A']);
 
+    // Fill remaining rows up to 40 to define the print area boundary, if needed.
+    // This is more for visually defining the structure if you open it in Excel,
+    // the `printArea` setting handles the actual printing.
+    while (sheetData.length < 40) {
+        sheetData.push([]);
+    }
+
+
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
 
-    // Base style for all textual content (labels and non-bold values)
-    const baseTextStyle = { alignment: { wrapText: true, vertical: 'top' } };
-    // Style for bold values
-    const boldValueStyle = { font: { bold: true }, alignment: { wrapText: true, vertical: 'top' } };
-    // Style for main title
+    // --- Styling ---
+    const baseStyle = { alignment: { wrapText: true, vertical: 'top' } };
+    const boldStyle = { font: { bold: true }, alignment: { wrapText: true, vertical: 'top' } };
     const mainTitleStyle = { font: { bold: true, sz: 14 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
-    // Style for section headers
-    const sectionHeaderStyle = { font: { bold: true }, alignment: { horizontal: 'left', vertical: 'top', wrapText: true } };
+    const sectionHeaderStyle = { font: { bold: true }, alignment: { wrapText: true, vertical: 'top' } };
 
+    let cantidadEnLetrasValueRowIndex = -1;
 
     sheetData.forEach((row, rIndex) => {
       row.forEach((cellValue, cIndex) => {
         const cellAddress = XLSX.utils.encode_cell({ r: rIndex, c: cIndex });
-        if (!ws[cellAddress]) { // Ensure cell object exists if it was empty
-            if (typeof cellValue !== 'undefined' && cellValue !== null) {
-                 ws[cellAddress] = { t: (typeof cellValue === 'number' ? 'n' : 's'), v: cellValue };
-            } else {
-                 ws[cellAddress] = { t: 's', v: '' }; // Create empty string cell
-            }
+        if (!ws[cellAddress]) { // Ensure cell object exists
+            ws[cellAddress] = { t: (typeof cellValue === 'number' ? 'n' : 's'), v: cellValue ?? '' };
         }
-        // Apply base text style to all non-empty cells that are strings or numbers
-        // This ensures wrapText and vertical: 'top' for all content cells
-        if (ws[cellAddress] && (typeof ws[cellAddress].v === 'string' || typeof ws[cellAddress].v === 'number')) {
-            if (String(ws[cellAddress].v).trim() !== '') {
-                 if(!ws[cellAddress].s) ws[cellAddress].s = {}; // Ensure style object exists
-                 ws[cellAddress].s.alignment = JSON.parse(JSON.stringify(baseTextStyle.alignment)); // Apply base alignment
-            }
+        if(!ws[cellAddress].s) ws[cellAddress].s = {}; // Ensure style object exists
+        
+        // Apply base style (wrap text, top align)
+        ws[cellAddress].s.alignment = { ...baseStyle.alignment, ...ws[cellAddress].s.alignment };
+
+        // Main title
+        if (rIndex === 0 && cIndex === 0) {
+            ws[cellAddress].s = mainTitleStyle;
+        } 
+        // Section headers (single item in row, all caps with colon)
+        else if (row.length === 1 && typeof cellValue === 'string' && /^[A-ZÁÉÍÓÚÑ\s]+:$/.test(cellValue.trim())) {
+            ws[cellAddress].s = {...sectionHeaderStyle, ...ws[cellAddress].s };
+        }
+        // Label-value pairs (value in col B, or col A if label is indented)
+        else if (cIndex === 1 && (typeof cellValue === 'string' || typeof cellValue === 'number') && cellValue !== 'N/A' && String(cellValue).trim() !== '') {
+             ws[cellAddress].s = {...boldStyle, ...ws[cellAddress].s }; // Bold user-entered values in Col B
+        }
+        // Single user-entered value in Col A (like the numeric monto)
+        else if (cIndex === 0 && row.length === 1 && (typeof cellValue === 'string' || typeof cellValue === 'number') && cellValue !== 'N/A' && String(cellValue).trim() !== '' && !/^[A-ZÁÉÍÓÚÑ\s]+:$/.test(String(cellValue).trim())) {
+            ws[cellAddress].s = {...boldStyle, ...ws[cellAddress].s };
+        }
+
+        // Identify the row index for "Cantidad en Letras:" value cell
+        if (typeof row[0] === 'string' && row[0].trim() === 'Cantidad en Letras:' && cIndex === 1) {
+            cantidadEnLetrasValueRowIndex = rIndex;
         }
       });
-
-      // Apply specific styles (this will override parts of baseTextStyle where needed)
-      const excelRowIndex = rIndex + 1; // XLSX uses 1-based indexing for direct addressing like "A1"
-      if (rIndex === 0 && row.length > 0) { // Main Title (Row 1)
-        const cellAddress = `A${excelRowIndex}`;
-        if (ws[cellAddress]) ws[cellAddress].s = mainTitleStyle;
-      } else if (row.length === 1 && typeof row[0] === 'string' && /^[A-ZÁÉÍÓÚÑ\s]+:$/.test(String(row[0]).trim())) { // Section Headers
-        const cellAddress = `A${excelRowIndex}`;
-        if (ws[cellAddress]) ws[cellAddress].s = sectionHeaderStyle;
-      } else if (row.length === 2) { // Label-value pairs
-        const valueCellAddress = XLSX.utils.encode_cell({ r: rIndex, c: 1 }); // Column B for value
-        if (typeof row[1] === 'string' || typeof row[1] === 'number') {
-          if (String(row[1]).trim() !== '' && String(row[1]) !== 'N/A') {
-            if (ws[valueCellAddress]) {
-                ws[valueCellAddress].s = JSON.parse(JSON.stringify(boldValueStyle)); // Bold user-entered values
-            }
-          }
-        }
-      } else if (row.length === 1 && (typeof row[0] === 'string' || typeof row[0] === 'number')) { // Single value rows (like numeric Monto)
-        const cellAddress = XLSX.utils.encode_cell({r: rIndex, c: 0}); // Column A
-        // Exclude section headers from this single-value bolding logic as they are handled above
-        if (ws[cellAddress] && !(typeof row[0] === 'string' && /^[A-ZÁÉÍÓÚÑ\s]+:$/.test(String(row[0]).trim()))) {
-            if (String(row[0]).trim() !== '' && String(row[0]) !== 'N/A') {
-                 ws[cellAddress].s = JSON.parse(JSON.stringify(boldValueStyle)); // Bold user-entered values
-            }
-        }
-      }
     });
-    
-    // Specific justification for cell B14 (Cantidad en Letras value)
-    // Find the row index for "Cantidad en Letras:"
-    let cantidadEnLetrasDataRowIndex = -1;
-    for(let i=0; i<sheetData.length; i++) {
-        if(sheetData[i][0] === 'Cantidad en Letras:') {
-            cantidadEnLetrasDataRowIndex = i;
-            break;
-        }
-    }
 
-    if (cantidadEnLetrasDataRowIndex !== -1) {
-        const cellBAddress = XLSX.utils.encode_cell({ r: cantidadEnLetrasDataRowIndex, c: 1 }); // B cell for the value
-        if (ws[cellBAddress]) { 
-            if (!ws[cellBAddress].s) ws[cellBAddress].s = { alignment: {} }; 
-            else if (!ws[cellBAddress].s.alignment) ws[cellBAddress].s.alignment = {}; 
+    // Specific justification for the "Cantidad en Letras" value cell (identified as B cell of the relevant row)
+    if (cantidadEnLetrasValueRowIndex !== -1) {
+        const cellBAddress = XLSX.utils.encode_cell({ r: cantidadEnLetrasValueRowIndex, c: 1 });
+        if (ws[cellBAddress]) {
+            if (!ws[cellBAddress].s) ws[cellBAddress].s = { alignment: {} };
+            else if (!ws[cellBAddress].s.alignment) ws[cellBAddress].s.alignment = {};
             
             ws[cellBAddress].s.alignment.horizontal = 'justify';
-            ws[cellBAddress].s.alignment.vertical = 'top'; 
-            ws[cellBAddress].s.alignment.wrapText = true;
+            ws[cellBAddress].s.alignment.vertical = 'top'; // Ensure vertical top
+            ws[cellBAddress].s.alignment.wrapText = true;  // Ensure wrap text
         }
     }
     
@@ -292,13 +273,17 @@ export function downloadExcelFile(data: ExportableExamData) {
     const colWidths = [ {wch: 60}, {wch: 60} ]; 
     ws['!cols'] = colWidths;
 
-    // Set print options for fitToPage
+    // Set print options for fitToPage and print area
     ws['!printSetup'] = {
+        printArea: 'A1:B40', // Define print area
         fitToWidth: 1,
-        fitToHeight: 1,
+        fitToHeight: 0, // Set to 0 to allow multiple pages if content overflows vertically beyond what fitToWidth can manage
         paperSize: 1, // US Letter (8.5in x 11in)
         orientation: 'portrait'
     };
+    // Explicitly set the sheet's visible range if needed, though printArea should handle printing.
+    // ws['!ref'] = `A1:B${sheetData.length <= 40 ? sheetData.length : 40}`;
+
 
     const sheetName = `Solicitud ${index + 1}`;
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
@@ -307,6 +292,4 @@ export function downloadExcelFile(data: ExportableExamData) {
   const fileName = `SolicitudesCheque_${examInfo.ne || 'SIN_NE'}_${new Date().toISOString().split('T')[0]}.xlsx`;
   XLSX.writeFile(wb, fileName);
 }
-    
-
     
