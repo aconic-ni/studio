@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useExamContext, ExamStep } from '@/contexts/exam-context';
 import type { InitialInfoFormData } from '@/lib/schemas/exam-schemas';
 import { initialInfoSchema } from '@/lib/schemas/exam-schemas';
@@ -43,7 +43,6 @@ export function InitialInfoForm() {
   });
 
   useEffect(() => {
-    // Set default values once user and existingExamData are available
     const defaultManagerName =
       existingExamData?.manager ||
       (user?.email ? extractNameFromEmail(user.email) : '');
@@ -65,8 +64,7 @@ export function InitialInfoForm() {
   return (
     <Card className="w-full max-w-3xl mx-auto shadow-xl border">
       <CardHeader>
-        <CardTitle className="text-2xl">Información Inicial de Facturación</CardTitle>
-        <CardDescription>Complete los detalles básicos para iniciar el proceso de facturación.</CardDescription>
+        <CardTitle className="text-xl md:text-2xl font-semibold">Nuevo Examen</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -125,9 +123,9 @@ export function InitialInfoForm() {
                 )}
               />
             </div>
-            <div className="flex justify-end pt-4">
+            <div className="flex justify-end pt-2">
               <Button type="submit" size="lg">
-                Continuar al Inventario
+                Continuar
               </Button>
             </div>
           </form>
