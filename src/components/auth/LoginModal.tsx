@@ -59,7 +59,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
     }
     
     try {
-      await signInWithEmailAndPassword(auth as Auth, email, password);
+      await signInWithEmailAndPassword(auth, email, password); // Removed 'as Auth'
       setStaticUser(null); // Ensure no static user is set if Firebase login succeeds
       toast({ title: 'Inicio de sesión exitoso', description: 'Bienvenido a CustomsFA-L.' });
       onLoginSuccess(false); // Pass false for Firebase user
