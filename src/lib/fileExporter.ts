@@ -7,7 +7,7 @@ import { es } from 'date-fns/locale';
 
 const formatDate = (dateValue: Date | Timestamp | string | null | undefined): string => {
   if (!dateValue) return 'N/A';
-  if (typeof dateValue === 'string') return dateValue; // Already formatted or simple string
+  if (typeof dateValue === 'string') return dateValue; 
   const dateObj = dateValue instanceof Date ? dateValue : (dateValue as Timestamp).toDate();
   return format(dateObj, "PPP", { locale: es });
 };
@@ -15,7 +15,7 @@ const formatDate = (dateValue: Date | Timestamp | string | null | undefined): st
 const formatCurrencyForExport = (amount?: number | string, currency?: string) => {
     if (amount === undefined || amount === null || amount === '') return 'N/A';
     const num = Number(amount);
-    if (isNaN(num)) return String(amount); // if it's not a number, return as is
+    if (isNaN(num)) return String(amount); 
     let prefix = '';
     if (currency === 'cordoba') prefix = 'C$';
     else if (currency === 'dolar') prefix = 'US$';
@@ -31,7 +31,7 @@ const formatBooleanForExport = (value?: boolean): string => {
 export function downloadTxtFile(examData: ExamData, solicitudes: SolicitudData[]) {
   let content = `SOLICITUD DE CHEQUE - CustomsFA-L\n`;
   content += `===========================================\n\n`;
-  content += `INFORMACIÓN GENERAL DEL EXAMEN:\n`;
+  content += `INFORMACIÓN GENERAL:\n`; // Changed title
   content += `NE: ${examData.ne}\n`;
   content += `Referencia: ${examData.reference || 'N/A'}\n`;
   content += `De (Colaborador): ${examData.manager}\n`;
@@ -99,15 +99,17 @@ export function downloadTxtFile(examData: ExamData, solicitudes: SolicitudData[]
 
 export function downloadExcelFile(data: ExportableExamData) {
   const wb = XLSX.utils.book_new();
-  const examInfo = data; // data contains ExamData fields directly
+  const examInfo = data; 
 
   (Array.isArray(data.products) ? data.products : []).forEach((solicitud, index) => {
     const sheetData: (string | number | Date | null | undefined)[][] = [];
 
-    // --- General Exam Information ---
+    // --- Main Title ---
     sheetData.push(['SOLICITUD DE CHEQUE - CustomsFA-L']);
-    sheetData.push([]); // Empty row for spacing
-    sheetData.push(['INFORMACIÓN GENERAL DEL EXAMEN:']);
+    sheetData.push([]); 
+
+    // --- General Exam Information ---
+    sheetData.push(['INFORMACIÓN GENERAL:']); // Changed Title
     sheetData.push(['NE (Tracking NX1):', examInfo.ne]);
     sheetData.push(['Referencia:', examInfo.reference || 'N/A']);
     sheetData.push(['De (Colaborador):', examInfo.manager]);
@@ -115,17 +117,26 @@ export function downloadExcelFile(data: ExportableExamData) {
     sheetData.push(['Fecha de Examen:', formatDate(examInfo.date)]);
     if (examInfo.savedBy) sheetData.push(['Guardado por (correo):', examInfo.savedBy]);
     if (examInfo.savedAt) sheetData.push(['Fecha y Hora de Guardado:', formatDate(examInfo.savedAt)]);
-    sheetData.push([]); // Empty row for spacing
+    sheetData.push([]); 
 
-    // --- Solicitud Details ---
+    // --- Solicitud Details Title ---
     sheetData.push(['DETALLES DE LA SOLICITUD:']);
+    sheetData.push([]); 
+
+    // --- Monto y Cantidad ---
+    // This will be Excel Row 14 (index 13 of sheetData)
+    sheetData.push([
+        formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda), // Column A
+        'Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:' // Column B
+    ]);
+    // This will be Excel Row 15 (index 14 of sheetData)
+    sheetData.push([
+        solicitud.cantidadEnLetras || 'N/A', // Column A
+        'Cantidad en Letras:' // Column B
+    ]);
     sheetData.push([]);
 
-    sheetData.push(['Monto y Cantidad:']);
-    sheetData.push(['  Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:', formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda)]);
-    sheetData.push(['  Cantidad en Letras:', solicitud.cantidadEnLetras || 'N/A']);
-    sheetData.push([]);
-
+    // --- Información Adicional de Solicitud ---
     sheetData.push(['Información Adicional de Solicitud:']);
     sheetData.push(['  Consignatario:', solicitud.consignatario || 'N/A']);
     sheetData.push(['  Declaración Número:', solicitud.declaracionNumero || 'N/A']);
@@ -134,6 +145,7 @@ export function downloadExcelFile(data: ExportableExamData) {
     sheetData.push(['  Código 2:', solicitud.codigo2 || 'N/A']);
     sheetData.push([]);
 
+    // --- Cuenta Bancaria ---
     sheetData.push(['Cuenta Bancaria:']);
     let bancoDisplay = solicitud.banco || 'N/A';
     if (solicitud.banco === 'Otros' && solicitud.bancoOtros) {
@@ -153,11 +165,13 @@ export function downloadExcelFile(data: ExportableExamData) {
     }
     sheetData.push([]);
 
+    // --- Beneficiario del Pago ---
     sheetData.push(['Beneficiario del Pago:']);
     sheetData.push(['  Elaborar Cheque A:', solicitud.elaborarChequeA || 'N/A']);
     sheetData.push(['  Elaborar Transferencia A:', solicitud.elaborarTransferenciaA || 'N/A']);
     sheetData.push([]);
     
+    // --- Detalles Adicionales y Documentación ---
     sheetData.push(['Detalles Adicionales y Documentación:']);
     sheetData.push(['  Impuestos pagados por el cliente mediante:', formatBooleanForExport(solicitud.impuestosPagadosCliente)]);
     if (solicitud.impuestosPagadosCliente) {
@@ -174,23 +188,19 @@ export function downloadExcelFile(data: ExportableExamData) {
     }
     sheetData.push([]);
 
+    // --- Comunicación y Observaciones ---
     sheetData.push(['Comunicación y Observaciones:']);
     sheetData.push(['  Correos de Notificación:', solicitud.correo || 'N/A']);
     sheetData.push(['  Observación:', solicitud.observation || 'N/A']);
 
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
     
-    // Basic column widths (can be customized further)
-    const colWidths = [ {wch: 50}, {wch: 50} ]; // Label column, Value column
+    const colWidths = [ {wch: 60}, {wch: 60} ]; 
     ws['!cols'] = colWidths;
     
-    // Attempt to merge the main title cell
-    if (ws['A1']) { // Check if cell A1 exists
-        ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }]; // Merge A1:B1
-        // Optional: Add styling to the merged cell (more advanced)
-        // ws['A1'].s = { font: { bold: true, sz: 14 }, alignment: { horizontal: 'center' } };
+    if (ws['A1']) { 
+        ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }]; 
     }
-
 
     XLSX.utils.book_append_sheet(wb, ws, `Solicitud ${index + 1}`);
   });
