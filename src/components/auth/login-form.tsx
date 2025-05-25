@@ -61,21 +61,20 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       await login(values.email, values.password);
-      toast({ title: "Inicio de Sesión Exitoso", description: "¡Bienvenido de nuevo!" });
-      router.push('/');
-      // router.refresh(); // Might be needed if page content depends on auth state server-side
+      toast({ title: "Inicio de Sesión Exitoso", description: "Por favor, completa la información inicial." });
+      router.push('/new-exam');
     } catch (error) {
       let errorMessage = "Ocurrió un error desconocido.";
-      if (error instanceof Error) { // Check if it's a standard Error
-        if ((error as AuthError).code) { // Check if it's a Firebase AuthError
+      if (error instanceof Error) {
+        if ((error as AuthError).code) {
           errorMessage = getFirebaseErrorMessage((error as AuthError).code);
         } else {
-          errorMessage = error.message; // Generic error message
+          errorMessage = error.message;
         }
       }
       
       toast({ title: "Fallo de Inicio de Sesión", description: errorMessage, variant: "destructive" });
-      form.setError("email", { type: "manual", message: " " }); // Add error to make fields red
+      form.setError("email", { type: "manual", message: " " }); 
       form.setError("password", { type: "manual", message: errorMessage });
     } finally {
       setIsLoading(false);

@@ -29,11 +29,11 @@ export const ExamProvider = ({ children }: { children: ReactNode }) => {
   const [currentStep, setCurrentStepState] = useState<ExamStep>(ExamStep.INITIAL_INFO);
   const router = useRouter();
 
-  const setExamData = useCallback((data: Partial<ExamData>) => {
+  const setExamDataCb = useCallback((data: Partial<ExamData>) => {
     setExamDataState((prevData) => ({ ...prevData, ...data }));
   }, []);
 
-  const setCurrentStep = useCallback((step: ExamStep) => {
+  const setCurrentStepCb = useCallback((step: ExamStep) => {
     setCurrentStepState(step);
     // Handle navigation based on step
     if (step === ExamStep.PRODUCT_LIST) {
@@ -46,14 +46,13 @@ export const ExamProvider = ({ children }: { children: ReactNode }) => {
     // Add other navigation logic as needed
   }, [router]);
 
-  const resetExam = useCallback(() => {
+  const resetExamCb = useCallback(() => {
     setExamDataState(initialExamData);
-    setCurrentStepState(ExamStep.INITIAL_INFO);
-    router.push('/new-exam');
-  }, [router]);
+    setCurrentStepCb(ExamStep.INITIAL_INFO); // This will now handle the navigation
+  }, [setCurrentStepCb]);
 
   return (
-    <ExamContext.Provider value={{ examData, setExamData, currentStep, setCurrentStep, resetExam }}>
+    <ExamContext.Provider value={{ examData, setExamData: setExamDataCb, currentStep, setCurrentStep: setCurrentStepCb, resetExam: resetExamCb }}>
       {children}
     </ExamContext.Provider>
   );

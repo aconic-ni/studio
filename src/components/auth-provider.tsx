@@ -4,7 +4,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import React, { useEffect } from 'react';
 import { AuthProvider as ContextAuthProvider } from '@/contexts/auth-context';
-import { ExamProvider } from '@/contexts/exam-context'; // Import ExamProvider
+import { ExamProvider } from '@/contexts/exam-context';
 import { useClientAuth } from '@/hooks/use-client-auth';
 import { Toaster } from "@/components/ui/toaster";
 
@@ -18,9 +18,9 @@ const ProtectedRoutesWrapper = ({ children }: { children: React.ReactNode }) => 
       router.push('/login');
     }
     // Allow access to login page if loading, or if not loading and no user
-    // If user is present and on login, redirect to home
+    // If user is present and on login, redirect to new exam page
     if (!loading && user && pathname === '/login') {
-      router.push('/');
+      router.push('/new-exam');
     }
   }, [user, loading, router, pathname]);
 
@@ -32,15 +32,10 @@ const ProtectedRoutesWrapper = ({ children }: { children: React.ReactNode }) => 
     );
   }
 
-  // If not loading, and not user, and not on login page, this means redirect is in progress or failed
-  // This case is usually handled by the useEffect redirect.
-  // If user is logged in, or if on the login page, render children.
   if (user || pathname === '/login') {
-     return <ExamProvider>{children}</ExamProvider>; // Wrap children with ExamProvider
+     return <ExamProvider>{children}</ExamProvider>;
   }
 
-  // Fallback for edge cases during redirect, or if a non-login page is accessed without auth
-  // (though useEffect should prevent this)
   return (
     <div className="flex h-screen items-center justify-center">
       <p>Redirecting...</p>

@@ -1,3 +1,4 @@
+
 "use client";
 import { useState, useEffect } from "react";
 import type { Product, ProductFormData } from "@/lib/types";
@@ -16,6 +17,7 @@ import { PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { addProduct, updateProduct, deleteProduct, getProducts } from "@/lib/actions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useExamContext } from '@/contexts/exam-context';
 
 export function ProductListClient({ initialProducts }: { initialProducts: Product[] }) {
   const [products, setProducts] = useState<Product[]>(initialProducts);
@@ -26,6 +28,9 @@ export function ProductListClient({ initialProducts }: { initialProducts: Produc
   const [isFormLoading, setIsFormLoading] = useState(false);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const { toast } = useToast();
+
+  const { examData } = useExamContext();
+  const [hasTriggeredInitialModal, setHasTriggeredInitialModal] = useState(false);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -41,6 +46,13 @@ export function ProductListClient({ initialProducts }: { initialProducts: Produc
     };
     fetchProducts();
   }, [toast]);
+
+  useEffect(() => {
+    if (!isLoadingProducts && products.length === 0 && examData.ne && !hasTriggeredInitialModal) {
+      setIsModalOpen(true);
+      setHasTriggeredInitialModal(true);
+    }
+  }, [products, isLoadingProducts, examData, hasTriggeredInitialModal, setIsModalOpen, setHasTriggeredInitialModal]);
 
 
   const handleAddProduct = () => {
