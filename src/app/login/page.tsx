@@ -2,10 +2,10 @@
 "use client";
 
 import { useState } from 'react';
-import { FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { LoginForm } from '@/components/auth/login-form';
+import { CustomInvoiceIcon } from '@/components/icons/CustomInvoiceIcon'; // Import the new icon
 
 export default function LoginPage() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -24,7 +24,7 @@ export default function LoginPage() {
             aria-label="Open login form"
           >
             <div id="appLogo" className="logo-pulse mb-8 mx-auto">
-              <FileText data-ai-hint="document invoice" className="h-32 w-32 text-white block mx-auto" />
+              <CustomInvoiceIcon data-ai-hint="document invoice" className="h-32 w-32 text-white block mx-auto" />
             </div>
             <header className="text-center mb-12">
               <h1 className="text-4xl md:text-5xl font-bold">CustomsFA-L</h1>
