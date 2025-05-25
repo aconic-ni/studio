@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { ExamDocument } from '@/types';
 
 export function SuccessModal() {
-  const { currentStep, setCurrentStep, resetApp, examData, products } = useAppContext();
+  const { currentStep, setCurrentStep, resetApp, examData, solicitudes } = useAppContext(); // use solicitudes
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -35,10 +35,11 @@ export function SuccessModal() {
     }
 
     try {
-      const examDocRef = doc(db, "examenesPrevios", examData.ne);
-      const dataToSave: Omit<ExamDocument, 'id'> = {
+      const examDocRef = doc(db, "examenesPrevios", examData.ne); // Collection name "examenesPrevios"
+      // Ensure 'solicitudes' is passed to the document
+      const dataToSave: Omit<ExamDocument, 'id'> = { 
         ...examData,
-        products: products,
+        solicitudes: solicitudes, // Save solicitudes array
         savedAt: Timestamp.fromDate(new Date()),
         savedBy: user.email,
       };
@@ -71,7 +72,7 @@ export function SuccessModal() {
         </DialogHeader>
         <DialogDescription asChild>
            <div className="text-center text-muted-foreground space-y-3">
-              <div>El examen previo ha sido registrado correctamente.</div>
+              <div>La solicitud de cheque ha sido registrada correctamente.</div>
               <div>
                 Se notificó a: <br />
                 <span className="font-medium">gerencia@aconic.com</span>,<br />
@@ -85,7 +86,7 @@ export function SuccessModal() {
                   target="_blank"
                   className="text-primary underline hover:text-primary/80"
                 >
-                  Añadir imágenes del predio aquí
+                  Añadir imágenes/soportes del predio/solicitud aquí
                 </Link>
               </div>
            </div>
@@ -93,17 +94,17 @@ export function SuccessModal() {
         <div className="mt-6 flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:gap-3 sm:justify-center items-center">
           <Button
             onClick={handleSaveToDatabase}
-            variant="destructive"
-            size="icon"
-            aria-label="Guardar en Base de Datos"
+            variant="default" // Changed from destructive for better UX as primary save action
+            size="sm" // Consistent size
+            className="btn-primary"
           >
-            <Save className="h-5 w-5 text-destructive-foreground" />
+            <Save className="mr-2 h-4 w-4" /> Guardar en BD
           </Button>
-          <Button onClick={() => resetApp()} className="btn-primary w-full sm:w-auto">
+          <Button onClick={() => resetApp()} className="btn-primary w-full sm:w-auto" size="sm">
             <FilePlus className="mr-2 h-4 w-4" /> Empezar Nuevo
           </Button>
-          <Button onClick={() => setCurrentStep(ExamStep.PREVIEW)} variant="outline" className="w-full sm:w-auto">
-             <RotateCcw className="mr-2 h-4 w-4" /> Revisar Examen
+          <Button onClick={() => setCurrentStep(ExamStep.PREVIEW)} variant="outline" className="w-full sm:w-auto" size="sm">
+             <RotateCcw className="mr-2 h-4 w-4" /> Revisar Solicitud
           </Button>
         </div>
       </DialogContent>

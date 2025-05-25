@@ -7,14 +7,16 @@ import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Search, Download } from 'lucide-react';
+import { Loader2, Search, Download, Banknote, User, FileText, Landmark, AlertTriangle, Hash, Building, Code, MessageSquare, Mail } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, Timestamp as FirestoreTimestamp } from 'firebase/firestore';
-import type { ExamDocument, Product } from '@/types';
-import { downloadExcelFile } from '@/lib/fileExporter'; // Import the exporter
+import type { ExamDocument, SolicitudData } from '@/types'; // Use SolicitudData
+import { downloadExcelFile } from '@/lib/fileExporter'; 
+import { Badge } from '@/components/ui/badge';
+import { CheckSquare, Square } from 'lucide-react';
 
-// Helper component for displaying product details in the fetched exam
-const FetchedDetailItem: React.FC<{ label: string; value?: string | number | null | boolean | FirestoreTimestamp }> = ({ label, value }) => {
+// Helper component for displaying detail items
+const FetchedDetailItem: React.FC<{ label: string; value?: string | number | null | boolean | FirestoreTimestamp; icon?: React.ElementType }> = ({ label, value, icon: Icon }) => {
   let displayValue: string;
   if (typeof value === 'boolean') {
     displayValue = value ? 'Sí' : 'No';
@@ -25,25 +27,47 @@ const FetchedDetailItem: React.FC<{ label: string; value?: string | number | nul
   }
 
   return (
-    <div>
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+    <div className="py-1">
+      <p className="text-xs font-medium text-muted-foreground flex items-center">
+        {Icon && <Icon className="h-3.5 w-3.5 mr-1.5 text-primary/70" />}
+        {label}
+      </p>
       <p className="text-sm text-foreground">{displayValue}</p>
     </div>
   );
 };
 
-const getProductStatusText = (product: Product): string => {
-  const statuses: string[] = [];
-  if (product.isConform) statuses.push("Conforme a factura");
-  if (product.isExcess) statuses.push("Excedente");
-  if (product.isMissing) statuses.push("Faltante");
-  if (product.isFault) statuses.push("Avería");
-  if (statuses.length === 0) return "Sin estado específico";
-  return statuses.join(', ');
+const CheckboxDetailItemFetched: React.FC<{ label: string; checked?: boolean; subLabel?: string }> = ({ label, checked, subLabel }) => (
+  <div className="flex items-center py-1">
+    {checked ? <CheckSquare className="h-4 w-4 text-green-600 mr-2" /> : <Square className="h-4 w-4 text-muted-foreground mr-2" />}
+    <span className="text-sm text-foreground">{label}</span>
+    {subLabel && <span className="text-xs text-muted-foreground ml-1">{subLabel}</span>}
+  </div>
+);
+
+const formatCurrencyFetched = (amount?: number | string, currency?: string) => {
+    if (amount === undefined || amount === null || amount === '') return 'N/A';
+    const num = Number(amount);
+    if (isNaN(num)) return String(amount);
+    let prefix = '';
+    if (currency === 'cordoba') prefix = 'C$';
+    else if (currency === 'dolar') prefix = 'US$';
+    else if (currency === 'euro') prefix = '€';
+    return `${prefix}${num.toLocaleString('es-NI', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
+const getBancoDisplayFetched = (solicitud: SolicitudData) => {
+    if (solicitud.banco === 'ACCION POR CHEQUE/NO APLICA BANCO') return 'Acción por Cheque / No Aplica Banco';
+    if (solicitud.banco === 'Otros') return solicitud.bancoOtros || 'Otros (No especificado)';
+    return solicitud.banco;
+};
+  
+const getMonedaCuentaDisplayFetched = (solicitud: SolicitudData) => {
+    if (solicitud.monedaCuenta === 'Otros') return solicitud.monedaCuentaOtros || 'Otros (No especificado)';
+    return solicitud.monedaCuenta;
+};
 
-// Component to display the fetched exam
+// Component to display the fetched exam with solicitudes
 const FetchedExamDetails: React.FC<{ exam: ExamDocument }> = ({ exam }) => {
   return (
     <Card className="mt-6 w-full custom-shadow">
@@ -59,8 +83,9 @@ const FetchedExamDetails: React.FC<{ exam: ExamDocument }> = ({ exam }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 bg-secondary/30 p-4 rounded-md shadow-sm text-sm">
             <FetchedDetailItem label="NE (Tracking NX1)" value={exam.ne} />
             <FetchedDetailItem label="Referencia" value={exam.reference} />
-            <FetchedDetailItem label="Gestor del Examen" value={exam.manager} />
-            <FetchedDetailItem label="Ubicación Mercancía" value={exam.location} />
+            <FetchedDetailItem label="De (Colaborador)" value={exam.manager} />
+            <FetchedDetailItem label="A (Destinatario)" value={exam.recipient} />
+            <FetchedDetailItem label="Fecha de Examen" value={exam.date instanceof Date ? exam.date.toLocaleDateString('es-NI') : (exam.date as FirestoreTimestamp)?.toDate().toLocaleDateString('es-NI')} />
           </div>
         </div>
 
@@ -73,42 +98,87 @@ const FetchedExamDetails: React.FC<{ exam: ExamDocument }> = ({ exam }) => {
         </div>
 
         <div>
-          <h4 className="text-lg font-medium mb-3 text-foreground">Productos ({exam.products?.length || 0})</h4>
-          {exam.products && exam.products.length > 0 ? (
+          <h4 className="text-lg font-medium mb-3 text-foreground">Solicitudes ({exam.solicitudes?.length || 0})</h4>
+          {exam.solicitudes && exam.solicitudes.length > 0 ? (
             <div className="space-y-6">
-              {exam.products.map((product, index) => (
-                <div key={product.id || index} className="p-4 border border-border bg-card rounded-lg shadow">
-                  <h5 className="text-md font-semibold mb-3 text-primary">
-                    Producto {index + 1}
-                    {product.itemNumber && <span className="text-sm font-normal text-muted-foreground"> (Item: {product.itemNumber})</span>}
-                  </h5>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
-                    <FetchedDetailItem label="Número de Item" value={product.itemNumber} />
-                    <FetchedDetailItem label="Peso" value={product.weight} />
-                    <FetchedDetailItem label="Marca" value={product.brand} />
-                    <FetchedDetailItem label="Modelo" value={product.model} />
-                    <FetchedDetailItem label="Unidad de Medida" value={product.unitMeasure} />
-                    <FetchedDetailItem label="Serie" value={product.serial} />
-                    <FetchedDetailItem label="Origen" value={product.origin} />
-                    <FetchedDetailItem label="Numeración de Bultos" value={product.numberPackages} />
-                    <FetchedDetailItem label="Cantidad de Bultos" value={product.quantityPackages} />
-                    <FetchedDetailItem label="Cantidad de Unidades" value={product.quantityUnits} />
-                    <FetchedDetailItem label="Estado de Mercancía (Condición)" value={product.packagingCondition} />
-                    <div className="md:col-span-2 lg:col-span-3">
-                      <FetchedDetailItem label="Descripción" value={product.description} />
+              {exam.solicitudes.map((solicitud, index) => (
+                <div key={solicitud.id || index} className="p-4 border border-border bg-card rounded-lg shadow">
+                  <h5 className="text-md font-semibold mb-3 text-primary">Solicitud {index + 1}</h5>
+                  <div className="space-y-3 divide-y divide-border/50">
+                    {/* Section 1: Monto y Cantidad */}
+                    <div className="pt-2">
+                        <h6 className="text-sm font-medium text-accent mb-1">Detalles del Monto</h6>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                        <FetchedDetailItem label="Monto Solicitado" value={formatCurrencyFetched(solicitud.monto, solicitud.montoMoneda)} icon={Banknote} />
+                        <FetchedDetailItem label="Cantidad en Letras" value={solicitud.cantidadEnLetras} icon={FileText} />
+                        </div>
                     </div>
-                     <div className="md:col-span-2 lg:col-span-3">
-                      <FetchedDetailItem label="Observación" value={product.observation} />
+                    {/* Section 2: Detalles de la Solicitud */}
+                    <div className="pt-2">
+                        <h6 className="text-sm font-medium text-accent mb-1">Información Adicional</h6>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+                        <FetchedDetailItem label="Declaración Número" value={solicitud.declaracionNumero} icon={Hash} />
+                        <FetchedDetailItem label="Unidad Recaudadora" value={solicitud.unidadRecaudadora} icon={Building} />
+                        <FetchedDetailItem label="Código 1" value={solicitud.codigo1} icon={Code} />
+                        <FetchedDetailItem label="Código 2" value={solicitud.codigo2} icon={Code} />
+                        </div>
                     </div>
-                    <div className="md:col-span-full pt-2 mt-2 border-t border-border">
-                       <FetchedDetailItem label="Estado General del Producto" value={getProductStatusText(product)} />
+                     {/* Section 3: Cuenta Bancaria */}
+                    <div className="pt-2">
+                        <h6 className="text-sm font-medium text-accent mb-1">Cuenta Bancaria</h6>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                        <FetchedDetailItem label="Banco" value={getBancoDisplayFetched(solicitud)} icon={Landmark} />
+                        {solicitud.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO' && (
+                            <>
+                            <FetchedDetailItem label="Número de Cuenta" value={solicitud.numeroCuenta} icon={Hash} />
+                            <FetchedDetailItem label="Moneda de la Cuenta" value={getMonedaCuentaDisplayFetched(solicitud)} icon={Banknote} />
+                            </>
+                        )}
+                        </div>
+                    </div>
+                    {/* Section 4: Beneficiarios */}
+                    <div className="pt-2">
+                        <h6 className="text-sm font-medium text-accent mb-1">Beneficiario del Pago</h6>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                        <FetchedDetailItem label="Elaborar Cheque A" value={solicitud.elaborarChequeA} icon={User} />
+                        <FetchedDetailItem label="Elaborar Transferencia A" value={solicitud.elaborarTransferenciaA} icon={User} />
+                        </div>
+                    </div>
+                     {/* Section 5: Checkboxes */}
+                    <div className="pt-2">
+                        <h6 className="text-sm font-medium text-accent mb-1">Documentación y Estados</h6>
+                        <div className="space-y-1">
+                            <CheckboxDetailItemFetched label="Impuestos pagados por el cliente" checked={solicitud.impuestosPagadosCliente} />
+                            {solicitud.impuestosPagadosCliente && (
+                            <div className="ml-6 pl-2 border-l border-dashed text-xs">
+                                <FetchedDetailItem label="R/C No." value={solicitud.impuestosPagadosRC} />
+                                <FetchedDetailItem label="T/B No." value={solicitud.impuestosPagadosTB} />
+                                <FetchedDetailItem label="Cheque No." value={solicitud.impuestosPagadosCheque} />
+                            </div>
+                            )}
+                            <CheckboxDetailItemFetched label="Impuestos pendientes de pago por el cliente" checked={solicitud.impuestosPendientesCliente} />
+                            <CheckboxDetailItemFetched label="Se añaden documentos adjuntos" checked={solicitud.documentosAdjuntos} />
+                            <CheckboxDetailItemFetched label="Constancias de no retención" checked={solicitud.constanciasNoRetencion} />
+                            {solicitud.constanciasNoRetencion && (
+                            <div className="ml-6 pl-2 border-l border-dashed text-xs">
+                                <CheckboxDetailItemFetched label="1%" checked={solicitud.constanciasNoRetencion1} />
+                                <CheckboxDetailItemFetched label="2%" checked={solicitud.constanciasNoRetencion2} />
+                            </div>
+                            )}
+                        </div>
+                    </div>
+                    {/* Section 6: Otros */}
+                    <div className="pt-2">
+                        <h6 className="text-sm font-medium text-accent mb-1">Comunicación</h6>
+                        <FetchedDetailItem label="Correos de Notificación" value={solicitud.correo} icon={Mail} />
+                        <FetchedDetailItem label="Observación" value={solicitud.observation} icon={MessageSquare} />
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground">No hay productos registrados en este examen.</p>
+            <p className="text-muted-foreground">No hay solicitudes registradas en este examen.</p>
           )}
         </div>
       </CardContent>
@@ -147,7 +217,12 @@ export default function DatabasePage() {
       const docSnap = await getDoc(examDocRef);
 
       if (docSnap.exists()) {
-        setFetchedExam(docSnap.data() as ExamDocument);
+        const data = docSnap.data() as ExamDocument;
+        // Ensure exam.date is a Date object for consistency
+        if (data.date && data.date instanceof FirestoreTimestamp) {
+            data.date = data.date.toDate();
+        }
+        setFetchedExam(data);
       } else {
         setError("Archivo erróneo o no ha sido creado por gestor para el NE: " + searchTermNE);
       }
@@ -165,14 +240,13 @@ export default function DatabasePage() {
 
   const handleExport = () => {
     if (fetchedExam) {
-      downloadExcelFile(fetchedExam);
+       // Pass 'solicitudes' as 'products' for compatibility with existing exporter
+      downloadExcelFile({ ...fetchedExam, products: fetchedExam.solicitudes });
     } else {
       alert("No hay datos de examen para exportar. Realice una búsqueda primero.");
     }
   };
 
-  // Show loader if auth is loading, or if user is not available,
-  // or if user is available but is not the static user (useEffect will redirect).
   if (authLoading || !user || (user && !user.isStaticUser) ) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -181,8 +255,6 @@ export default function DatabasePage() {
     );
   }
 
-  // At this point, authLoading is false, user exists, and user.isStaticUser is true.
-  // Render the page content.
   return (
     <AppShell>
       <div className="py-2 md:py-5">
@@ -236,8 +308,6 @@ export default function DatabasePage() {
                     Ingrese un NE para buscar un examen previo.
                  </div>
             )}
-
-
           </CardContent>
         </Card>
       </div>

@@ -2,7 +2,7 @@
 "use client";
 import type React from 'react';
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { ExamData, SolicitudData, AppUser as AuthAppUser } from '@/types'; // Changed Product to SolicitudData
+import type { ExamData, SolicitudData, AppUser as AuthAppUser } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from './AuthContext';
 
@@ -15,21 +15,21 @@ export enum ExamStep {
 
 interface AppContextType {
   examData: ExamData | null;
-  products: SolicitudData[]; // Changed from Product[] to SolicitudData[]
+  solicitudes: SolicitudData[]; // Renamed from products
   currentStep: ExamStep;
-  editingProduct: SolicitudData | null; // Changed from Product | null
-  isAddProductModalOpen: boolean;
-  isProductDetailModalOpen: boolean;
-  productToView: SolicitudData | null; // Changed from Product | null
+  editingSolicitud: SolicitudData | null; // Renamed from editingProduct
+  isAddProductModalOpen: boolean; // Modal name kept generic, as it's for adding items
+  isProductDetailModalOpen: boolean; // Modal name kept generic
+  solicitudToView: SolicitudData | null; // Renamed from productToView
   setExamData: (data: ExamData) => void;
-  addProduct: (product: Omit<SolicitudData, 'id'>) => void; // Changed from Product
-  updateProduct: (updatedProduct: SolicitudData) => void; // Changed from Product
-  deleteProduct: (productId: string) => void;
+  addSolicitud: (solicitud: Omit<SolicitudData, 'id'>) => void; // Renamed from addProduct
+  updateSolicitud: (updatedSolicitud: SolicitudData) => void; // Renamed from updateProduct
+  deleteSolicitud: (solicitudId: string) => void; // Renamed from deleteProduct
   setCurrentStep: (step: ExamStep) => void;
-  setEditingProduct: (product: SolicitudData | null) => void; // Changed from Product
-  openAddProductModal: (productToEdit?: SolicitudData | null) => void; // Changed from Product
+  setEditingSolicitud: (solicitud: SolicitudData | null) => void; // Renamed from setEditingProduct
+  openAddProductModal: (solicitudToEdit?: SolicitudData | null) => void; // Parameter renamed
   closeAddProductModal: () => void;
-  openProductDetailModal: (product: SolicitudData) => void; // Changed from Product
+  openProductDetailModal: (solicitud: SolicitudData) => void; // Parameter renamed
   closeProductDetailModal: () => void;
   resetApp: () => void;
 }
@@ -38,12 +38,12 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const [examData, setExamDataState] = useState<ExamData | null>(null);
-  const [products, setProducts] = useState<SolicitudData[]>([]); // products is now an array of SolicitudData
+  const [solicitudes, setSolicitudes] = useState<SolicitudData[]>([]); // Renamed from products
   const [currentStep, setCurrentStepState] = useState<ExamStep>(ExamStep.INITIAL_INFO);
-  const [editingProduct, setEditingProductState] = useState<SolicitudData | null>(null); // editingProduct is now SolicitudData or null
+  const [editingSolicitud, setEditingSolicitudState] = useState<SolicitudData | null>(null); // Renamed
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [isProductDetailModalOpen, setIsProductDetailModalOpen] = useState(false);
-  const [productToView, setProductToView] = useState<SolicitudData | null>(null); // productToView is now SolicitudData or null
+  const [solicitudToView, setSolicitudToView] = useState<SolicitudData | null>(null); // Renamed
 
   const { user: authUser } = useAuth(); 
   const [internalUser, setInternalUser] = useState<AuthAppUser | null>(authUser);
@@ -52,12 +52,12 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
 
   const resetApp = useCallback(() => {
     setExamDataState(null);
-    setProducts([]);
+    setSolicitudes([]); // Use renamed state setter
     setCurrentStepState(ExamStep.INITIAL_INFO);
-    setEditingProductState(null);
+    setEditingSolicitudState(null); // Use renamed state setter
     setIsAddProductModalOpen(false);
     setIsProductDetailModalOpen(false);
-    setProductToView(null);
+    setSolicitudToView(null); // Use renamed state setter
   }, []);
 
 
@@ -77,97 +77,66 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     setExamDataState(data);
   }, []);
 
-  const addProduct = useCallback((productData: Omit<SolicitudData, 'id'>) => { // productData is Omit<SolicitudData, 'id'>
-    const newProduct: SolicitudData = { ...productData, id: uuidv4() }; // newProduct is SolicitudData
-    setProducts((prevProducts) => [...prevProducts, newProduct]);
+  const addSolicitud = useCallback((solicitudData: Omit<SolicitudData, 'id'>) => {
+    const newSolicitud: SolicitudData = { ...solicitudData, id: uuidv4() };
+    setSolicitudes((prevSolicitudes) => [...prevSolicitudes, newSolicitud]);
   }, []);
 
-  const updateProduct = useCallback((updatedProduct: SolicitudData) => { // updatedProduct is SolicitudData
-    setProducts((prevProducts) =>
-      prevProducts.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
+  const updateSolicitud = useCallback((updatedSolicitud: SolicitudData) => {
+    setSolicitudes((prevSolicitudes) =>
+      prevSolicitudes.map((s) => (s.id === updatedSolicitud.id ? updatedSolicitud : s))
     );
-    setEditingProductState(null); 
+    setEditingSolicitudState(null); 
   }, []);
 
-  const deleteProduct = useCallback((productId: string) => {
-    setProducts((prevProducts) => prevProducts.filter((p) => p.id !== productId));
+  const deleteSolicitud = useCallback((solicitudId: string) => {
+    setSolicitudes((prevSolicitudes) => prevSolicitudes.filter((s) => s.id !== solicitudId));
   }, []);
 
   const setCurrentStep = useCallback((step: ExamStep) => {
     setCurrentStepState(step);
   }, []);
   
-  const setEditingProduct = useCallback((product: SolicitudData | null) => { // product is SolicitudData or null
-    setEditingProductState(product);
+  const setEditingSolicitud = useCallback((solicitud: SolicitudData | null) => {
+    setEditingSolicitudState(solicitud);
   }, []);
 
-  const openAddProductModal = useCallback((productToEdit: SolicitudData | null = null) => { // productToEdit is SolicitudData or null
-    setEditingProductState(productToEdit);
+  const openAddProductModal = useCallback((solicitudToEdit: SolicitudData | null = null) => {
+    setEditingSolicitudState(solicitudToEdit); // Use renamed state setter
     setIsAddProductModalOpen(true);
   }, []);
 
   const closeAddProductModal = useCallback(() => {
     setIsAddProductModalOpen(false);
-    // Delay resetting editingProduct to allow form.reset to use it
-    setTimeout(() => setEditingProductState(null), 100);
+    setTimeout(() => setEditingSolicitudState(null), 100); // Use renamed state setter
   }, []);
 
-  const openProductDetailModal = useCallback((product: SolicitudData) => { // product is SolicitudData
-    setProductToView(product);
+  const openProductDetailModal = useCallback((solicitud: SolicitudData) => {
+    setSolicitudToView(solicitud); // Use renamed state setter
     setIsProductDetailModalOpen(true);
   }, []);
 
   const closeProductDetailModal = useCallback(() => {
     setIsProductDetailModalOpen(false);
-    setProductToView(null);
+    setSolicitudToView(null); // Use renamed state setter
   }, []);
-
-  // Default values for a new Solicitud, used in AppContext
-  const defaultSolicitudValues: Omit<SolicitudData, 'id'> = {
-    monto: undefined,
-    montoMoneda: 'cordoba',
-    cantidadEnLetras: '',
-    declaracionNumero: '',
-    unidadRecaudadora: '',
-    codigo1: '',
-    codigo2: '',
-    banco: undefined,
-    bancoOtros: '',
-    numeroCuenta: '',
-    monedaCuenta: undefined,
-    monedaCuentaOtros: '',
-    elaborarChequeA: '',
-    elaborarTransferenciaA: '',
-    impuestosPagadosCliente: false,
-    impuestosPagadosRC: '',
-    impuestosPagadosTB: '',
-    impuestosPagadosCheque: '',
-    impuestosPendientesCliente: false,
-    documentosAdjuntos: false,
-    constanciasNoRetencion: false,
-    constanciasNoRetencion1: false,
-    constanciasNoRetencion2: false,
-    correo: user?.email || '',
-    observation: '',
-  };
-
 
   return (
     <AppContext.Provider
       value={{
         examData,
-        products,
+        solicitudes, // Use renamed state
         currentStep,
-        editingProduct,
+        editingSolicitud, // Use renamed state
         isAddProductModalOpen,
         isProductDetailModalOpen,
-        productToView,
+        solicitudToView, // Use renamed state
         setExamData,
-        addProduct,
-        updateProduct,
-        deleteProduct,
+        addSolicitud, // Use renamed function
+        updateSolicitud, // Use renamed function
+        deleteSolicitud, // Use renamed function
         setCurrentStep,
-        setEditingProduct,
+        setEditingSolicitud, // Use renamed function
         openAddProductModal,
         closeAddProductModal,
         openProductDetailModal,

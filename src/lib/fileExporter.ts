@@ -1,46 +1,71 @@
 
-import type { ExamData, Product, ExportableExamData } from '@/types';
+import type { ExamData, SolicitudData, ExportableExamData } from '@/types';
 import type { Timestamp } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+const formatDate = (dateValue: Date | Timestamp | string | null | undefined): string => {
+  if (!dateValue) return 'N/A';
+  if (typeof dateValue === 'string') return dateValue; // Already formatted or simple string
+  const dateObj = dateValue instanceof Date ? dateValue : (dateValue as Timestamp).toDate();
+  return format(dateObj, "PPP", { locale: es });
+};
 
-export function downloadTxtFile(examData: ExamData, products: Product[]) {
+const formatCurrencyForExport = (amount?: number | string, currency?: string) => {
+    if (amount === undefined || amount === null || amount === '') return 'N/A';
+    const num = Number(amount);
+    if (isNaN(num)) return String(amount); // if it's not a number, return as is
+    let prefix = '';
+    if (currency === 'cordoba') prefix = 'C$';
+    else if (currency === 'dolar') prefix = 'US$';
+    else if (currency === 'euro') prefix = '€';
+    return `${prefix}${num.toFixed(2)}`;
+};
+
+
+export function downloadTxtFile(examData: ExamData, solicitudes: SolicitudData[]) {
   let content = `SOLICITUD DE CHEQUE - CustomsFA-L\n`;
   content += `===========================================\n\n`;
-  content += `INFORMACIÓN GENERAL:\n`;
+  content += `INFORMACIÓN GENERAL DEL EXAMEN:\n`;
   content += `NE: ${examData.ne}\n`;
   content += `Referencia: ${examData.reference || 'N/A'}\n`;
   content += `De (Colaborador): ${examData.manager}\n`;
   content += `A (Destinatario): ${examData.recipient}\n`;
-  content += `Fecha: ${examData.date ? format(examData.date, "PPP", { locale: es }) : 'N/A'}\n\n`;
+  content += `Fecha: ${formatDate(examData.date)}\n\n`;
   
-  content += `PRODUCTOS/SERVICIOS (DETALLE DE LA SOLICITUD):\n`;
+  content += `SOLICITUDES (${solicitudes.length}):\n`;
 
-  (Array.isArray(products) ? products : []).forEach((product, index) => {
-    content += `\n--- Item ${index + 1} ---\n`;
-    content += `Número de Item/Código: ${product.itemNumber || 'N/A'}\n`;
-    content += `Descripción: ${product.description || 'N/A'}\n`;
-    content += `Marca: ${product.brand || 'N/A'}\n`;
-    content += `Modelo: ${product.model || 'N/A'}\n`;
-    content += `Serie: ${product.serial || 'N/A'}\n`;
-    content += `Origen (si aplica): ${product.origin || 'N/A'}\n`;
-    content += `Peso (si aplica): ${product.weight || 'N/A'}\n`;
-    content += `Unidad de Medida: ${product.unitMeasure || 'N/A'}\n`;
-    content += `Numeración de Bultos (si aplica): ${product.numberPackages || 'N/A'}\n`;
-    content += `Cantidad de Bultos (si aplica): ${product.quantityPackages || 0}\n`;
-    content += `Cantidad de Unidades: ${product.quantityUnits || 0}\n`;
-    content += `Condición/Estado: ${product.packagingCondition || 'N/A'}\n`;
-    content += `Observación: ${product.observation || 'N/A'}\n`;
-    
-    const statuses = [];
-    if (product.isConform) statuses.push("Conforme a factura/cotización");
-    if (product.isExcess) statuses.push("Excedente (No aplica a cheques)");
-    if (product.isMissing) statuses.push("Faltante (No aplica a cheques)");
-    if (product.isFault) statuses.push("Avería/Defecto (No aplica a cheques)");
-    // For checks, these might be less relevant, adjust as needed or provide specific statuses for financial requests
-    content += `Estado General: ${statuses.length > 0 ? statuses.join(', ') : 'N/A'}\n`;
+  (Array.isArray(solicitudes) ? solicitudes : []).forEach((solicitud, index) => {
+    content += `\n--- Solicitud ${index + 1} ---\n`;
+    content += `Monto: ${formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda)}\n`;
+    content += `Cantidad en Letras: ${solicitud.cantidadEnLetras || 'N/A'}\n`;
+    content += `Declaración Número: ${solicitud.declaracionNumero || 'N/A'}\n`;
+    content += `Unidad Recaudadora: ${solicitud.unidadRecaudadora || 'N/A'}\n`;
+    content += `Código 1: ${solicitud.codigo1 || 'N/A'}\n`;
+    content += `Código 2: ${solicitud.codigo2 || 'N/A'}\n`;
+    content += `Banco: ${solicitud.banco === 'Otros' ? solicitud.bancoOtros : solicitud.banco || 'N/A'}\n`;
+    if (solicitud.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO') {
+        content += `Número de Cuenta: ${solicitud.numeroCuenta || 'N/A'}\n`;
+        content += `Moneda de la Cuenta: ${solicitud.monedaCuenta === 'Otros' ? solicitud.monedaCuentaOtros : solicitud.monedaCuenta || 'N/A'}\n`;
+    }
+    content += `Elaborar Cheque A: ${solicitud.elaborarChequeA || 'N/A'}\n`;
+    content += `Elaborar Transferencia A: ${solicitud.elaborarTransferenciaA || 'N/A'}\n`;
+    content += `Impuestos Pagados Cliente: ${solicitud.impuestosPagadosCliente ? 'Sí' : 'No'}\n`;
+    if (solicitud.impuestosPagadosCliente) {
+        content += `  R/C: ${solicitud.impuestosPagadosRC || 'N/A'}\n`;
+        content += `  T/B: ${solicitud.impuestosPagadosTB || 'N/A'}\n`;
+        content += `  Cheque: ${solicitud.impuestosPagadosCheque || 'N/A'}\n`;
+    }
+    content += `Impuestos Pendientes Cliente: ${solicitud.impuestosPendientesCliente ? 'Sí' : 'No'}\n`;
+    content += `Documentos Adjuntos: ${solicitud.documentosAdjuntos ? 'Sí' : 'No'}\n`;
+    content += `Constancias de No Retención: ${solicitud.constanciasNoRetencion ? 'Sí' : 'No'}\n`;
+    if (solicitud.constanciasNoRetencion) {
+        content += `  1%: ${solicitud.constanciasNoRetencion1 ? 'Sí' : 'No'}\n`;
+        content += `  2%: ${solicitud.constanciasNoRetencion2 ? 'Sí' : 'No'}\n`;
+    }
+    content += `Correo Notificación: ${solicitud.correo || 'N/A'}\n`;
+    content += `Observación: ${solicitud.observation || 'N/A'}\n`;
   });
 
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
@@ -58,117 +83,65 @@ export function downloadExcelFile(data: ExportableExamData) {
   const now = new Date();
   const fechaHoraExportacion = `${now.toLocaleString('es-NI', { dateStyle: 'long', timeStyle: 'short' })}`;
 
-  const photoLinkPlaceholder = `(Link a facturas/documentos si aplica para NE: ${data.ne})`;
-
-
-  // --- Hoja 1: Detalles de la Solicitud y Productos/Servicios ---
+  // --- Hoja 1: Detalles Generales del Examen ---
   const examDetailsSheetData: (string | number | Date | null | undefined | XLSX.CellObject)[][] = [
     ['SOLICITUD DE CHEQUE - CustomsFA-L'],
     [],
-    ['INFORMACIÓN GENERAL DE LA SOLICITUD:'],
+    ['INFORMACIÓN GENERAL DEL EXAMEN:'],
     ['NE (Tracking):', data.ne],
-    ['Referencia (Factura, Cotización, etc.):', data.reference || 'N/A'],
+    ['Referencia:', data.reference || 'N/A'],
     ['De (Colaborador):', data.manager],
     ['A (Destinatario):', data.recipient],
-    ['Fecha de Solicitud:', data.date ? (data.date instanceof Date ? format(data.date, "PPP", { locale: es }) : format((data.date as Timestamp).toDate(), "PPP", { locale: es })) : 'N/A'],
-    ['Soportes (Facturas/Docs):', photoLinkPlaceholder], // Placeholder for actual link if available
+    ['Fecha de Examen:', formatDate(data.date)],
     [],
-    ['DETALLE DE PRODUCTOS/SERVICIOS SOLICITADOS:']
+    ['DETALLES DE EXPORTACIÓN:'],
+    ['Fecha y Hora de Exportación:', fechaHoraExportacion],
   ];
+  if (data.savedBy) examDetailsSheetData.push(['Guardado por (correo):', data.savedBy]);
+  if (data.savedAt) examDetailsSheetData.push(['Fecha y Hora de Guardado:', formatDate(data.savedAt)]);
+  
+  const ws_exam_details = XLSX.utils.aoa_to_sheet(examDetailsSheetData);
+  ws_exam_details['!cols'] = [ {wch: 30}, {wch: 50} ];
 
-  const productHeaders = [
-    'Item/Código', 'Descripción', 'Marca', 'Modelo', 'Serie', 
-    'Origen', 'Peso', 'Unidad Medida', 'Num. Bultos', 
-    'Cant. Bultos', 'Cant. Unidades', 'Condición', 'Observación', 'Estado General'
+
+  // --- Hoja 2: Lista de Solicitudes ---
+  const solicitudHeaders = [
+    'Monto', 'Moneda Monto', 'Cantidad en Letras', 
+    'Declaración Número', 'Unidad Recaudadora', 'Código 1', 'Código 2',
+    'Banco', 'Otro Banco', 'Número de Cuenta', 'Moneda Cuenta', 'Otra Moneda Cuenta',
+    'Elaborar Cheque A', 'Elaborar Transferencia A',
+    'Imp. Pagados Cliente', 'Imp. Pagados R/C', 'Imp. Pagados T/B', 'Imp. Pagados Cheque',
+    'Imp. Pendientes Cliente', 'Documentos Adjuntos',
+    'Const. No Retención', 'Const. No Ret. 1%', 'Const. No Ret. 2%',
+    'Correo Notificación', 'Observación'
   ];
   
-  const productRows = (Array.isArray(data.products) ? data.products : []).map(product => {
-    let statusText = '';
-    const statuses = [];
-    if (product.isConform) statuses.push("Conforme");
-    // Adjust these statuses if they don't make sense for a check request
-    if (product.isExcess) statuses.push("Excedente (N/A)");
-    if (product.isMissing) statuses.push("Faltante (N/A)");
-    if (product.isFault) statuses.push("Avería (N/A)");
-    statusText = statuses.length > 0 ? statuses.join('/') : 'N/A';
-
+  const solicitudRows = (Array.isArray(data.products) ? data.products : []).map(solicitud => {
     return [
-      product.itemNumber || 'N/A',
-      product.description || 'N/A',
-      product.brand || 'N/A',
-      product.model || 'N/A',
-      product.serial || 'N/A',
-      product.origin || 'N/A',
-      product.weight || 'N/A',
-      product.unitMeasure || 'N/A',
-      product.numberPackages || 'N/A',
-      product.quantityPackages || 0,
-      product.quantityUnits || 0,
-      product.packagingCondition || 'N/A',
-      product.observation || 'N/A',
-      statusText
-    ];
+      formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda), solicitud.montoMoneda, solicitud.cantidadEnLetras,
+      solicitud.declaracionNumero, solicitud.unidadRecaudadora, solicitud.codigo1, solicitud.codigo2,
+      solicitud.banco, solicitud.bancoOtros, solicitud.numeroCuenta, solicitud.monedaCuenta, solicitud.monedaCuentaOtros,
+      solicitud.elaborarChequeA, solicitud.elaborarTransferenciaA,
+      solicitud.impuestosPagadosCliente ? 'Sí' : 'No', solicitud.impuestosPagadosRC, solicitud.impuestosPagadosTB, solicitud.impuestosPagadosCheque,
+      solicitud.impuestosPendientesCliente ? 'Sí' : 'No', solicitud.documentosAdjuntos ? 'Sí' : 'No',
+      solicitud.constanciasNoRetencion ? 'Sí' : 'No', solicitud.constanciasNoRetencion1 ? 'Sí' : 'No', solicitud.constanciasNoRetencion2 ? 'Sí' : 'No',
+      solicitud.correo, solicitud.observatio    ];
   });
 
-  const ws_exam_details_data = [...examDetailsSheetData, productHeaders, ...productRows];
-  const ws_exam_details = XLSX.utils.aoa_to_sheet(ws_exam_details_data);
+  const ws_solicitudes_data = [solicitudHeaders, ...solicitudRows];
+  const ws_solicitudes = XLSX.utils.aoa_to_sheet(ws_solicitudes_data);
 
-  const examColWidths = productHeaders.map((header, i) => ({
+  const solicitudColWidths = solicitudHeaders.map((header, i) => ({
     wch: Math.max(
       header.length,
-      ...(ws_exam_details_data.slice(examDetailsSheetData.length) as (string|number)[][]).map(row => row[i] ? String(row[i]).length : 0)
+      ...solicitudRows.map(row => row[i] ? String(row[i]).length : 0)
     ) + 2 
   }));
-  
-  const generalInfoLabels = examDetailsSheetData.slice(0, examDetailsSheetData.length - 2).map(row => String(row[0] || ''));
-  const generalInfoValues = examDetailsSheetData.slice(0, examDetailsSheetData.length - 2).map(row => {
-    const cellValue = row[1];
-    if (typeof cellValue === 'object' && cellValue !== null && 'v' in cellValue) {
-      return String((cellValue as XLSX.CellObject).v || '');
-    }
-    return String(cellValue || '');
-  });
-
-  if (examColWidths.length > 0 && examColWidths[0]) {
-    examColWidths[0].wch = Math.max(examColWidths[0].wch || 0, ...generalInfoLabels.map(label => label.length + 2));
-  }
-  if (examColWidths.length > 1 && examColWidths[1]) {
-    examColWidths[1].wch = Math.max(examColWidths[1].wch || 0, ...generalInfoValues.map(value => value.length + 5));
-  }
-  ws_exam_details['!cols'] = examColWidths;
-
-  // --- Hoja 2: Detalles del Sistema ---
-  const systemDetailsSheetData: (string | number | Date | null | undefined)[][] = [
-    ['DETALLES DE SISTEMA DE LA SOLICITUD:']
-  ];
-
-  if (data.savedBy) {
-    systemDetailsSheetData.push(['Guardado por (correo):', data.savedBy]);
-  } else {
-    systemDetailsSheetData.push(['Guardado por (correo):', 'N/A (No guardado en BD aún o dato no disponible)']);
-  }
-
-  if (data.savedAt) {
-    const savedDate = data.savedAt instanceof Date ? data.savedAt : (data.savedAt as Timestamp).toDate();
-    systemDetailsSheetData.push(['Fecha y Hora de Guardado:', savedDate.toLocaleString('es-NI', { dateStyle: 'long', timeStyle: 'medium' })]);
-  } else {
-     systemDetailsSheetData.push(['Fecha y Hora de Guardado:', 'N/A (No guardado en BD aún o dato no disponible)']);
-  }
-  
-  systemDetailsSheetData.push(['Fecha y Hora de Exportación:', fechaHoraExportacion]);
-
-  const ws_system_details = XLSX.utils.aoa_to_sheet(systemDetailsSheetData);
-  
-  const systemColWidths = [
-    { wch: Math.max(...systemDetailsSheetData.map(row => String(row[0]).length)) + 2 },
-    { wch: Math.max(...systemDetailsSheetData.map(row => String(row[1]).length)) + 5 },
-  ];
-  ws_system_details['!cols'] = systemColWidths;
-
+  ws_solicitudes['!cols'] = solicitudColWidths;
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws_exam_details, `Solicitud ${data.ne || 'S_NE'}`);
-  XLSX.utils.book_append_sheet(wb, ws_system_details, "Detalle de Sistema");
+  XLSX.utils.book_append_sheet(wb, ws_exam_details, `Info General ${data.ne || 'S_NE'}`);
+  XLSX.utils.book_append_sheet(wb, ws_solicitudes, `Solicitudes ${data.ne || 'S_NE'}`);
   
   XLSX.writeFile(wb, `SolicitudCheque_${data.ne || 'SIN_NE'}_${new Date().toISOString().split('T')[0]}.xlsx`);
 }

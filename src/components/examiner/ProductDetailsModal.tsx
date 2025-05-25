@@ -1,43 +1,80 @@
+
 "use client";
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useAppContext } from '@/context/AppContext';
-import type { Product } from '@/types';
-import { X } from 'lucide-react';
+import type { SolicitudData } from '@/types'; // Changed Product to SolicitudData
+import { X, CheckSquare, Square, Banknote, Landmark, Hash, User, FileText, Mail, MessageSquare, Building, Code } from 'lucide-react';
 
-export function ProductDetailsModal() {
-  const { productToView, isProductDetailModalOpen, closeProductDetailModal } = useAppContext();
+// Helper component for displaying detail items
+const DetailItem: React.FC<{ label: string; value?: string | number | null | boolean; icon?: React.ElementType }> = ({ label, value, icon: Icon }) => {
+  let displayValue: string;
+  if (typeof value === 'boolean') {
+    displayValue = value ? 'Sí' : 'No';
+  } else {
+    displayValue = String(value ?? 'N/A');
+  }
 
-  if (!isProductDetailModalOpen || !productToView) {
+  return (
+    <div className="py-2">
+      <p className="text-xs font-medium text-muted-foreground flex items-center">
+        {Icon && <Icon className="h-3.5 w-3.5 mr-1.5 text-primary/70" />}
+        {label}
+      </p>
+      <p className="text-sm text-foreground">{displayValue}</p>
+    </div>
+  );
+};
+
+const CheckboxDetailItem: React.FC<{ label: string; checked?: boolean; subLabel?: string }> = ({ label, checked, subLabel }) => (
+  <div className="flex items-center py-1">
+    {checked ? <CheckSquare className="h-4 w-4 text-green-600 mr-2" /> : <Square className="h-4 w-4 text-muted-foreground mr-2" />}
+    <span className="text-sm text-foreground">{label}</span>
+    {subLabel && <span className="text-xs text-muted-foreground ml-1">{subLabel}</span>}
+  </div>
+);
+
+
+export function ProductDetailsModal() { // Filename kept, but logic changes for SolicitudData
+  const { solicitudToView, isProductDetailModalOpen, closeProductDetailModal } = useAppContext();
+
+  if (!isProductDetailModalOpen || !solicitudToView) {
     return null;
   }
 
-  const getStatusText = (product: Product) => {
-    const statuses = [];
-    if (product.isConform) statuses.push("Conforme a factura");
-    if (product.isExcess) statuses.push("Se encontró excedente");
-    if (product.isMissing) statuses.push("Se encontró faltante");
-    if (product.isFault) statuses.push("Se encontró avería");
-    return statuses.length > 0 ? statuses.join(', ') : 'Sin estado específico';
+  const s = solicitudToView; // Alias for brevity
+
+  const formatCurrency = (amount?: number | string, currency?: string) => {
+    if (amount === undefined || amount === null || amount === '') return 'N/A';
+    const num = Number(amount);
+    if (isNaN(num)) return String(amount); // if it's not a number, return as is
+    let prefix = '';
+    if (currency === 'cordoba') prefix = 'C$';
+    else if (currency === 'dolar') prefix = 'US$';
+    else if (currency === 'euro') prefix = '€';
+    return `${prefix}${num.toLocaleString('es-NI', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
   
-  const DetailItem: React.FC<{ label: string; value?: string | number | null }> = ({ label, value }) => (
-    <div>
-      <p className="text-sm font-medium text-gray-500">{label}</p>
-      <p className="text-base text-foreground">{String(value ?? 'N/A')}</p>
-    </div>
-  );
+  const getBancoDisplay = () => {
+    if (s.banco === 'ACCION POR CHEQUE/NO APLICA BANCO') return 'Acción por Cheque / No Aplica Banco';
+    if (s.banco === 'Otros') return s.bancoOtros || 'Otros (No especificado)';
+    return s.banco;
+  };
 
+  const getMonedaCuentaDisplay = () => {
+    if (s.monedaCuenta === 'Otros') return s.monedaCuentaOtros || 'Otros (No especificado)';
+    return s.monedaCuenta;
+  };
 
   return (
     <Dialog open={isProductDetailModalOpen} onOpenChange={(open) => !open && closeProductDetailModal()}>
-      <DialogContent className="max-w-2xl w-full p-0">
+      <DialogContent className="max-w-3xl w-full p-0">
         <ScrollArea className="max-h-[85vh]">
           <div className="p-6">
             <DialogHeader className="mb-4">
-              <DialogTitle className="text-lg md:text-xl font-semibold text-gray-800">Detalles del Producto</DialogTitle>
+              <DialogTitle className="text-xl font-semibold text-foreground">Detalles de la Solicitud</DialogTitle>
               <button
                 onClick={closeProductDetailModal}
                 className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
@@ -47,35 +84,79 @@ export function ProductDetailsModal() {
               </button>
             </DialogHeader>
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-                <DetailItem label="Número de Item" value={productToView.itemNumber} />
-                <DetailItem label="Peso" value={productToView.weight} />
-                <div className="sm:col-span-2">
-                  <DetailItem label="Descripción" value={productToView.description} />
+            <div className="space-y-3 divide-y divide-border">
+              {/* Section 1: Monto y Cantidad */}
+              <div className="pt-2">
+                <h4 className="text-md font-medium text-primary mb-1">Detalles del Monto</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                  <DetailItem label="Monto Solicitado" value={formatCurrency(s.monto, s.montoMoneda)} icon={Banknote} />
+                  <DetailItem label="Cantidad en Letras" value={s.cantidadEnLetras} icon={FileText} />
                 </div>
-                <DetailItem label="Marca" value={productToView.brand} />
-                <DetailItem label="Modelo" value={productToView.model} />
-                <DetailItem label="Unidad de Medida" value={productToView.unitMeasure} />
-                <DetailItem label="Serie" value={productToView.serial} />
-                <DetailItem label="Origen" value={productToView.origin} />
-                <DetailItem label="Numeración de Bultos" value={productToView.numberPackages} />
-                <DetailItem label="Cantidad de Bultos" value={productToView.quantityPackages} />
-                <DetailItem label="Cantidad de Unidades" value={productToView.quantityUnits} />
-                <DetailItem label="Estado de Mercancía" value={productToView.packagingCondition} />
-                 <div className="sm:col-span-2">
-                  <DetailItem label="Observación" value={productToView.observation} />
+              </div>
+
+              {/* Section 2: Detalles de la Solicitud */}
+              <div className="pt-3">
+                <h4 className="text-md font-medium text-primary mb-1">Información Adicional de Solicitud</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+                  <DetailItem label="Declaración Número" value={s.declaracionNumero} icon={Hash} />
+                  <DetailItem label="Unidad Recaudadora" value={s.unidadRecaudadora} icon={Building} />
+                  <DetailItem label="Código 1" value={s.codigo1} icon={Code} />
+                  <DetailItem label="Código 2" value={s.codigo2} icon={Code} />
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Estado</p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {productToView.isConform && <Badge className="bg-green-100 text-green-800">Conforme</Badge>}
-                    {productToView.isExcess && <Badge className="bg-red-100 text-red-800">Excedente</Badge>}
-                    {productToView.isMissing && <Badge className="bg-yellow-100 text-yellow-800">Faltante</Badge>}
-                    {productToView.isFault && <Badge className="bg-gray-100 text-gray-800">Avería</Badge>}
-                    {!productToView.isConform && !productToView.isExcess && !productToView.isMissing && !productToView.isFault && <Badge variant="outline">Sin especificar</Badge>}
-                  </div>
+              </div>
+
+              {/* Section 3: Cuenta Bancaria */}
+              <div className="pt-3">
+                <h4 className="text-md font-medium text-primary mb-1">Cuenta Bancaria</h4>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                    <DetailItem label="Banco" value={getBancoDisplay()} icon={Landmark} />
+                    {s.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO' && (
+                        <>
+                        <DetailItem label="Número de Cuenta" value={s.numeroCuenta} icon={Hash} />
+                        <DetailItem label="Moneda de la Cuenta" value={getMonedaCuentaDisplay()} icon={Banknote} />
+                        </>
+                    )}
+                 </div>
+              </div>
+              
+              {/* Section 4: Beneficiarios */}
+              <div className="pt-3">
+                <h4 className="text-md font-medium text-primary mb-1">Beneficiario del Pago</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                  <DetailItem label="Elaborar Cheque A" value={s.elaborarChequeA} icon={User} />
+                  <DetailItem label="Elaborar Transferencia A" value={s.elaborarTransferenciaA} icon={User} />
                 </div>
+              </div>
+
+              {/* Section 5: Checkboxes y sub-campos */}
+              <div className="pt-3">
+                <h4 className="text-md font-medium text-primary mb-1">Detalles Adicionales y Documentación</h4>
+                <div className="space-y-1">
+                    <CheckboxDetailItem label="Impuestos pagados por el cliente" checked={s.impuestosPagadosCliente} />
+                    {s.impuestosPagadosCliente && (
+                    <div className="ml-6 pl-2 border-l border-dashed">
+                        <DetailItem label="R/C No." value={s.impuestosPagadosRC} />
+                        <DetailItem label="T/B No." value={s.impuestosPagadosTB} />
+                        <DetailItem label="Cheque No." value={s.impuestosPagadosCheque} />
+                    </div>
+                    )}
+                    <CheckboxDetailItem label="Impuestos pendientes de pago por el cliente" checked={s.impuestosPendientesCliente} />
+                    <CheckboxDetailItem label="Se añaden documentos adjuntos" checked={s.documentosAdjuntos} />
+                    <CheckboxDetailItem label="Constancias de no retención" checked={s.constanciasNoRetencion} />
+                    {s.constanciasNoRetencion && (
+                    <div className="ml-6 pl-2 border-l border-dashed">
+                        <CheckboxDetailItem label="1%" checked={s.constanciasNoRetencion1} />
+                        <CheckboxDetailItem label="2%" checked={s.constanciasNoRetencion2} />
+                    </div>
+                    )}
+                </div>
+              </div>
+
+              {/* Section 6: Otros */}
+              <div className="pt-3">
+                <h4 className="text-md font-medium text-primary mb-1">Comunicación y Observaciones</h4>
+                <DetailItem label="Correos de Notificación" value={s.correo} icon={Mail} />
+                <DetailItem label="Observación" value={s.observation} icon={MessageSquare} />
               </div>
             </div>
 

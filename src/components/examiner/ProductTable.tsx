@@ -4,50 +4,52 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useAppContext } from '@/context/AppContext';
-import type { Product } from '@/types';
-import { Eye, Edit3, Trash2, MoreHorizontal } from 'lucide-react';
+import type { SolicitudData } from '@/types'; // Changed Product to SolicitudData
+import { Eye, Edit3, Trash2, MoreHorizontal, FileText, Landmark, User, AlertTriangle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-export function ProductTable() {
-  const { products, openAddProductModal, deleteProduct, openProductDetailModal } = useAppContext();
+export function ProductTable() { // Filename kept, but logic changes for SolicitudData
+  const { solicitudes, openAddProductModal, deleteSolicitud, openProductDetailModal } = useAppContext();
 
-  const renderStatusBadges = (product: Product) => {
+  const formatCurrency = (amount?: number | string, currency?: string) => {
+    if (amount === undefined || amount === null || amount === '') return 'N/A';
+    const num = Number(amount);
+    if (isNaN(num)) return 'Inválido';
+
+    let prefix = '';
+    if (currency === 'cordoba') prefix = 'C$';
+    else if (currency === 'dolar') prefix = 'US$';
+    else if (currency === 'euro') prefix = '€';
+    
+    return `${prefix}${num.toLocaleString('es-NI', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const getBeneficiarioText = (solicitud: SolicitudData) => {
+    if (solicitud.elaborarChequeA && solicitud.elaborarTransferenciaA) {
+      return `Cheque: ${solicitud.elaborarChequeA}, Transf: ${solicitud.elaborarTransferenciaA}`;
+    }
+    if (solicitud.elaborarChequeA) return `Cheque: ${solicitud.elaborarChequeA}`;
+    if (solicitud.elaborarTransferenciaA) return `Transf: ${solicitud.elaborarTransferenciaA}`;
+    return 'N/A';
+  };
+  
+  const renderStatusBadges = (solicitud: SolicitudData) => {
     const badges = [];
-    if (product.isConform) badges.push(<Badge key="conform" variant="default" className="bg-green-100 text-green-800 whitespace-nowrap">Conforme</Badge>);
-    if (product.isExcess) badges.push(<Badge key="excess" variant="destructive" className="bg-red-100 text-red-800 whitespace-nowrap">Excedente</Badge>);
-    if (product.isMissing) badges.push(<Badge key="missing" variant="secondary" className="bg-yellow-100 text-yellow-800 whitespace-nowrap">Faltante</Badge>);
-    if (product.isFault) badges.push(<Badge key="fault" variant="outline" className="bg-gray-100 text-gray-800 whitespace-nowrap">Avería</Badge>);
+    if (solicitud.documentosAdjuntos) badges.push(<Badge key="docs" variant="outline" className="bg-blue-100 text-blue-800 whitespace-nowrap flex items-center"><FileText className="h-3 w-3 mr-1" /> Docs</Badge>);
+    if (solicitud.impuestosPendientesCliente) badges.push(<Badge key="impuestos" variant="outline" className="bg-orange-100 text-orange-800 whitespace-nowrap flex items-center"><AlertTriangle className="h-3 w-3 mr-1"/> Imp. Pend.</Badge>);
+    if (solicitud.constanciasNoRetencion) badges.push(<Badge key="retencion" variant="outline" className="bg-purple-100 text-purple-800 whitespace-nowrap flex items-center"><FileText className="h-3 w-3 mr-1" /> No Ret.</Badge>);
 
     if (badges.length === 0) {
-      return <Badge variant="outline">Sin Estado</Badge>;
+      return <Badge variant="outline">Sin Observaciones</Badge>;
     }
     return <div className="flex flex-wrap gap-1">{badges}</div>;
   };
 
-  const getRowHighlightClass = (product: Product): string => {
-    let activeStatusesCount = 0;
-    if (product.isConform) activeStatusesCount++;
-    if (product.isExcess) activeStatusesCount++;
-    if (product.isMissing) activeStatusesCount++;
-    if (product.isFault) activeStatusesCount++;
 
-    if (activeStatusesCount > 1) {
-      return 'hover:bg-muted/50'; // Neutral background if multiple statuses
-    }
-    if (activeStatusesCount === 1) {
-      if (product.isExcess) return 'bg-red-50 hover:bg-red-100';
-      if (product.isConform) return 'bg-green-50 hover:bg-green-100';
-      if (product.isMissing) return 'bg-yellow-50 hover:bg-yellow-100';
-      if (product.isFault) return 'bg-gray-50 hover:bg-gray-100';
-    }
-    return 'hover:bg-muted/50'; // Default if no status or unhandled single status
-  };
-
-
-  if (products.length === 0) {
+  if (solicitudes.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
-        No hay productos añadidos. Haga clic en "Añadir Nuevo" para comenzar.
+        No hay solicitudes añadidas. Haga clic en "Añadir Nueva Solicitud" para comenzar.
       </div>
     );
   }
@@ -57,24 +59,20 @@ export function ProductTable() {
       <Table>
         <TableHeader className="bg-gray-50">
           <TableRow>
-            <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No. BULTOS</TableHead>
-            <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</TableHead>
-            <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</TableHead>
-            <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marca</TableHead>
-            <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</TableHead>
+            <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</TableHead>
+            <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Beneficiario</TableHead>
+            <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Banco</TableHead>
             <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">Estado</TableHead>
             <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody className="bg-white divide-y divide-gray-200">
-          {products.map((product) => (
-            <TableRow key={product.id} className={getRowHighlightClass(product)}>
-              <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{product.numberPackages || 'N/A'}</TableCell>
-              <TableCell className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{product.itemNumber || 'N/A'}</TableCell>
-              <TableCell className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">{product.description || 'N/A'}</TableCell>
-              <TableCell className="px-4 py-3 text-sm text-gray-500">{product.brand || 'N/A'}</TableCell>
-              <TableCell className="px-4 py-3 text-sm text-gray-500">{`${product.quantityUnits || 0} unid. / ${product.quantityPackages || 0} bultos`}</TableCell>
-              <TableCell className="px-4 py-3 text-sm text-gray-500">{renderStatusBadges(product)}</TableCell>
+          {solicitudes.map((solicitud) => ( // Iterate over solicitudes
+            <TableRow key={solicitud.id} className="hover:bg-muted/50">
+              <TableCell className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{formatCurrency(solicitud.monto, solicitud.montoMoneda)}</TableCell>
+              <TableCell className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">{getBeneficiarioText(solicitud)}</TableCell>
+              <TableCell className="px-4 py-3 text-sm text-gray-500">{solicitud.banco === 'ACCION POR CHEQUE/NO APLICA BANCO' ? 'No Aplica' : (solicitud.banco === 'Otros' ? solicitud.bancoOtros : solicitud.banco) || 'N/A'}</TableCell>
+              <TableCell className="px-4 py-3 text-sm text-gray-500">{renderStatusBadges(solicitud)}</TableCell>
               <TableCell className="px-4 py-3 whitespace-nowrap text-sm font-medium">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -84,15 +82,15 @@ export function ProductTable() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => openProductDetailModal(product)}>
+                    <DropdownMenuItem onClick={() => openProductDetailModal(solicitud)}>
                       <Eye className="mr-2 h-4 w-4" /> Ver
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => openAddProductModal(product)}>
+                    <DropdownMenuItem onClick={() => openAddProductModal(solicitud)}>
                       <Edit3 className="mr-2 h-4 w-4" /> Editar
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => {
-                      if (confirm('¿Está seguro de que desea eliminar este producto?')) {
-                        deleteProduct(product.id);
+                      if (confirm('¿Está seguro de que desea eliminar esta solicitud?')) {
+                        deleteSolicitud(solicitud.id); // Use deleteSolicitud
                       }
                     }} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                       <Trash2 className="mr-2 h-4 w-4" /> Eliminar

@@ -3,19 +3,20 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppContext, ExamStep } from '@/context/AppContext';
-import { ProductTable } from './ProductTable'; // This will likely need to be renamed/refactored to SolicitudTable
-import { AddProductModal } from './AddProductModal'; // This is now effectively AddSolicitudModal
+import { ProductTable } from './ProductTable'; // Will display SolicitudData
+import { AddProductModal } from './AddProductModal'; // Handles SolicitudData
 import { PlusCircle, CheckCircle, ArrowLeft } from 'lucide-react';
-import { ProductDetailsModal } from './ProductDetailsModal'; // This will likely need to be renamed/refactored to SolicitudDetailsModal
+import { ProductDetailsModal } from './ProductDetailsModal'; // Will display SolicitudData
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useToast } from "@/hooks/use-toast";
 
 
 export function ProductListScreen() {
-  const { examData, setCurrentStep, openAddProductModal, products } = useAppContext();
+  const { examData, setCurrentStep, openAddProductModal, solicitudes } = useAppContext(); // Use solicitudes
+  const { toast } = useToast();
 
   if (!examData) {
-    // Should not happen if navigation is correct, but as a fallback
     return (
       <div className="text-center py-10">
         <p>Error: Datos del examen no encontrados.</p>
@@ -25,8 +26,12 @@ export function ProductListScreen() {
   }
   
   const handleFinish = () => {
-     if (products.length === 0) {
-        alert('Debe agregar al menos una solicitud antes de finalizar.'); // Consider using a toast notification
+     if (solicitudes.length === 0) { // Check solicitudes length
+        toast({
+            title: "Atención",
+            description: "Debe agregar al menos una solicitud antes de finalizar.",
+            variant: "destructive",
+        });
         return;
       }
     setCurrentStep(ExamStep.PREVIEW);
@@ -48,7 +53,7 @@ export function ProductListScreen() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md shadow">
+        <div className="mb-6 p-4 bg-secondary/30 border border-border rounded-md shadow">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                 <div><span className="font-semibold">NE:</span> {examData.ne}</div>
                 <div><span className="font-semibold">Referencia:</span> {examData.reference || 'N/A'}</div>
@@ -57,7 +62,7 @@ export function ProductListScreen() {
                 <div><span className="font-semibold">Fecha:</span> {examData.date ? format(examData.date, "PPP", { locale: es }) : 'N/A'}</div>
             </div>
             <div className="mt-3">
-                <Button variant="link" onClick={() => setCurrentStep(ExamStep.INITIAL_INFO)} className="text-primary p-0 h-auto">
+                <Button variant="link" onClick={() => setCurrentStep(ExamStep.INITIAL_INFO)} className="text-primary p-0 h-auto hover:underline">
                     <ArrowLeft className="mr-1 h-4 w-4" /> Regresar para modificar
                 </Button>
             </div>

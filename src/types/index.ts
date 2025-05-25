@@ -9,66 +9,47 @@ export interface ExamData {
   recipient: string; // "A:"
 }
 
-// Renamed Product to SolicitudData and updated fields
 export interface SolicitudData {
-  id: string; // unique id
+  id: string; 
 
   // Section 1: Monto y Cantidad
-  monto?: number | string; // "Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad"
-  montoMoneda?: 'cordoba' | 'dolar' | 'euro' | string; // Currency for monto
-  cantidadEnLetras?: string; // "Cantidad en letras" (manual for now)
+  monto?: number | string; 
+  montoMoneda?: 'cordoba' | 'dolar' | 'euro' | string; 
+  cantidadEnLetras?: string; 
 
   // Section 2: Detalles de la Solicitud
-  declaracionNumero?: string; // "Declaracion Número"
-  unidadRecaudadora?: string; // "Unidad recaudadora"
-  codigo1?: string; // "Codigo"
-  codigo2?: string; // "Codigo"
+  declaracionNumero?: string; 
+  unidadRecaudadora?: string; 
+  codigo1?: string; 
+  codigo2?: string; 
 
   // Section 3: Cuenta Bancaria
-  banco?: 'BAC' | 'BANPRO' | 'BANCENTRO' | 'FICOSHA' | 'AVANZ' | 'ATLANTIDA' | 'Otros' | string;
-  bancoOtros?: string; // If banco is "Otros"
-  numeroCuenta?: string; // "Numero de cuenta"
+  banco?: 'BAC' | 'BANPRO' | 'BANCENTRO' | 'FICOSHA' | 'AVANZ' | 'ATLANTIDA' | 'ACCION POR CHEQUE/NO APLICA BANCO' | 'Otros' | string;
+  bancoOtros?: string; 
+  numeroCuenta?: string; 
   monedaCuenta?: 'cordoba' | 'dolar' | 'euro' | 'Otros' | string;
-  monedaCuentaOtros?: string; // If monedaCuenta is "Otros"
+  monedaCuentaOtros?: string; 
 
   // Section 4: Beneficiarios
-  elaborarChequeA?: string; // "Elaborar cheque a"
-  elaborarTransferenciaA?: string; // "Elaborar transferencia a"
+  elaborarChequeA?: string; 
+  elaborarTransferenciaA?: string; 
 
   // Section 5: Checkboxes y sub-campos
-  impuestosPagadosCliente?: boolean; // "Impuestos pagados por el cliente mediante:"
-  impuestosPagadosRC?: string; // R/C (conditional)
-  impuestosPagadosTB?: string; // T/B (conditional)
-  impuestosPagadosCheque?: string; // Cheque (conditional)
+  impuestosPagadosCliente?: boolean; 
+  impuestosPagadosRC?: string; 
+  impuestosPagadosTB?: string; 
+  impuestosPagadosCheque?: string; 
 
-  impuestosPendientesCliente?: boolean; // "Impuestos pendientes de pago por el cliente"
-  documentosAdjuntos?: boolean; // "Se añaden documentos adjuntos"
+  impuestosPendientesCliente?: boolean; 
+  documentosAdjuntos?: boolean; 
 
-  constanciasNoRetencion?: boolean; // "Constancias de no retencion"
-  constanciasNoRetencion1?: boolean; // 1% (conditional)
-  constanciasNoRetencion2?: boolean; // 2% (conditional)
+  constanciasNoRetencion?: boolean; 
+  constanciasNoRetencion1?: boolean; 
+  constanciasNoRetencion2?: boolean; 
 
   // Section 6: Otros
-  correo?: string; // "Correo" (pre-filled, allow additions)
-  observation?: string; // "Observación"
-
-  // Old product fields - to be removed or confirmed if still needed for other parts
-  itemNumber?: string; // To be removed
-  weight?: string; // To be removed
-  description?: string; // Replaced by cantidadEnLetras or observation
-  brand?: string; // Replaced by declaracionNumero or others
-  model?: string; // Replaced
-  unitMeasure?: string; // Replaced
-  serial?: string; // Replaced
-  origin?: string; // Replaced by numeroCuenta or similar
-  numberPackages?: string; // Replaced
-  quantityPackages?: number | string; // Replaced
-  quantityUnits?: number | string; // Replaced by monto
-  packagingCondition?: string; // Replaced by specific statuses
-  isConform?: boolean; // Replaced by specific checkboxes
-  isExcess?: boolean; // Replaced
-  isMissing?: boolean; // Replaced
-  isFault?: boolean; // Replaced
+  correo?: string; 
+  observation?: string; 
 }
 
 
@@ -80,14 +61,14 @@ export interface AppUser {
 }
 
 export interface ExamDocument extends ExamData {
-  products: SolicitudData[]; // Now holds SolicitudData
+  solicitudes: SolicitudData[]; // Changed from products
   savedAt: Timestamp;
   savedBy: string | null;
 }
 
 export interface ExportableExamData extends Omit<ExamData, 'date'> {
   date?: Date | Timestamp | null;
-  products?: SolicitudData[] | null; // Now holds SolicitudData
+  products?: SolicitudData[] | null; // Kept 'products' key for compatibility if downloadExcelFile expects it
   savedAt?: Timestamp | Date | null;
   savedBy?: string | null;
 }
