@@ -27,7 +27,7 @@ export const solicitudSchema = z.object({
   codigo1: z.string().optional(),
   codigo2: z.string().optional(),
   
-  banco: z.enum(['BAC', 'BANPRO', 'BANCENTRO', 'FICOSHA', 'AVANZ', 'ATLANTIDA', 'Otros'], { errorMap: () => ({ message: "Seleccione un banco." })}).optional(),
+  banco: z.enum(['BAC', 'BANPRO', 'BANCENTRO', 'FICOSHA', 'AVANZ', 'ATLANTIDA', 'ACCION POR CHEQUE/NO APLICA BANCO', 'Otros'], { errorMap: () => ({ message: "Seleccione un banco." })}).optional(),
   bancoOtros: z.string().optional(),
   numeroCuenta: z.string().optional(),
   monedaCuenta: z.enum(['cordoba', 'dolar', 'euro', 'Otros'], { errorMap: () => ({ message: "Seleccione moneda de la cuenta." })}).optional(),
@@ -68,16 +68,17 @@ export const solicitudSchema = z.object({
       path: ['monedaCuentaOtros'],
     });
   }
-  if (!data.elaborarChequeA?.trim() && !data.elaborarTransferenciaA?.trim()) {
+  // Allow no beneficiario if "ACCION POR CHEQUE/NO APLICA BANCO" is selected, otherwise require one
+  if (data.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO' && !data.elaborarChequeA?.trim() && !data.elaborarTransferenciaA?.trim()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "Debe especificar un beneficiario para cheque o transferencia.",
-      path: ['elaborarChequeA'], // Or a more general path
+      path: ['elaborarChequeA'], 
     });
      ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "Debe especificar un beneficiario para cheque o transferencia.",
-      path: ['elaborarTransferenciaA'], // Or a more general path
+      path: ['elaborarTransferenciaA'], 
     });
   }
 });

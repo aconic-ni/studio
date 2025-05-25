@@ -73,7 +73,15 @@ export function AddProductModal() {
 
   useEffect(() => {
     setShowBancoOtros(watchedBanco === 'Otros');
-  }, [watchedBanco]);
+    if (watchedBanco === 'ACCION POR CHEQUE/NO APLICA BANCO') {
+      // Clear and disable related bank fields if "NO APLICA BANCO" is selected
+      form.setValue('bancoOtros', '');
+      form.setValue('numeroCuenta', '');
+      form.setValue('monedaCuenta', undefined);
+      form.setValue('monedaCuentaOtros', '');
+      // Consider disabling these fields visually as well if needed
+    }
+  }, [watchedBanco, form]);
 
   useEffect(() => {
     setShowMonedaCuentaOtros(watchedMonedaCuenta === 'Otros');
@@ -150,6 +158,9 @@ export function AddProductModal() {
   }
 
   if (!isAddProductModalOpen) return null;
+
+  const isBancoNoAplica = watchedBanco === 'ACCION POR CHEQUE/NO APLICA BANCO';
+
 
   return (
     <Dialog open={isAddProductModalOpen} onOpenChange={(open) => !open && closeAddProductModal()}>
@@ -246,13 +257,13 @@ export function AddProductModal() {
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Seleccione un banco" /></SelectTrigger></FormControl>
                             <SelectContent>
-                            {["BAC", "BANPRO", "BANCENTRO", "FICOSHA", "AVANZ", "ATLANTIDA", "Otros"].map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                            {["BAC", "BANPRO", "BANCENTRO", "FICOSHA", "AVANZ", "ATLANTIDA", "ACCION POR CHEQUE/NO APLICA BANCO", "Otros"].map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
                             </SelectContent>
                         </Select>
                         <FormMessage />
                         </FormItem>
                     )}/>
-                    {showBancoOtros && (
+                    {showBancoOtros && !isBancoNoAplica && (
                         <FormField control={form.control} name="bancoOtros" render={({ field }) => (
                         <FormItem>
                             <FormLabel className="flex items-center"><FilePlus className="mr-2 h-4 w-4 text-primary" />Especifique Otro Banco</FormLabel>
@@ -262,16 +273,16 @@ export function AddProductModal() {
                         )}/>
                     )}
                      <FormField control={form.control} name="numeroCuenta" render={({ field }) => (
-                        <FormItem className={showBancoOtros ? '' : 'md:col-span-1'}>
+                        <FormItem className={(showBancoOtros && !isBancoNoAplica) ? '' : 'md:col-span-1'}>
                             <FormLabel className="flex items-center"><ListFilter className="mr-2 h-4 w-4 text-primary" />Numero de cuenta</FormLabel>
-                            <FormControl><Input {...field} value={field.value ?? ''} /></FormControl>
+                            <FormControl><Input {...field} value={field.value ?? ''} disabled={isBancoNoAplica} /></FormControl>
                             <FormMessage />
                         </FormItem>
                     )}/>
                     <FormField control={form.control} name="monedaCuenta" render={({ field }) => (
                         <FormItem>
                         <FormLabel className="flex items-center"><Banknote className="mr-2 h-4 w-4 text-primary" />Moneda de la cuenta</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isBancoNoAplica}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Seleccione moneda" /></SelectTrigger></FormControl>
                             <SelectContent>
                                 <SelectItem value="cordoba">C$ (Córdobas)</SelectItem>
@@ -283,7 +294,7 @@ export function AddProductModal() {
                         <FormMessage />
                         </FormItem>
                     )}/>
-                    {showMonedaCuentaOtros && (
+                    {showMonedaCuentaOtros && !isBancoNoAplica && (
                         <FormField control={form.control} name="monedaCuentaOtros" render={({ field }) => (
                         <FormItem>
                             <FormLabel className="flex items-center"><FilePlus className="mr-2 h-4 w-4 text-primary" />Especifique Otra Moneda</FormLabel>
