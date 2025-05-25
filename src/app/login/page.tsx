@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { LoginForm } from '@/components/auth/login-form';
-import { Receipt } from 'lucide-react'; // Import the Receipt icon
+import { Building2 } from 'lucide-react'; // Changed from Receipt to Building2
 
 export default function LoginPage() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -24,7 +24,7 @@ export default function LoginPage() {
             aria-label="Open login form"
           >
             <div id="appLogo" className="logo-pulse mb-8 mx-auto">
-              <Receipt data-ai-hint="invoice receipt" className="h-32 w-32 text-white block mx-auto" />
+              <Building2 data-ai-hint="building office" className="h-32 w-32 text-white block mx-auto" />
             </div>
             <header className="text-center mb-12">
               <h1 className="text-4xl md:text-5xl font-bold">CustomsFA-L</h1>
