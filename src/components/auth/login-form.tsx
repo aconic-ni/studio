@@ -1,3 +1,4 @@
+
 "use client";
 import { useState } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,10 +19,11 @@ import { useClientAuth } from '@/hooks/use-client-auth';
 import { useRouter } from 'next/navigation';
 import { Building2, LogIn } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { AuthError } from 'firebase/auth'; // Import AuthError for specific error handling
 
 const formSchema = z.object({
-  username: z.string().min(1, { message: "Username is required." }),
-  password: z.string().min(1, { message: "Password is required." }),
+  email: z.string().email({ message: "Por favor, introduce una dirección de correo válida." }).min(1, { message: "El correo es requerido." }),
+  password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
 });
 
 export function LoginForm() {
@@ -33,22 +35,48 @@ export function LoginForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
     },
   });
 
+  function getFirebaseErrorMessage(errorCode: string): string {
+    switch (errorCode) {
+      case "auth/invalid-email":
+        return "El formato del correo electrónico no es válido.";
+      case "auth/user-not-found":
+      case "auth/wrong-password":
+      case "auth/invalid-credential":
+        return "Correo o contraseña incorrectos.";
+      case "auth/user-disabled":
+        return "Esta cuenta de usuario ha sido deshabilitada.";
+      case "auth/too-many-requests":
+        return "Demasiados intentos fallidos. Intenta más tarde.";
+      default:
+        return "Ocurrió un error al iniciar sesión. Intenta de nuevo.";
+    }
+  }
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await login(values.username, values.password);
-      toast({ title: "Login Successful", description: "Welcome back!" });
+      await login(values.email, values.password);
+      toast({ title: "Inicio de Sesión Exitoso", description: "¡Bienvenido de nuevo!" });
       router.push('/');
+      // router.refresh(); // Might be needed if page content depends on auth state server-side
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
-      toast({ title: "Login Failed", description: errorMessage, variant: "destructive" });
-      form.setError("username", { type: "manual", message: " " }); // Add error to make fields red
-      form.setError("password", { type: "manual", message: "Invalid username or password." });
+      let errorMessage = "Ocurrió un error desconocido.";
+      if (error instanceof Error) { // Check if it's a standard Error
+        if ((error as AuthError).code) { // Check if it's a Firebase AuthError
+          errorMessage = getFirebaseErrorMessage((error as AuthError).code);
+        } else {
+          errorMessage = error.message; // Generic error message
+        }
+      }
+      
+      toast({ title: "Fallo de Inicio de Sesión", description: errorMessage, variant: "destructive" });
+      form.setError("email", { type: "manual", message: " " }); // Add error to make fields red
+      form.setError("password", { type: "manual", message: errorMessage });
     } finally {
       setIsLoading(false);
     }
@@ -56,24 +84,24 @@ export function LoginForm() {
 
   return (
     <Card className="w-full max-w-md shadow-xl">
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Building2 className="h-8 w-8" />
+      <CardHeader className="space-y-1">
+        <div className="flex items-center gap-2">
+          <Building2 className="h-6 w-6 text-primary" />
+          <CardTitle className="text-2xl">ACONIC Facturación Local</CardTitle>
         </div>
-        <CardTitle className="text-2xl">ACONIC Facturación Local</CardTitle>
-        <CardDescription>Please sign in to continue</CardDescription>
+        <CardDescription>Accede con tu correo electrónico de ACONIC</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
               control={form.control}
-              name="username"
+              name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Username</FormLabel>
+                  <FormLabel>Correo</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. testuser" {...field} />
+                    <Input placeholder="tu@correo.aconic" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -84,9 +112,9 @@ export function LoginForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel>Contraseña</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="e.g. password" {...field} />
+                    <Input type="password" placeholder="••••••••" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -98,7 +126,7 @@ export function LoginForm() {
               ) : (
                 <LogIn className="mr-2 h-4 w-4" />
               )}
-              Sign In
+              Iniciar Sesión
             </Button>
           </form>
         </Form>

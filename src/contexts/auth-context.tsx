@@ -1,59 +1,56 @@
+
 "use client";
 import type { User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import { auth } from '@/lib/firebase'; // Import the auth instance
 
 interface AuthContextType {
   user: FirebaseUser | null;
   loading: boolean;
-  login: (username: string, pass: string) => Promise<void>; // Simplified login
+  login: (email: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Mock Firebase User type
-interface MockUser {
-  uid: string;
-  email: string | null;
-  displayName: string | null;
-  // Add other properties your app might use from FirebaseUser
-}
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate checking auth state
-    const storedUser = localStorage.getItem('authUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser) as FirebaseUser);
-    }
-    setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
-  const login = async (username: string, pass: string) => {
+  const login = async (email: string, pass: string) => {
     setLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    if (username === "testuser" && pass === "password") {
-      const mockUser: MockUser = { uid: '123', email: 'testuser@example.com', displayName: 'Test User' };
-      // This is a hack. In a real app, you'd get a FirebaseUser object.
-      // For mock purposes, we cast our MockUser to FirebaseUser.
-      setUser(mockUser as FirebaseUser); 
-      localStorage.setItem('authUser', JSON.stringify(mockUser));
-    } else {
-      throw new Error("Invalid credentials");
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      // onAuthStateChanged will handle setting the user
+    } catch (error) {
+      setLoading(false); // Ensure loading is false on error
+      throw error; // Re-throw error to be caught by the form
     }
-    setLoading(false);
+    // setLoading(false) will be handled by onAuthStateChanged listener indirectly
   };
 
   const logout = async () => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setUser(null);
-    localStorage.removeItem('authUser');
-    setLoading(false);
+    try {
+      await signOut(auth);
+      // onAuthStateChanged will handle setting the user to null
+    } catch (error) {
+      console.error("Error signing out: ", error);
+      // Still set loading to false, user might still be technically logged in if signOut fails
+      setLoading(false); 
+    }
+    // setLoading(false) will be handled by onAuthStateChanged listener indirectly
   };
 
   return (
