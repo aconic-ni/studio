@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from 'react';
-import { FileText } from 'lucide-react'; // Changed from Building2
+import { FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { LoginForm } from '@/components/auth/login-form';
@@ -36,7 +36,7 @@ export default function LoginPage() {
           <Button
             onClick={() => setIsLoginModalOpen(true)}
             size="lg"
-            className="text-lg" // text-lg for larger font, size="lg" handles padding and height
+            className="bg-[hsl(var(--foreground))] text-primary-foreground hover:bg-[hsl(var(--foreground))]/90 text-lg"
           >
             Iniciar Sesión
           </Button>
