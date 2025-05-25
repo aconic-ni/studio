@@ -119,15 +119,16 @@ export function downloadExcelFile(data: ExportableExamData) {
     if (examInfo.savedAt) sheetData.push(['Fecha y Hora de Guardado:', formatDate(examInfo.savedAt)]);
     sheetData.push([]); 
 
-    // --- Solicitud Details Title ---
+    // --- Detalles de la Solicitud Title ---
     sheetData.push(['DETALLES DE LA SOLICITUD:']); 
     sheetData.push([]); 
 
-    // --- Monto y Cantidad ---
-    sheetData.push(['Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:']);
-    sheetData.push([formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda)]);
-    sheetData.push(['Cantidad en Letras:', solicitud.cantidadEnLetras || 'N/A']);
+    // --- Monto y Cantidad (New Structure) ---
+    sheetData.push(['Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:']); // Label in Col A
+    sheetData.push([formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda)]); // Value in Col A
+    sheetData.push(['Cantidad en Letras:', solicitud.cantidadEnLetras || 'N/A']); // Label in Col A, Value in Col B
     sheetData.push([]);
+
 
     // --- Información Adicional de Solicitud ---
     sheetData.push(['INFORMACIÓN ADICIONAL DE SOLICITUD:']);
@@ -187,8 +188,8 @@ export function downloadExcelFile(data: ExportableExamData) {
     sheetData.push(['  Observación:', solicitud.observation || 'N/A']);
 
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    const numRows = sheetData.length;
     
-    // Base alignment for all content cells in A and B
     const baseAlignment = { wrapText: true, vertical: 'top' };
 
     sheetData.forEach((row, rIndex) => {
@@ -200,6 +201,8 @@ export function downloadExcelFile(data: ExportableExamData) {
             if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: row[cIndex] ?? '' };
             if (!ws[cellAddress].s) ws[cellAddress].s = {};
             
+            ws[cellAddress].s.alignment = { ...baseAlignment, horizontal: (cIndex === 0 ? 'left' : 'left') }; // Default horizontal
+
             // Set cell type
             if (typeof row[cIndex] === 'number') ws[cellAddress].t = 'n';
             else if (typeof row[cIndex] === 'boolean') ws[cellAddress].t = 'b';
@@ -209,8 +212,6 @@ export function downloadExcelFile(data: ExportableExamData) {
             } else {
                  ws[cellAddress].t = 's';
             }
-
-            ws[cellAddress].s.alignment = { ...baseAlignment, horizontal: (cIndex === 0 ? 'left' : 'left') }; // Default horizontal
         });
 
         const cellValueA = String(row[0] ?? '').trim();
@@ -223,18 +224,18 @@ export function downloadExcelFile(data: ExportableExamData) {
             ws[cellAddressA].s.font = { bold: true, sz: 14 };
             ws[cellAddressA].s.alignment = { ...baseAlignment, horizontal: 'center', vertical: 'center' };
             if (ws[cellAddressB]) {
-                 ws[cellAddressB].s = { alignment: { ...baseAlignment, horizontal: 'center', vertical: 'center' } }; // Clear for merge
+                 ws[cellAddressB].s = { alignment: { ...baseAlignment, horizontal: 'center', vertical: 'center' } };
                  if (ws[cellAddressB].v === undefined) ws[cellAddressB].v = '';
             }
         }
-        // Section Headers Styling (merged)
+        // Section Headers Styling
         else if (
             cellValueA.endsWith(':') && cellValueA === cellValueA.toUpperCase() &&
             (cellValueB === '' || typeof row[1] === 'undefined') &&
-            rIndex !== 0
+            rIndex !== 0 
         ) {
             ws[cellAddressA].s.font = { bold: true, sz: 12 };
-            ws[cellAddressA].s.alignment.horizontal = 'left'; // Explicitly left for section headers
+            ws[cellAddressA].s.alignment.horizontal = 'left';
             if (ws[cellAddressB]) {
                 ws[cellAddressB].s = { alignment: { ...baseAlignment, horizontal: 'left'} };
                 if (ws[cellAddressB].v === undefined) ws[cellAddressB].v = '';
@@ -242,30 +243,26 @@ export function downloadExcelFile(data: ExportableExamData) {
         }
         // Label-Value Pairs & Standalone Values Styling
         else {
-            // Column A: User input (standalone values) or labels
-            if (cellValueA) {
-                if (isUserInputA) { // Standalone user input in Col A
-                    if (!ws[cellAddressA].s.font) ws[cellAddressA].s.font = {};
-                    ws[cellAddressA].s.font.bold = true;
+            if (cellValueA) { // Labels in Col A (not bold by default unless it's a standalone value)
+                if (isUserInputA) { // Standalone user input in Col A (e.g., numeric monto)
+                     if (!ws[cellAddressA].s.font) ws[cellAddressA].s.font = {};
+                     ws[cellAddressA].s.font.bold = true;
                 }
-                // Labels (ending with ':') in Col A are not bold by default unless they are section headers (handled above)
             }
-            // Column B: User input values
-            if (isUserInputB) {
+            if (isUserInputB) { // User input values in Col B
                 if (!ws[cellAddressB].s.font) ws[cellAddressB].s.font = {};
                 ws[cellAddressB].s.font.bold = true;
             }
         }
     });
     
-    // Specific justification for "Cantidad en Letras" value cell
+    // Specific justification for "Cantidad en Letras" value cell (B14 if structure is fixed)
     const cantidadEnLetrasLabelRowIndex = sheetData.findIndex(r => String(r[0] ?? '').trim() === "Cantidad en Letras:");
     if (cantidadEnLetrasLabelRowIndex !== -1) {
         const cellBAddressForCantidad = XLSX.utils.encode_cell({ r: cantidadEnLetrasLabelRowIndex, c: 1 });
         if (ws[cellBAddressForCantidad]) {
             if (!ws[cellBAddressForCantidad].s) ws[cellBAddressForCantidad].s = {};
-            ws[cellBAddressForCantidad].s.alignment = { ...baseAlignment, horizontal: 'justify' }; // Justify and keep wrap/vertical top
-            // Re-apply bold if it's user input
+            ws[cellBAddressForCantidad].s.alignment = { ...baseAlignment, horizontal: 'justify' }; 
             const cellValue = String(ws[cellBAddressForCantidad].v ?? '').trim();
             if (cellValue && cellValue !== 'N/A') {
                  if (!ws[cellBAddressForCantidad].s.font) ws[cellBAddressForCantidad].s.font = {};
@@ -273,6 +270,22 @@ export function downloadExcelFile(data: ExportableExamData) {
             }
         }
     }
+
+    // Specific wrap text for "Observación" value cell
+    const observacionLabelRowIndex = sheetData.findIndex(r => String(r[0] ?? '').trim() === "  Observación:");
+    if (observacionLabelRowIndex !== -1) {
+        const cellBAddressForObservacion = XLSX.utils.encode_cell({ r: observacionLabelRowIndex, c: 1});
+        if (ws[cellBAddressForObservacion]) {
+            if (!ws[cellBAddressForObservacion].s) ws[cellBAddressForObservacion].s = {};
+            ws[cellBAddressForObservacion].s.alignment = { ...baseAlignment, horizontal: 'left' }; // keep left align
+            const cellValue = String(ws[cellBAddressForObservacion].v ?? '').trim();
+             if (cellValue && cellValue !== 'N/A') {
+                if (!ws[cellBAddressForObservacion].s.font) ws[cellBAddressForObservacion].s.font = {};
+                ws[cellBAddressForObservacion].s.font.bold = true;
+            }
+        }
+    }
+
 
     // Merges
     if (!ws['!merges']) ws['!merges'] = [];
@@ -300,24 +313,31 @@ export function downloadExcelFile(data: ExportableExamData) {
 
     ws['!cols'] = [ {wch: 35}, {wch: 45} ];
     
-    // Set specific row heights
     if (!ws['!rows']) ws['!rows'] = [];
-    // Excel Row 14 (0-indexed 13)
-    if (ws['!rows'].length <= 13) { while(ws['!rows'].length <= 13) ws['!rows'].push({}); } // Ensure array is long enough
-    ws['!rows'][13] = { ...ws['!rows'][13], hpt: 72.90 };
+    // Row 14 height (0-indexed 13) - This is "Cantidad en Letras:" label / value
+    if (cantidadEnLetrasLabelRowIndex !== -1) {
+        if (ws['!rows'].length <= cantidadEnLetrasLabelRowIndex) { 
+            while(ws['!rows'].length <= cantidadEnLetrasLabelRowIndex) ws['!rows'].push({}); 
+        }
+        ws['!rows'][cantidadEnLetrasLabelRowIndex] = { ...ws['!rows'][cantidadEnLetrasLabelRowIndex], hpt: 72.90 };
+    }
 
-    // Excel Row 40 (0-indexed 39)
-    if (ws['!rows'].length <= 39) { while(ws['!rows'].length <= 39) ws['!rows'].push({}); } // Ensure array is long enough
-    ws['!rows'][39] = { ...ws['!rows'][39], hpt: 72.90 };
+    // Row 40 height (0-indexed 39) - Approximate for "Observacion"
+    // This is less reliable if rows above change. If Observacion is always last, we can target numRows -1.
+    if (observacionLabelRowIndex !== -1) { // Use the dynamically found index
+        if (ws['!rows'].length <= observacionLabelRowIndex) { 
+            while(ws['!rows'].length <= observacionLabelRowIndex) ws['!rows'].push({}); 
+        }
+        ws['!rows'][observacionLabelRowIndex] = { ...ws['!rows'][observacionLabelRowIndex], hpt: 72.90 };
+    }
     
     ws['!printSetup'] = {
-        printArea: `A1:B45`,
+        printArea: `A1:B45`, // Keep print area fixed
         fitToWidth: 1,
-        fitToHeight: 1, // Force fit to single page height
-        paperSize: 1,     // 1 for US Letter
+        fitToHeight: 1, 
+        paperSize: 1,     
         orientation: 'portrait'
     };
-    const numRows = sheetData.length;
     ws['!ref'] = `A1:B${Math.min(numRows, 45)}`;
 
 
@@ -328,5 +348,4 @@ export function downloadExcelFile(data: ExportableExamData) {
   const fileName = `SolicitudesCheque_${examInfo.ne || 'SIN_NE'}_${new Date().toISOString().split('T')[0]}.xlsx`;
   XLSX.writeFile(wb, fileName);
 }
-
     
