@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 
 export const initialInfoSchema = z.object({
@@ -10,31 +11,79 @@ export const initialInfoSchema = z.object({
 
 export type InitialInfoFormData = z.infer<typeof initialInfoSchema>;
 
-export const productSchema = z.object({
-  id: z.string().optional(), // Optional for new products, required for updates
-  itemNumber: z.string().optional(),
-  weight: z.string().optional(),
-  description: z.string().optional(),
-  brand: z.string().optional(),
-  model: z.string().optional(),
-  unitMeasure: z.string().optional(),
-  serial: z.string().optional(),
-  origin: z.string().optional(),
-  numberPackages: z.string().optional(),
-  quantityPackages: z.preprocess(
-    (val) => (val === "" || val === undefined || val === null) ? undefined : (typeof val === 'string' ? parseInt(val, 10) : val),
-    z.number().min(0, "Cantidad de bultos debe ser positiva.").optional()
+// Zod schema for the "Nueva Solicitud" form
+export const solicitudSchema = z.object({
+  id: z.string().optional(),
+
+  monto: z.preprocess(
+    (val) => (val === "" || val === undefined || val === null) ? undefined : (typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : val),
+    z.number({invalid_type_error: "Monto debe ser un número."}).min(0.01, "Monto debe ser positivo.").optional()
   ),
-  quantityUnits: z.preprocess(
-    (val) => (val === "" || val === undefined || val === null) ? undefined : (typeof val === 'string' ? parseInt(val, 10) : val),
-    z.number().min(0, "Cantidad de unidades debe ser positiva.").optional()
-  ),
-  packagingCondition: z.string().optional(),
+  montoMoneda: z.enum(['cordoba', 'dolar', 'euro'], { errorMap: () => ({ message: "Seleccione una moneda para el monto." })}).optional(),
+  cantidadEnLetras: z.string().optional(),
+
+  declaracionNumero: z.string().optional(),
+  unidadRecaudadora: z.string().optional(),
+  codigo1: z.string().optional(),
+  codigo2: z.string().optional(),
+  
+  banco: z.enum(['BAC', 'BANPRO', 'BANCENTRO', 'FICOSHA', 'AVANZ', 'ATLANTIDA', 'Otros'], { errorMap: () => ({ message: "Seleccione un banco." })}).optional(),
+  bancoOtros: z.string().optional(),
+  numeroCuenta: z.string().optional(),
+  monedaCuenta: z.enum(['cordoba', 'dolar', 'euro', 'Otros'], { errorMap: () => ({ message: "Seleccione moneda de la cuenta." })}).optional(),
+  monedaCuentaOtros: z.string().optional(),
+
+  elaborarChequeA: z.string().optional(),
+  elaborarTransferenciaA: z.string().optional(),
+
+  impuestosPagadosCliente: z.boolean().default(false).optional(),
+  impuestosPagadosRC: z.string().optional(),
+  impuestosPagadosTB: z.string().optional(),
+  impuestosPagadosCheque: z.string().optional(),
+
+  impuestosPendientesCliente: z.boolean().default(false).optional(),
+  documentosAdjuntos: z.boolean().default(false).optional(),
+
+  constanciasNoRetencion: z.boolean().default(false).optional(),
+  constanciasNoRetencion1: z.boolean().default(false).optional(),
+  constanciasNoRetencion2: z.boolean().default(false).optional(),
+
+  correo: z.string().optional().refine(val => {
+    if (!val) return true; // Allow empty
+    return val.split(';').every(email => z.string().email().safeParse(email.trim()).success || email.trim() === '');
+  }, "Uno o más correos no son válidos."),
   observation: z.string().optional(),
-  isConform: z.boolean().default(false),
-  isExcess: z.boolean().default(false),
-  isMissing: z.boolean().default(false),
-  isFault: z.boolean().default(false),
+}).superRefine((data, ctx) => {
+  if (data.banco === 'Otros' && !data.bancoOtros?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Especifique el otro banco.",
+      path: ['bancoOtros'],
+    });
+  }
+  if (data.monedaCuenta === 'Otros' && !data.monedaCuentaOtros?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Especifique la otra moneda de la cuenta.",
+      path: ['monedaCuentaOtros'],
+    });
+  }
+  if (!data.elaborarChequeA?.trim() && !data.elaborarTransferenciaA?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Debe especificar un beneficiario para cheque o transferencia.",
+      path: ['elaborarChequeA'], // Or a more general path
+    });
+     ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Debe especificar un beneficiario para cheque o transferencia.",
+      path: ['elaborarTransferenciaA'], // Or a more general path
+    });
+  }
 });
 
-export type ProductFormData = z.infer<typeof productSchema>;
+export type SolicitudFormData = z.infer<typeof solicitudSchema>;
+// Keep old ProductFormData for compatibility if other parts of the app still use it,
+// but new forms should use SolicitudFormData
+export type ProductFormData = SolicitudFormData; // Alias for now
+export const productSchema = solicitudSchema; // Alias for now
