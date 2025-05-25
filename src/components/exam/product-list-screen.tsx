@@ -6,30 +6,31 @@ import { useExamContext, ExamStep } from '@/contexts/exam-context';
 import { ProductTable } from '../products/product-table';
 import { ProductDialog } from '../products/product-dialog';
 import { DeleteProductDialog } from '../products/delete-product-dialog';
-import { ProductDetailsModal } from '../products/product-details-modal'; // Assuming this exists
+// import { ProductDetailsModal } from '../products/product-details-modal'; // Assuming this exists
 import { PlusCircle, CheckCircle, ArrowLeft } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 export function ProductListScreen() {
   const { 
     examData, 
     setCurrentStep, 
     products,
-    openProductModal,
-    productToDelete,
-    closeDeleteDialog,
-    confirmDeleteProduct,
-    isDeleteDialogLoading
+    openProductModal, // For "Añadir Nuevo" button
+    productToDelete,  // For DeleteProductDialog
+    closeDeleteDialog, // For DeleteProductDialog
+    confirmDeleteProduct, // For DeleteProductDialog
+    isDeleteDialogLoading // For DeleteProductDialog
   } = useExamContext();
-  const { toast } = useToast();
+  const { toast } = useToast(); // Initialize useToast
 
-  if (!examData || !examData.ne) { // Check for a key piece of examData
+  if (!examData || !examData.ne) { 
     return (
       <div className="text-center py-10 container mx-auto">
         <Card className="p-8 shadow-xl border">
           <p className="text-lg text-muted-foreground mb-4">Error: Datos del examen no encontrados o incompletos.</p>
+          <p className="text-sm text-muted-foreground mb-4">Por favor, inicie un nuevo examen.</p>
           <Button onClick={() => setCurrentStep(ExamStep.INITIAL_INFO)} variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Volver al inicio
+            <ArrowLeft className="mr-2 h-4 w-4" /> Ir a Nuevo Examen
           </Button>
         </Card>
       </div>
@@ -38,7 +39,7 @@ export function ProductListScreen() {
   
   const handleFinish = () => {
      if (products.length === 0) {
-        toast({
+        toast({ // Use toast instead of alert
           title: "No hay productos",
           description: "Debe agregar al menos un producto antes de finalizar.",
           variant: "destructive"
@@ -64,7 +65,7 @@ export function ProductListScreen() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-6 p-4 bg-secondary border border-border rounded-md shadow"> {/* Adjusted colors to theme */}
+        <div className="mb-6 p-4 bg-secondary border border-border rounded-md shadow">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                 <div><span className="font-semibold">NE:</span> {examData.ne}</div>
                 <div><span className="font-semibold">Referencia:</span> {examData.reference || 'N/A'}</div>
@@ -81,7 +82,6 @@ export function ProductListScreen() {
         <ProductTable products={products} />
       </CardContent>
       
-      {/* Modals are controlled by ExamContext and rendered at a higher level or via context state */}
       <ProductDialog /> 
       <DeleteProductDialog
         open={!!productToDelete}
@@ -90,7 +90,7 @@ export function ProductListScreen() {
         productName={productToDelete?.name}
         isLoading={isDeleteDialogLoading}
       />
-      {/* <ProductDetailsModal />  Ensure this is implemented or remove if not used yet */}
+      {/* <ProductDetailsModal /> */}
     </Card>
   );
 }
