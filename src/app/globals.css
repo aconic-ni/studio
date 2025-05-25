@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -93,5 +94,15 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .bg-grid-pattern {
+    background-color: hsl(var(--primary)); /* Uses your theme's primary blue */
+    background-image:
+      linear-gradient(to right, hsla(0, 0%, 100%, 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, hsla(0, 0%, 100%, 0.07) 1px, transparent 1px);
+    background-size: 2rem 2rem; /* Adjust grid size as needed, e.g., 2rem for 32px squares */
   }
 }
