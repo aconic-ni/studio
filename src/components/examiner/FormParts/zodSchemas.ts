@@ -22,6 +22,7 @@ export const solicitudSchema = z.object({
   montoMoneda: z.enum(['cordoba', 'dolar', 'euro'], { errorMap: () => ({ message: "Seleccione una moneda para el monto." })}).optional(),
   cantidadEnLetras: z.string().optional(),
 
+  consignatario: z.string().optional(), // Added new field
   declaracionNumero: z.string().optional(),
   unidadRecaudadora: z.string().optional(),
   codigo1: z.string().optional(),

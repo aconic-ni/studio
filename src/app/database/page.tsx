@@ -117,6 +117,7 @@ const FetchedExamDetails: React.FC<{ exam: ExamDocument }> = ({ exam }) => {
                     <div className="pt-2">
                         <h6 className="text-sm font-medium text-accent mb-1">Información Adicional</h6>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+                        <FetchedDetailItem label="Consignatario" value={solicitud.consignatario} icon={User} />
                         <FetchedDetailItem label="Declaración Número" value={solicitud.declaracionNumero} icon={Hash} />
                         <FetchedDetailItem label="Unidad Recaudadora" value={solicitud.unidadRecaudadora} icon={Building} />
                         <FetchedDetailItem label="Código 1" value={solicitud.codigo1} icon={Code} />

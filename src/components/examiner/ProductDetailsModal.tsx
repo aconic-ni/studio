@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useAppContext } from '@/context/AppContext';
-import type { SolicitudData } from '@/types'; // Changed Product to SolicitudData
+import type { SolicitudData } from '@/types'; 
 import { X, CheckSquare, Square, Banknote, Landmark, Hash, User, FileText, Mail, MessageSquare, Building, Code } from 'lucide-react';
 
 // Helper component for displaying detail items
@@ -37,7 +37,7 @@ const CheckboxDetailItem: React.FC<{ label: string; checked?: boolean; subLabel?
 );
 
 
-export function ProductDetailsModal() { // Filename kept, but logic changes for SolicitudData
+export function ProductDetailsModal() { 
   const { solicitudToView, isProductDetailModalOpen, closeProductDetailModal } = useAppContext();
 
   if (!isProductDetailModalOpen || !solicitudToView) {
@@ -98,6 +98,7 @@ export function ProductDetailsModal() { // Filename kept, but logic changes for 
               <div className="pt-3">
                 <h4 className="text-md font-medium text-primary mb-1">Información Adicional de Solicitud</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+                  <DetailItem label="Consignatario" value={s.consignatario} icon={User} />
                   <DetailItem label="Declaración Número" value={s.declaracionNumero} icon={Hash} />
                   <DetailItem label="Unidad Recaudadora" value={s.unidadRecaudadora} icon={Building} />
                   <DetailItem label="Código 1" value={s.codigo1} icon={Code} />

@@ -18,6 +18,7 @@ export interface SolicitudData {
   cantidadEnLetras?: string; 
 
   // Section 2: Detalles de la Solicitud
+  consignatario?: string; // Added new field
   declaracionNumero?: string; 
   unidadRecaudadora?: string; 
   codigo1?: string; 
@@ -61,14 +62,14 @@ export interface AppUser {
 }
 
 export interface ExamDocument extends ExamData {
-  solicitudes: SolicitudData[]; // Changed from products
+  solicitudes: SolicitudData[]; 
   savedAt: Timestamp;
   savedBy: string | null;
 }
 
 export interface ExportableExamData extends Omit<ExamData, 'date'> {
   date?: Date | Timestamp | null;
-  products?: SolicitudData[] | null; // Kept 'products' key for compatibility if downloadExcelFile expects it
+  products?: SolicitudData[] | null; 
   savedAt?: Timestamp | Date | null;
   savedBy?: string | null;
 }

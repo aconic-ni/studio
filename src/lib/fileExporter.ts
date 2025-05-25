@@ -44,6 +44,7 @@ export function downloadTxtFile(examData: ExamData, solicitudes: SolicitudData[]
     content += `\n--- Solicitud ${index + 1} ---\n`;
     content += `Monto: ${formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda)}\n`;
     content += `Cantidad en Letras: ${solicitud.cantidadEnLetras || 'N/A'}\n`;
+    content += `Consignatario: ${solicitud.consignatario || 'N/A'}\n`;
     content += `Declaración Número: ${solicitud.declaracionNumero || 'N/A'}\n`;
     content += `Unidad Recaudadora: ${solicitud.unidadRecaudadora || 'N/A'}\n`;
     content += `Código 1: ${solicitud.codigo1 || 'N/A'}\n`;
@@ -126,6 +127,7 @@ export function downloadExcelFile(data: ExportableExamData) {
     sheetData.push([]);
 
     sheetData.push(['Información Adicional de Solicitud:']);
+    sheetData.push(['  Consignatario:', solicitud.consignatario || 'N/A']);
     sheetData.push(['  Declaración Número:', solicitud.declaracionNumero || 'N/A']);
     sheetData.push(['  Unidad Recaudadora:', solicitud.unidadRecaudadora || 'N/A']);
     sheetData.push(['  Código 1:', solicitud.codigo1 || 'N/A']);

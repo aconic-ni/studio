@@ -16,7 +16,7 @@ import type { SolicitudFormData } from './FormParts/zodSchemas';
 import { solicitudSchema } from './FormParts/zodSchemas';
 import type { SolicitudData } from '@/types';
 import { useAuth } from '@/context/AuthContext';
-import { X, Hash, FileText, Tag, Landmark, Mail, FilePlus, DollarSign, Euro, ListFilter, Building, Code, MessageSquare, Banknote } from 'lucide-react';
+import { X, Hash, FileText, Tag, Landmark, Mail, FilePlus, DollarSign, Euro, ListFilter, Building, Code, MessageSquare, Banknote, User } from 'lucide-react'; // Added User icon
 // Placeholder for numberToWords, actual implementation would be more complex
 // import { numberToWords } from '@/lib/numberToWords';
 
@@ -39,6 +39,7 @@ export function AddProductModal() {
       monto: undefined,
       montoMoneda: 'cordoba',
       cantidadEnLetras: '',
+      consignatario: '', // Added default
       declaracionNumero: '',
       unidadRecaudadora: '',
       codigo1: '',
@@ -91,6 +92,7 @@ export function AddProductModal() {
           ...editingSolicitud,
           monto: editingSolicitud.monto !== undefined ? Number(editingSolicitud.monto) : undefined,
           correo: editingSolicitud.correo || defaultCorreo,
+          consignatario: editingSolicitud.consignatario || '', // Added for edit
         } as SolicitudFormData);
         setShowBancoOtros(editingSolicitud.banco === 'Otros');
         setShowMonedaCuentaOtros(editingSolicitud.monedaCuenta === 'Otros');
@@ -99,6 +101,7 @@ export function AddProductModal() {
           monto: undefined,
           montoMoneda: 'cordoba',
           cantidadEnLetras: '',
+          consignatario: '', // Added for new
           declaracionNumero: '',
           unidadRecaudadora: '',
           codigo1: '',
@@ -181,6 +184,7 @@ export function AddProductModal() {
                             elaborarChequeA: "Beneficiario (Cheque)",
                             elaborarTransferenciaA: "Beneficiario (Transferencia)",
                             monto: "Monto Solicitado",
+                            consignatario: "Consignatario",
                             // Add other field name mappings as needed
                         };
                         readableFieldName = fieldNameMap[fieldName] || fieldName.replace(/([A-Z])/g, ' $1').toLowerCase();
@@ -235,6 +239,12 @@ export function AddProductModal() {
             {/* Section 2: Detalles de la Solicitud */}
             <div className="space-y-4 p-4 border rounded-md">
               <h4 className="text-md font-medium text-primary mb-2">Información Adicional de Solicitud</h4>
+              <FormField control={form.control} name="consignatario" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center"><User className="mr-2 h-4 w-4 text-primary" />CONSIGNATARIO</FormLabel>
+                  <FormControl><Input placeholder="Nombre del consignatario" {...field} value={field.value ?? ''} /></FormControl><FormMessage />
+                </FormItem>
+              )}/>
               <FormField control={form.control} name="declaracionNumero" render={({ field }) => (
                 <FormItem>
                   <FormLabel className="flex items-center"><Hash className="mr-2 h-4 w-4 text-primary" />Declaracion Número</FormLabel>
@@ -431,5 +441,3 @@ export function AddProductModal() {
     </Dialog>
   );
 }
-
-    
