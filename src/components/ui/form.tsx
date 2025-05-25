@@ -106,7 +106,7 @@ FormLabel.displayName = "FormLabel"
 const FormControl = React.forwardRef<
   React.ElementRef<typeof Slot>,
   React.ComponentPropsWithoutRef<typeof Slot>
->(({ ...props }, ref) => {
+>(({ children, ...props }, ref) => { // Explicitly get children
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
 
   return (
@@ -119,8 +119,10 @@ const FormControl = React.forwardRef<
           : `${formDescriptionId} ${formMessageId}`
       }
       aria-invalid={!!error}
-      {...props}
-    />
+      {...props} // Pass other props
+    >
+      {children} {/* Pass children as JSX child to Slot */}
+    </Slot>
   )
 })
 FormControl.displayName = "FormControl"
