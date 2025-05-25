@@ -105,27 +105,30 @@ export function downloadExcelFile(data: ExportableExamData) {
     const sheetData: (string | number | Date | null | undefined)[][] = [];
 
     // --- Main Title ---
-    sheetData.push(['SOLICITUD DE CHEQUE - CustomsFA-L']);
-    sheetData.push([]); // Empty separator row
+    sheetData.push(['SOLICITUD DE CHEQUE - CustomsFA-L']); // Row 1 (index 0)
+    sheetData.push([]); // Row 2 (index 1) - Empty separator row
 
     // --- General Exam Information ---
-    sheetData.push(['INFORMACIÓN GENERAL:']);
-    sheetData.push(['NE (Tracking NX1):', examInfo.ne]);
-    sheetData.push(['Referencia:', examInfo.reference || 'N/A']);
-    sheetData.push(['De (Colaborador):', examInfo.manager]);
-    sheetData.push(['A (Destinatario):', examInfo.recipient]);
-    sheetData.push(['Fecha de Examen:', formatDate(examInfo.date)]);
+    sheetData.push(['INFORMACIÓN GENERAL:']); // Row 3 (index 2)
+    sheetData.push(['NE (Tracking NX1):', examInfo.ne]); // Row 4 (index 3)
+    sheetData.push(['Referencia:', examInfo.reference || 'N/A']); // Row 5 (index 4)
+    sheetData.push(['De (Colaborador):', examInfo.manager]); // Row 6 (index 5)
+    sheetData.push(['A (Destinatario):', examInfo.recipient]); // Row 7 (index 6)
+    sheetData.push(['Fecha de Examen:', formatDate(examInfo.date)]); // Row 8 (index 7)
     if (examInfo.savedBy) sheetData.push(['Guardado por (correo):', examInfo.savedBy]);
     if (examInfo.savedAt) sheetData.push(['Fecha y Hora de Guardado:', formatDate(examInfo.savedAt)]);
     sheetData.push([]); // Empty separator row
 
     // --- Solicitud Details Title ---
-    sheetData.push(['DETALLES DE LA SOLICITUD:']);
+    sheetData.push(['DETALLES DE LA SOLICITUD:']); // index depends on savedBy/At
     sheetData.push([]); // Empty separator row
     
     // --- Monto y Cantidad (Revised for specific layout) ---
+    // Row N (e.g. index 11 if savedBy/At not present): "Por este medio..."
     sheetData.push(['Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:']);
+    // Row N+1 (e.g. index 12): Monto value
     sheetData.push([formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda)]);
+    // Row N+2 (e.g. index 13): "Cantidad en Letras:" and its value
     sheetData.push(['Cantidad en Letras:', solicitud.cantidadEnLetras || 'N/A']);
     sheetData.push([]); // Empty row after this section
 
@@ -188,76 +191,122 @@ export function downloadExcelFile(data: ExportableExamData) {
 
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
 
-    const colWidths = [ {wch: 60}, {wch: 60} ]; // Default width for columns A and B
-    ws['!cols'] = colWidths;
+    // Base style for all textual content (labels and non-bold values)
+    const baseTextStyle = { alignment: { wrapText: true, vertical: 'top' } };
+    // Style for bold values
+    const boldValueStyle = { font: { bold: true }, alignment: { wrapText: true, vertical: 'top' } };
+    // Style for main title
+    const mainTitleStyle = { font: { bold: true, sz: 14 }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true } };
+    // Style for section headers
+    const sectionHeaderStyle = { font: { bold: true }, alignment: { horizontal: 'left', vertical: 'top', wrapText: true } };
 
-    // Style for bold text
-    const boldStyle = { font: { bold: true } };
 
     sheetData.forEach((row, rIndex) => {
-      const excelRowIndex = rIndex + 1; // 1-based index for Excel
-
-      if (row.length === 2) {
-        // Label-value pair: ['Label:', Value]
-        const valueCellAddress = `B${excelRowIndex}`;
-        if (typeof row[0] === 'string' && row[0].trim() !== '' &&
-            row[1] !== 'N/A' && row[1] !== undefined && row[1] !== null && String(row[1]).trim() !== '') {
-          if (ws[valueCellAddress]) {
-            ws[valueCellAddress].s = boldStyle;
-          }
-        }
-      } else if (row.length === 1) {
-        // Single value row or a section/main title
-        const cellValue = String(row[0]); // Ensure it's a string for checks
-        if (cellValue.trim() !== '') {
-          const isMainTitle = cellValue === 'SOLICITUD DE CHEQUE - CustomsFA-L';
-          // Regex for section titles (all caps, may contain spaces and accented chars, ends with ':')
-          const isSectionHeader = /^[A-ZÁÉÍÓÚÑ\s]+:$/.test(cellValue.trim());
-
-          const currentCellAddress = `A${excelRowIndex}`;
-          if (ws[currentCellAddress]) {
-            if (isMainTitle) {
-              ws[currentCellAddress].s = { font: { bold: true, sz: 14 }, alignment: { horizontal: 'center' } };
-            } else if (isSectionHeader) {
-              ws[currentCellAddress].s = boldStyle; // Section headers also bold
+      row.forEach((cellValue, cIndex) => {
+        const cellAddress = XLSX.utils.encode_cell({ r: rIndex, c: cIndex });
+        if (!ws[cellAddress]) { // Ensure cell object exists if it was empty
+            if (typeof cellValue !== 'undefined' && cellValue !== null) {
+                 ws[cellAddress] = { t: (typeof cellValue === 'number' ? 'n' : 's'), v: cellValue };
             } else {
-              // Assumed to be a user-entered value (like the numeric 'monto' or other single-line values)
-              ws[currentCellAddress].s = boldStyle;
+                 ws[cellAddress] = { t: 's', v: '' }; // Create empty string cell
+            }
+        }
+        // Apply base text style to all non-empty cells that are strings or numbers
+        // This ensures wrapText and vertical: 'top' for all content cells
+        if (ws[cellAddress] && (typeof ws[cellAddress].v === 'string' || typeof ws[cellAddress].v === 'number')) {
+            if (String(ws[cellAddress].v).trim() !== '') {
+                 if(!ws[cellAddress].s) ws[cellAddress].s = {}; // Ensure style object exists
+                 ws[cellAddress].s.alignment = JSON.parse(JSON.stringify(baseTextStyle.alignment)); // Apply base alignment
+            }
+        }
+      });
+
+      // Apply specific styles (this will override parts of baseTextStyle where needed)
+      const excelRowIndex = rIndex + 1; // XLSX uses 1-based indexing for direct addressing like "A1"
+      if (rIndex === 0 && row.length > 0) { // Main Title (Row 1)
+        const cellAddress = `A${excelRowIndex}`;
+        if (ws[cellAddress]) ws[cellAddress].s = mainTitleStyle;
+      } else if (row.length === 1 && typeof row[0] === 'string' && /^[A-ZÁÉÍÓÚÑ\s]+:$/.test(String(row[0]).trim())) { // Section Headers
+        const cellAddress = `A${excelRowIndex}`;
+        if (ws[cellAddress]) ws[cellAddress].s = sectionHeaderStyle;
+      } else if (row.length === 2) { // Label-value pairs
+        const valueCellAddress = XLSX.utils.encode_cell({ r: rIndex, c: 1 }); // Column B for value
+        if (typeof row[1] === 'string' || typeof row[1] === 'number') {
+          if (String(row[1]).trim() !== '' && String(row[1]) !== 'N/A') {
+            if (ws[valueCellAddress]) {
+                ws[valueCellAddress].s = JSON.parse(JSON.stringify(boldValueStyle)); // Bold user-entered values
             }
           }
+        }
+      } else if (row.length === 1 && (typeof row[0] === 'string' || typeof row[0] === 'number')) { // Single value rows (like numeric Monto)
+        const cellAddress = XLSX.utils.encode_cell({r: rIndex, c: 0}); // Column A
+        // Exclude section headers from this single-value bolding logic as they are handled above
+        if (ws[cellAddress] && !(typeof row[0] === 'string' && /^[A-ZÁÉÍÓÚÑ\s]+:$/.test(String(row[0]).trim()))) {
+            if (String(row[0]).trim() !== '' && String(row[0]) !== 'N/A') {
+                 ws[cellAddress].s = JSON.parse(JSON.stringify(boldValueStyle)); // Bold user-entered values
+            }
         }
       }
     });
     
-    // Merges
-    if (!ws['!merges']) {
-        ws['!merges'] = [];
+    // Specific justification for cell B14 (Cantidad en Letras value)
+    // Find the row index for "Cantidad en Letras:"
+    let cantidadEnLetrasDataRowIndex = -1;
+    for(let i=0; i<sheetData.length; i++) {
+        if(sheetData[i][0] === 'Cantidad en Letras:') {
+            cantidadEnLetrasDataRowIndex = i;
+            break;
+        }
     }
+
+    if (cantidadEnLetrasDataRowIndex !== -1) {
+        const cellBAddress = XLSX.utils.encode_cell({ r: cantidadEnLetrasDataRowIndex, c: 1 }); // B cell for the value
+        if (ws[cellBAddress]) { 
+            if (!ws[cellBAddress].s) ws[cellBAddress].s = { alignment: {} }; 
+            else if (!ws[cellBAddress].s.alignment) ws[cellBAddress].s.alignment = {}; 
+            
+            ws[cellBAddress].s.alignment.horizontal = 'justify';
+            ws[cellBAddress].s.alignment.vertical = 'top'; 
+            ws[cellBAddress].s.alignment.wrapText = true;
+        }
+    }
+    
+    // Merges
+    if (!ws['!merges']) ws['!merges'] = [];
     const addMergeIfNotExists = (newMerge: XLSX.Range) => {
         const exists = ws['!merges']!.some(m => 
             m.s.r === newMerge.s.r && m.s.c === newMerge.s.c &&
             m.e.r === newMerge.e.r && m.e.c === newMerge.e.c
         );
-        if (!exists) {
-            ws['!merges']!.push(newMerge);
-        }
+        if (!exists) ws['!merges']!.push(newMerge);
     };
     
-    // Merge main title (A1:B1)
-    addMergeIfNotExists({ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } });
+    addMergeIfNotExists({ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }); // Merge main title (A1:B1)
 
-    // Merge section headers (Col A to Col B for that row)
     sheetData.forEach((row, rIndex) => {
         if (row.length === 1 && typeof row[0] === 'string' && /^[A-ZÁÉÍÓÚÑ\s]+:$/.test(String(row[0]).trim())) {
-             addMergeIfNotExists({ s: { r: rIndex, c: 0 }, e: { r: rIndex, c: 1 } });
+             addMergeIfNotExists({ s: { r: rIndex, c: 0 }, e: { r: rIndex, c: 1 } }); // Merge section headers
         }
     });
 
-    XLSX.utils.book_append_sheet(wb, ws, `Solicitud ${index + 1}`);
+    const colWidths = [ {wch: 60}, {wch: 60} ]; 
+    ws['!cols'] = colWidths;
+
+    // Set print options for fitToPage
+    ws['!printSetup'] = {
+        fitToWidth: 1,
+        fitToHeight: 1,
+        paperSize: 1, // US Letter (8.5in x 11in)
+        orientation: 'portrait'
+    };
+
+    const sheetName = `Solicitud ${index + 1}`;
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
   });
 
   const fileName = `SolicitudesCheque_${examInfo.ne || 'SIN_NE'}_${new Date().toISOString().split('T')[0]}.xlsx`;
   XLSX.writeFile(wb, fileName);
 }
+    
 
     
