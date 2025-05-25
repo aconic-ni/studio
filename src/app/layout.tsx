@@ -6,7 +6,6 @@ import { AuthProvider } from '@/context/AuthContext';
 import { AppProvider } from '@/context/AppContext';
 import { Toaster } from '@/components/ui/toaster';
 import { FirebaseAppProvider } from '@/context/FirebaseAppContext'; // Renamed to avoid conflict
-import { use } from 'react';
 
 const inter = Inter({ // Changed from Geist to Inter
   variable: '--font-inter', // Changed variable name
@@ -25,8 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
   params: { [key: string]: string | string[] | undefined };
 }>) {
-  // Directly use or log params if needed instead of using `use`
-  console.log(params);
+  // Removed console.log(params);
 
   return (
     <html lang="es">
