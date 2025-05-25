@@ -7,13 +7,14 @@ import { ProductTable } from './ProductTable';
 import { AddProductModal } from './AddProductModal';
 import { PlusCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import { ProductDetailsModal } from './ProductDetailsModal';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 
 export function ProductListScreen() {
   const { examData, setCurrentStep, openAddProductModal, products } = useAppContext();
 
   if (!examData) {
-    // Should not happen if navigation is correct, but as a fallback
     return (
       <div className="text-center py-10">
         <p>Error: Datos del examen no encontrados.</p>
@@ -24,7 +25,7 @@ export function ProductListScreen() {
   
   const handleFinish = () => {
      if (products.length === 0) {
-        alert('Debe agregar al menos un producto antes de finalizar.');
+        alert('Debe agregar al menos un producto antes de finalizar.'); // Consider using a toast notification
         return;
       }
     setCurrentStep(ExamStep.PREVIEW);
@@ -47,11 +48,12 @@ export function ProductListScreen() {
       </CardHeader>
       <CardContent>
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md shadow">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                 <div><span className="font-semibold">NE:</span> {examData.ne}</div>
                 <div><span className="font-semibold">Referencia:</span> {examData.reference || 'N/A'}</div>
-                <div><span className="font-semibold">Gestor:</span> {examData.manager}</div>
-                <div><span className="font-semibold">Ubicación:</span> {examData.location}</div>
+                <div><span className="font-semibold">De:</span> {examData.manager}</div>
+                <div><span className="font-semibold">A:</span> {examData.recipient}</div>
+                <div><span className="font-semibold">Fecha:</span> {examData.date ? format(examData.date, "PPP", { locale: es }) : 'N/A'}</div>
             </div>
             <div className="mt-3">
                 <Button variant="link" onClick={() => setCurrentStep(ExamStep.INITIAL_INFO)} className="text-primary p-0 h-auto">

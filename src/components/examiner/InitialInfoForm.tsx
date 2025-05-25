@@ -9,7 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppContext, ExamStep } from '@/context/AppContext';
 import type { InitialInfoFormData} from './FormParts/zodSchemas';
 import { initialInfoSchema } from './FormParts/zodSchemas';
-import { useAuth } from '@/context/AuthContext'; // Import useAuth
+import { useAuth } from '@/context/AuthContext';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale'; // Import Spanish locale
+import { cn } from '@/lib/utils';
 
 // Helper function to extract and format name from email
 function extractNameFromEmail(email?: string | null): string {
@@ -23,13 +29,13 @@ function extractNameFromEmail(email?: string | null): string {
     return formattedName;
   } catch (error) {
     console.error("Error extracting name from email:", error);
-    return ""; // Return empty string or a default name if extraction fails
+    return "";
   }
 }
 
 export function InitialInfoForm() {
   const { setExamData, setCurrentStep, examData: existingExamData } = useAppContext();
-  const { user } = useAuth(); // Get user from AuthContext
+  const { user } = useAuth();
 
   const defaultManagerName =
     existingExamData?.manager ||
@@ -41,14 +47,15 @@ export function InitialInfoForm() {
       ne: existingExamData?.ne || '',
       reference: existingExamData?.reference || '',
       manager: defaultManagerName || '',
-      location: existingExamData?.location || '',
+      date: existingExamData?.date || undefined,
+      recipient: existingExamData?.recipient || '',
     },
   });
 
 function onSubmit(data: InitialInfoFormData) {
   setExamData({
     ...data,
-    reference: data.reference || "", // Ensure 'reference' is a string
+    reference: data.reference || "", 
   });
   setCurrentStep(ExamStep.PRODUCT_LIST);
 }
@@ -56,7 +63,7 @@ function onSubmit(data: InitialInfoFormData) {
   return (
     <Card className="w-full max-w-3xl mx-auto custom-shadow">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold text-gray-800">Nuevo Examen</CardTitle>
+        <CardTitle className="text-2xl font-semibold text-gray-800">Solicitud de Cheque</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -93,27 +100,78 @@ function onSubmit(data: InitialInfoFormData) {
                 name="manager"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nombre del Gestor *</FormLabel>
+                    <FormLabel>De (Nombre colaborador) *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nombre completo del gestor" {...field} value={field.value ?? ''} />
+                      <Input placeholder="Nombre completo del colaborador" {...field} value={field.value ?? ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ubicación de la Mercancía *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ej: Almacén Central, Bodega 5" {...field} value={field.value ?? ''} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Fecha *</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP", { locale: es })
+                              ) : (
+                                <span>Seleccione una fecha</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) =>
+                              date > new Date() || date < new Date("1900-01-01")
+                            }
+                            initialFocus
+                            locale={es}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="recipient"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>A: *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Destinatario o Departamento" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                       <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => form.setValue('recipient', 'Contabilidad', { shouldValidate: true })}
+                          className="mt-1 text-xs"
+                        >
+                          Contabilidad
+                        </Button>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
             </div>
             <div className="flex justify-end pt-2">
               <Button type="submit" className="btn-primary px-6 py-3">

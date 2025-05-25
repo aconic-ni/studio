@@ -45,8 +45,8 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   const [isProductDetailModalOpen, setIsProductDetailModalOpen] = useState(false);
   const [productToView, setProductToView] = useState<Product | null>(null);
 
-  const { user: authUser } = useAuth(); // Get the authenticated user from AuthContext
-  const [internalUser, setInternalUser] = useState<AuthAppUser | null>(authUser); // Keep track of the user AppContext knows
+  const { user: authUser } = useAuth(); 
+  const [internalUser, setInternalUser] = useState<AuthAppUser | null>(authUser);
 
   const resetApp = useCallback(() => {
     setExamDataState(null);
@@ -60,16 +60,13 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
 
 
   useEffect(() => {
-    // If the authenticated user from AuthContext changes,
-    // and it's different from the user AppContext currently knows about,
-    // then reset the AppContext state.
     const authUserChanged = authUser?.uid !== internalUser?.uid || 
                            (authUser && !internalUser) || 
                            (!authUser && internalUser);
 
     if (authUserChanged) {
       resetApp();
-      setInternalUser(authUser); // Update internalUser to the new authUser
+      setInternalUser(authUser); 
     }
   }, [authUser, internalUser, resetApp]);
 
@@ -87,7 +84,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     setProducts((prevProducts) =>
       prevProducts.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
     );
-    setEditingProductState(null); // Clear editing state
+    setEditingProductState(null); 
   }, []);
 
   const deleteProduct = useCallback((productId: string) => {
@@ -109,7 +106,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
 
   const closeAddProductModal = useCallback(() => {
     setIsAddProductModalOpen(false);
-    setEditingProductState(null); // Clear editing state when closing
+    setEditingProductState(null); 
   }, []);
 
   const openProductDetailModal = useCallback((product: Product) => {

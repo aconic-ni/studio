@@ -3,9 +3,10 @@ import type { Timestamp } from 'firebase/firestore';
 
 export interface ExamData {
   ne: string;
-  reference: string;
-  manager: string;
-  location: string;
+  reference: string; // Kept optional as per original schema for reference
+  manager: string; // "De (Nombre colaborador)"
+  date: Date; // New field "Fecha"
+  recipient: string; // New field "A:"
 }
 
 export interface Product {
@@ -45,10 +46,9 @@ export interface ExamDocument extends ExamData {
 
 // Interface for data passed to downloadExcelFile
 // It accommodates both PreviewScreen (without savedAt/savedBy) and DatabasePage (with them)
-export interface ExportableExamData extends ExamData {
+export interface ExportableExamData extends Omit<ExamData, 'date'> { // Omit ExamData.date
+  date?: Date | Timestamp | null; // Make date optional and allow Timestamp for FetchedExamDetails
   products?: Product[] | null;
-  savedAt?: Timestamp | Date | null; // Allow null for consistency if field might be absent
+  savedAt?: Timestamp | Date | null;
   savedBy?: string | null;
 }
-
-    

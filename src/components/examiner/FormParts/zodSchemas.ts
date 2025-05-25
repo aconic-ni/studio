@@ -4,7 +4,8 @@ export const initialInfoSchema = z.object({
   ne: z.string().min(1, "NE es requerido."),
   reference: z.string().optional(),
   manager: z.string().min(1, "Nombre del Gestor es requerido."),
-  location: z.string().min(1, "Ubicación es requerida."),
+  date: z.date({ required_error: "Fecha es requerida." }),
+  recipient: z.string().min(1, "Destinatario es requerido."),
 });
 
 export type InitialInfoFormData = z.infer<typeof initialInfoSchema>;

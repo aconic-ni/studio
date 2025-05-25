@@ -6,6 +6,8 @@ import { useAppContext, ExamStep } from '@/context/AppContext';
 import { downloadTxtFile, downloadExcelFile } from '@/lib/fileExporter';
 import type { Product } from '@/types';
 import { Download, Check, ArrowLeft } from 'lucide-react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 // Helper component for displaying product details
 const DetailItem: React.FC<{ label: string; value?: string | number | null | boolean }> = ({ label, value }) => {
@@ -47,7 +49,6 @@ export function PreviewScreen() {
 
   const handleDownloadExcel = () => {
     if (examData) {
-      // When downloading from preview, we don't have savedAt or savedBy yet
       downloadExcelFile({ ...examData, products });
     }
   };
@@ -70,8 +71,9 @@ export function PreviewScreen() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 bg-secondary/30 p-4 rounded-md shadow-sm text-sm">
             <div><span className="font-semibold text-foreground/80">NE:</span> {examData.ne}</div>
             <div><span className="font-semibold text-foreground/80">Referencia:</span> {examData.reference || 'N/A'}</div>
-            <div><span className="font-semibold text-foreground/80">Gestor:</span> {examData.manager}</div>
-            <div><span className="font-semibold text-foreground/80">Ubicación:</span> {examData.location}</div>
+            <div><span className="font-semibold text-foreground/80">De:</span> {examData.manager}</div>
+            <div><span className="font-semibold text-foreground/80">A:</span> {examData.recipient}</div>
+            <div><span className="font-semibold text-foreground/80">Fecha:</span> {examData.date ? format(examData.date, "PPP", { locale: es }) : 'N/A'}</div>
           </div>
         </div>
 
