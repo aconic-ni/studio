@@ -3,10 +3,10 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppContext, ExamStep } from '@/context/AppContext';
-import { ProductTable } from './ProductTable';
-import { AddProductModal } from './AddProductModal';
+import { ProductTable } from './ProductTable'; // This will likely need to be renamed/refactored to SolicitudTable
+import { AddProductModal } from './AddProductModal'; // This is now effectively AddSolicitudModal
 import { PlusCircle, CheckCircle, ArrowLeft } from 'lucide-react';
-import { ProductDetailsModal } from './ProductDetailsModal';
+import { ProductDetailsModal } from './ProductDetailsModal'; // This will likely need to be renamed/refactored to SolicitudDetailsModal
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -15,6 +15,7 @@ export function ProductListScreen() {
   const { examData, setCurrentStep, openAddProductModal, products } = useAppContext();
 
   if (!examData) {
+    // Should not happen if navigation is correct, but as a fallback
     return (
       <div className="text-center py-10">
         <p>Error: Datos del examen no encontrados.</p>
@@ -25,7 +26,7 @@ export function ProductListScreen() {
   
   const handleFinish = () => {
      if (products.length === 0) {
-        alert('Debe agregar al menos un producto antes de finalizar.'); // Consider using a toast notification
+        alert('Debe agregar al menos una solicitud antes de finalizar.'); // Consider using a toast notification
         return;
       }
     setCurrentStep(ExamStep.PREVIEW);
@@ -38,7 +39,7 @@ export function ProductListScreen() {
           <CardTitle className="text-xl md:text-2xl font-semibold text-gray-800">EXAMEN PREVIO</CardTitle>
           <div className="flex flex-col sm:flex-row gap-3">
             <Button onClick={() => openAddProductModal()} className="btn-primary">
-              <PlusCircle className="mr-2 h-5 w-5" /> Añadir Nuevo Producto
+              <PlusCircle className="mr-2 h-5 w-5" /> Añadir Nueva Solicitud
             </Button>
             <Button onClick={handleFinish} className="btn-secondary">
               <CheckCircle className="mr-2 h-5 w-5" /> Finalizar y Previsualizar
@@ -62,10 +63,10 @@ export function ProductListScreen() {
             </div>
         </div>
         
-        <ProductTable />
+        <ProductTable /> 
       </CardContent>
       <AddProductModal />
-      <ProductDetailsModal />
+      <ProductDetailsModal /> 
     </Card>
   );
 }
