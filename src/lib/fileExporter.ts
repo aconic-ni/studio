@@ -124,9 +124,14 @@ export function downloadExcelFile(data: ExportableExamData) {
     sheetData.push([]); 
 
     // --- Monto y Cantidad (New Structure) ---
-    sheetData.push(['Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:']);
-    sheetData.push([formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda)]); 
-    sheetData.push(['Cantidad en Letras:', solicitud.cantidadEnLetras || 'N/A']);
+    const montoLabel = "Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:";
+    const montoValue = formatCurrencyForExport(solicitud.monto, solicitud.montoMoneda);
+    const cantidadEnLetrasLabel = "Cantidad en Letras:";
+    const cantidadEnLetrasValue = solicitud.cantidadEnLetras || 'N/A';
+
+    sheetData.push([montoLabel]);
+    sheetData.push([montoValue]);
+    sheetData.push([cantidadEnLetrasLabel, cantidadEnLetrasValue]);
     sheetData.push([]);
 
 
@@ -190,89 +195,92 @@ export function downloadExcelFile(data: ExportableExamData) {
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
     const numRows = sheetData.length;
     
-    // Initialize !rows array if it doesn't exist
     if (!ws['!rows']) ws['!rows'] = [];
 
-    // Apply base styling (wrap text, vertical top) and identify user-input for bolding
+    let cantidadEnLetrasValueRowIndex = -1;
+    let observacionValueRowIndex = -1;
+
     sheetData.forEach((row, rIndex) => {
+        const cellValueA = String(row[0] ?? '').trim();
+        const cellValueB = String(row[1] ?? '').trim();
+
         const cellAddressA = XLSX.utils.encode_cell({ r: rIndex, c: 0 });
         const cellAddressB = XLSX.utils.encode_cell({ r: rIndex, c: 1 });
 
-        // Style for Column A
+        // Base style: wrap text and vertical top align for all content cells
+        const applyBaseStyle = (cellAddr: string) => {
+            if (!ws[cellAddr]) ws[cellAddr] = { t: 's', v: sheetData[rIndex][XLSX.utils.decode_col(cellAddr.replace(/[0-9]/g, ''))] };
+            if (!ws[cellAddr].s) ws[cellAddr].s = {};
+            if (!ws[cellAddr].s.alignment) ws[cellAddr].s.alignment = {};
+            ws[cellAddr].s.alignment.wrapText = true;
+            ws[cellAddr].s.alignment.vertical = 'top';
+        };
+        
+        if (cellValueA) applyBaseStyle(cellAddressA);
+        if (typeof row[1] !== 'undefined') applyBaseStyle(cellAddressB);
+
+
+        // Style for Column A (Labels and standalone values)
         if (ws[cellAddressA]) {
-            if (!ws[cellAddressA].s) ws[cellAddressA].s = {};
-            ws[cellAddressA].s.alignment = { ... (ws[cellAddressA].s.alignment || {}), wrapText: true, vertical: 'top' };
-            
-            const cellValueA = String(row[0] ?? '').trim();
-             // Bold if it's a section title (all caps and ends with ':') or a standalone value (not a label)
-            if (cellValueA === 'SOLICITUD DE CHEQUE - CustomsFA-L' || (cellValueA.endsWith(':') && cellValueA === cellValueA.toUpperCase()) || 
-                (rIndex === sheetData.findIndex(r => String(r[0] ?? '').trim() === "Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:") + 1 && cellValueA !== 'N/A')) {
+            // Bold if it's a section title (all caps and ends with ':') or specific standalone values
+            if (cellValueA === 'SOLICITUD DE CHEQUE - CustomsFA-L' || 
+                (cellValueA.endsWith(':') && cellValueA === cellValueA.toUpperCase()) ||
+                (rIndex === sheetData.findIndex(r => String(r[0] ?? '').trim() === montoLabel) + 1 && cellValueA !== 'N/A') // Monto Value
+            ) {
                 if (!ws[cellAddressA].s.font) ws[cellAddressA].s.font = {};
                 ws[cellAddressA].s.font.bold = true;
                 if(cellValueA === 'SOLICITUD DE CHEQUE - CustomsFA-L') {
                     ws[cellAddressA].s.font.sz = 14;
+                    if (!ws[cellAddressA].s.alignment) ws[cellAddressA].s.alignment = {};
                     ws[cellAddressA].s.alignment.horizontal = 'center';
                 }
             }
         }
 
-        // Style for Column B (values)
-        if (ws[cellAddressB] && typeof row[1] !== 'undefined' && String(row[1]).trim() !== 'N/A' && String(row[1]).trim() !== '') {
-            if (!ws[cellAddressB].s) ws[cellAddressB].s = {};
-            ws[cellAddressB].s.alignment = { ... (ws[cellAddressB].s.alignment || {}), wrapText: true, vertical: 'top' };
+        // Style for Column B (Values) - Bold if user-entered
+        if (ws[cellAddressB] && typeof row[1] !== 'undefined' && cellValueB !== 'N/A' && cellValueB !== '') {
             if (!ws[cellAddressB].s.font) ws[cellAddressB].s.font = {};
-            ws[cellAddressB].s.font.bold = true; // Bold user-entered values
-        } else if (ws[cellAddressB]) { // Ensure alignment for empty/NA cells too
-            if (!ws[cellAddressB].s) ws[cellAddressB].s = {};
-            ws[cellAddressB].s.alignment = { ... (ws[cellAddressB].s.alignment || {}), wrapText: true, vertical: 'top' };
+            ws[cellAddressB].s.font.bold = true;
+        }
+        
+        if (cellValueA === cantidadEnLetrasLabel) {
+            cantidadEnLetrasValueRowIndex = rIndex;
+        }
+        if (cellValueA === '  Observación:') {
+            observacionValueRowIndex = rIndex;
         }
     });
     
-    // Specific justification for "Cantidad en Letras" value cell
-    const cantidadEnLetrasLabelRowIndex = sheetData.findIndex(r => String(r[0] ?? '').trim() === "Cantidad en Letras:");
-    if (cantidadEnLetrasLabelRowIndex !== -1) {
-        const cellBAddressForCantidad = XLSX.utils.encode_cell({ r: cantidadEnLetrasLabelRowIndex, c: 1 });
+    // Specific justification for "Cantidad en Letras" value cell (B-column of that row)
+    if (cantidadEnLetrasValueRowIndex !== -1) {
+        const cellBAddressForCantidad = XLSX.utils.encode_cell({ r: cantidadEnLetrasValueRowIndex, c: 1 });
         if (ws[cellBAddressForCantidad]) {
             if (!ws[cellBAddressForCantidad].s) ws[cellBAddressForCantidad].s = {};
-            ws[cellBAddressForCantidad].s.alignment = { 
-                wrapText: true, 
-                vertical: 'top', 
-                horizontal: 'justify' 
-            };
+            if (!ws[cellBAddressForCantidad].s.alignment) ws[cellBAddressForCantidad].s.alignment = {};
+            ws[cellBAddressForCantidad].s.alignment.wrapText = true; // Ensure wrap
+            ws[cellBAddressForCantidad].s.alignment.vertical = 'top'; // Ensure vertical align
+            ws[cellBAddressForCantidad].s.alignment.horizontal = 'justify';
             // Re-apply bold if it's a user-entered value
             if (solicitud.cantidadEnLetras && solicitud.cantidadEnLetras !== 'N/A') {
                 if (!ws[cellBAddressForCantidad].s.font) ws[cellBAddressForCantidad].s.font = {};
                 ws[cellBAddressForCantidad].s.font.bold = true;
             }
         }
-        // Set row height for "Cantidad en Letras" row
-        if (ws['!rows'].length <= cantidadEnLetrasLabelRowIndex) {
-            for(let i = ws['!rows'].length; i <= cantidadEnLetrasLabelRowIndex; i++) ws['!rows'].push({});
-        }
-        ws['!rows'][cantidadEnLetrasLabelRowIndex] = { ...ws['!rows'][cantidadEnLetrasLabelRowIndex], hpt: 72.90 };
     }
-
-    // Specific wrap text for "Observación" value cell
-    const observacionLabelRowIndex = sheetData.findIndex(r => String(r[0] ?? '').trim() === "  Observación:");
-    if (observacionLabelRowIndex !== -1) {
-        const cellBAddressForObservacion = XLSX.utils.encode_cell({ r: observacionLabelRowIndex, c: 1});
+     // Specific styling for "Observación" value cell (B-column of that row)
+    if (observacionValueRowIndex !== -1) {
+        const cellBAddressForObservacion = XLSX.utils.encode_cell({ r: observacionValueRowIndex, c: 1 });
         if (ws[cellBAddressForObservacion]) {
             if (!ws[cellBAddressForObservacion].s) ws[cellBAddressForObservacion].s = {};
-             ws[cellBAddressForObservacion].s.alignment = { 
-                wrapText: true, 
-                vertical: 'top', 
-                horizontal: 'left' 
-            }; // Ensure wrap text, vertical top, and left align for observation
-             if (solicitud.observation && solicitud.observation !== 'N/A') {
+            if (!ws[cellBAddressForObservacion].s.alignment) ws[cellBAddressForObservacion].s.alignment = {};
+            ws[cellBAddressForObservacion].s.alignment.wrapText = true; // Ensure wrap
+            ws[cellBAddressForObservacion].s.alignment.vertical = 'top'; // Ensure vertical align
+            ws[cellBAddressForObservacion].s.alignment.horizontal = 'left'; // Standard for observations
+            if (solicitud.observation && solicitud.observation !== 'N/A') {
                 if (!ws[cellBAddressForObservacion].s.font) ws[cellBAddressForObservacion].s.font = {};
                 ws[cellBAddressForObservacion].s.font.bold = true;
             }
         }
-         // Set row height for "Observación" row
-        if (ws['!rows'].length <= observacionLabelRowIndex) {
-            for(let i = ws['!rows'].length; i <= observacionLabelRowIndex; i++) ws['!rows'].push({});
-        }
-        ws['!rows'][observacionLabelRowIndex] = { ...ws['!rows'][observacionLabelRowIndex], hpt: 72.90 };
     }
 
 
@@ -290,7 +298,6 @@ export function downloadExcelFile(data: ExportableExamData) {
 
     sheetData.forEach((row, rIndex) => {
         const cellValueColA = String(row[0] ?? '').trim();
-        // Merge section headers that span the full width and are followed by an empty cell in B
         if (
             cellValueColA.endsWith(':') && cellValueColA === cellValueColA.toUpperCase() &&
             (typeof row[1] === 'undefined' || String(row[1]).trim() === '') &&
@@ -301,16 +308,15 @@ export function downloadExcelFile(data: ExportableExamData) {
     });
     
     ws['!cols'] = [ {wch: 35}, {wch: 45} ];
-    ws['!ref'] = `A1:B${Math.min(numRows, 45)}`; // Ensure sheet ref matches print area for consistency
+    ws['!ref'] = `A1:B${Math.min(numRows, 45)}`; 
 
     ws['!printSetup'] = {
         printArea: `A1:B45`, 
         fitToWidth: 1,
-        fitToHeight: 1, 
+        fitToHeight: 0, // Allow content to flow vertically if it wraps
         paperSize: 1,     
         orientation: 'portrait'
     };
-
 
     const sheetName = `Solicitud ${index + 1}`;
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
