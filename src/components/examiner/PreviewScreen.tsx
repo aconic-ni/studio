@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
+import { cn } from '@/lib/utils'; // Import cn utility
 
 // Helper component for displaying detail items in Preview
 const PreviewDetailItem: React.FC<{ label: string; value?: string | number | null | boolean, icon?: React.ElementType, className?: string }> = ({ label, value, icon: Icon, className }) => {
@@ -126,7 +127,7 @@ export function PreviewScreen() {
                 {solicitudes.map((solicitud, index) => (
                   <div key={solicitud.id} className="p-4 border border-border bg-card rounded-lg shadow">
                     <h5 className="text-md font-semibold mb-3 text-primary">
-                      Solicitud {index + 1}
+                      Solicitud {index + 1} ({solicitud.id})
                     </h5>
                     <div className="space-y-3 divide-y divide-border/50">
                       {/* Monto y Cantidad */}
