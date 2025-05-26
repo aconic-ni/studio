@@ -8,6 +8,8 @@ import type { SolicitudData } from '@/types';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { ArrowLeft, Printer, CheckSquare, Square, Banknote, Landmark, Hash, User, FileText, Mail, MessageSquare, Building, Code, CalendarDays, Info, Send, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -64,7 +66,10 @@ export default function SolicitudDetailPage() {
       }
       setLoading(false);
     } else if (solicitudes.length === 0 && !loading && solicitudId) {
+      // This condition might be hit if user directly navigates here and context isn't populated yet.
+      // A more robust solution might involve fetching data if context is empty.
       toast({ title: "Información no disponible", description: "Los datos de la solicitud no están cargados. Intente volver a la lista.", variant: "default" });
+      router.push('/examiner'); // Redirect if data is not available
       setLoading(false); 
     }
   }, [solicitudId, solicitudes, router, toast, loading]);
@@ -123,13 +128,6 @@ export default function SolicitudDetailPage() {
   return (
     <AppShell>
       <div className="solicitud-detail-print-area py-2 md:py-5">
-        {solicitud && (
-          <div className="flex justify-end mb-2">
-            <p className="text-sm text-muted-foreground font-mono">
-              ID Solicitud: {solicitud.id}
-            </p>
-          </div>
-        )}
         <Card className="w-full max-w-4xl mx-auto custom-shadow card-print-styles">
           <CardHeader className="no-print">
             <div className="flex justify-between items-center">
@@ -156,6 +154,22 @@ export default function SolicitudDetailPage() {
               />
             </div>
 
+            {solicitud && (
+              <div className="mb-4 p-4 border rounded-md bg-secondary/5 card-print-styles">
+                <Label htmlFor="solicitudIdDisplay" className="flex items-center text-sm mb-1 text-muted-foreground">
+                  <Info className="mr-2 h-4 w-4 text-primary/70" />
+                  ID de Solicitud
+                </Label>
+                <Input
+                  id="solicitudIdDisplay"
+                  value={solicitud.id}
+                  readOnly
+                  disabled
+                  className="mt-1 bg-muted/50 cursor-not-allowed text-sm text-foreground"
+                />
+              </div>
+            )}
+
             {examData && (
               <div className="mb-6 p-4 border border-border rounded-md bg-secondary/30 card-print-styles">
                 <h3 className="text-lg font-semibold mb-2 text-primary">Solicitud de Cheque</h3>
@@ -171,7 +185,7 @@ export default function SolicitudDetailPage() {
 
             <div className="space-y-3 divide-y divide-border">
               <div className="pt-2">
-                <p className="text-xs font-medium text-muted-foreground mb-2">
+                <p className="text-sm font-medium text-muted-foreground mb-2">
                   Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 items-start">
@@ -268,3 +282,4 @@ export default function SolicitudDetailPage() {
     </AppShell>
   );
 }
+
