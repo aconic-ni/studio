@@ -88,10 +88,6 @@ export function SuccessModal() {
            </div>
         </DialogDescription>
         
-        <div className="text-center text-xs text-muted-foreground mt-4 mb-2">
-          Dar click al Disquet para Guardar
-        </div>
-
         <div className="mt-6 flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:gap-3 sm:justify-center items-center">
           <Button
             onClick={handleSaveToDatabase}
