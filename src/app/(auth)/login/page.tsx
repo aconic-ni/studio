@@ -9,16 +9,23 @@ import { Loader2 } from 'lucide-react';
 export default function LoginPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient || loading) return;
+
+    if (user) {
       if (user.isStaticUser) {
         router.push('/database');
       } else {
         router.push('/examiner');
       }
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, isClient]);
 
   const handleLoginSuccess = (isStaticUser?: boolean) => {
     if (isStaticUser) {
@@ -28,7 +35,7 @@ export default function LoginPage() {
     }
   };
   
-  if (loading || user) {
+  if (!isClient || loading || user) { 
     return (
       <div className="min-h-screen flex items-center justify-center grid-bg">
         <Loader2 className="h-16 w-16 animate-spin text-white" />

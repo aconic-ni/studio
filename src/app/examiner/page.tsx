@@ -1,6 +1,6 @@
 
 "use client";
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react'; // Added useState
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useAppContext, ExamStep } from '@/context/AppContext';
@@ -15,18 +15,24 @@ export default function ExaminerPage() {
   const { user, loading: authLoading } = useAuth();
   const { currentStep } = useAppContext();
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login'); // Changed from '/' to '/login'
-    }
-  }, [user, authLoading, router]);
-  
+    setIsClient(true);
+  }, []);
+
   useEffect(() => {
+    if (!isClient) return; 
+
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router, isClient]);
+
+  useEffect(() => {
+    if (!isClient) return;
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      // Standard way to show a confirmation dialog
       event.preventDefault();
-      // Chrome requires returnValue to be set
       event.returnValue = '';
     };
 
@@ -34,24 +40,22 @@ export default function ExaminerPage() {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, []);
+  }, [isClient]);
 
-
-  if (authLoading) {
+  if (!isClient || authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-4 text-lg">Cargando autenticación...</p>
+      <div className="min-h-screen flex items-center justify-center grid-bg"> {/* Ensure grid-bg for consistency */}
+        <Loader2 className="h-12 w-12 animate-spin text-white" /> {/* text-white for grid-bg */}
+        <p className="ml-4 text-lg text-white">Cargando aplicación...</p> {/* text-white for grid-bg */}
       </div>
     );
   }
 
   if (!user) {
-     // This typically won't be seen due to redirect, but good for robustness
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="text-lg ml-3">Verificando sesión...</p>
+      <div className="min-h-screen flex items-center justify-center grid-bg"> {/* Ensure grid-bg for consistency */}
+        <Loader2 className="h-12 w-12 animate-spin text-white" /> {/* text-white for grid-bg */}
+        <p className="text-lg ml-3 text-white">Verificando sesión...</p> {/* text-white for grid-bg */}
       </div>
     );
   }
@@ -65,9 +69,7 @@ export default function ExaminerPage() {
       case ExamStep.PREVIEW:
         return <PreviewScreen />;
       case ExamStep.SUCCESS:
-        // SuccessModal is a dialog, typically shown over other content.
-        // ProductListScreen might be a good background for it, or PreviewScreen.
-        return <> <PreviewScreen /> <SuccessModal /> </>; // Show preview underneath success
+        return <> <PreviewScreen /> <SuccessModal /> </>;
       default:
         return <InitialInfoForm />;
     }
@@ -78,7 +80,6 @@ export default function ExaminerPage() {
       <div className="py-2 md:py-5">
          {renderStepContent()}
       </div>
-      {/* SuccessModal is rendered conditionally inside renderStepContent or always if it handles its own visibility based on currentStep */}
       {currentStep === ExamStep.SUCCESS && <SuccessModal />}
     </AppShell>
   );

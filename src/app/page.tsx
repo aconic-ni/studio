@@ -2,7 +2,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2, FileText, Loader2 } from 'lucide-react'; // Added Building2
+import { Building2, FileText, Loader2 } from 'lucide-react';
 import { LoginModal } from '@/components/auth/LoginModal';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -11,16 +11,23 @@ export default function HomePage() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    if (!loading && user) {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient || loading) return;
+
+    if (user) {
       if (user.isStaticUser) {
         router.push('/database');
       } else {
         router.push('/examiner');
       }
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, isClient]);
 
   const handleLoginSuccess = (isStaticUser?: boolean) => {
     if (isStaticUser) {
@@ -30,17 +37,9 @@ export default function HomePage() {
     }
   };
 
-  if (loading) {
+  if (!isClient || loading || user) { 
     return (
       <div className="min-h-screen flex items-center justify-center grid-bg">
-        <Loader2 className="h-16 w-16 animate-spin text-white" />
-      </div>
-    );
-  }
-
-  if (user) {
-    return (
-       <div className="min-h-screen flex items-center justify-center grid-bg">
         <Loader2 className="h-16 w-16 animate-spin text-white" />
       </div>
     );

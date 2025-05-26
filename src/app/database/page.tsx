@@ -7,15 +7,14 @@ import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Search, Download, Banknote, User, FileText, Landmark, AlertTriangle, Hash, Building, Code, MessageSquare, Mail } from 'lucide-react';
+import { Loader2, Search, Download, Banknote, User, FileText, Landmark, Hash, Building, Code, MessageSquare, Mail } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, Timestamp as FirestoreTimestamp } from 'firebase/firestore';
-import type { ExamDocument, SolicitudData } from '@/types'; // Use SolicitudData
+import type { ExamDocument, SolicitudData } from '@/types';
 import { downloadExcelFile } from '@/lib/fileExporter'; 
 import { Badge } from '@/components/ui/badge';
 import { CheckSquare, Square } from 'lucide-react';
 
-// Helper component for displaying detail items
 const FetchedDetailItem: React.FC<{ label: string; value?: string | number | null | boolean | FirestoreTimestamp; icon?: React.ElementType }> = ({ label, value, icon: Icon }) => {
   let displayValue: string;
   if (typeof value === 'boolean') {
@@ -67,7 +66,6 @@ const getMonedaCuentaDisplayFetched = (solicitud: SolicitudData) => {
     return solicitud.monedaCuenta;
 };
 
-// Component to display the fetched exam with solicitudes
 const FetchedExamDetails: React.FC<{ exam: ExamDocument }> = ({ exam }) => {
   return (
     <Card className="mt-6 w-full custom-shadow">
@@ -105,7 +103,6 @@ const FetchedExamDetails: React.FC<{ exam: ExamDocument }> = ({ exam }) => {
                 <div key={solicitud.id || index} className="p-4 border border-border bg-card rounded-lg shadow">
                   <h5 className="text-md font-semibold mb-3 text-primary">Solicitud {index + 1}</h5>
                   <div className="space-y-3 divide-y divide-border/50">
-                    {/* Section 1: Monto y Cantidad */}
                     <div className="pt-2">
                         <h6 className="text-sm font-medium text-accent mb-1">Detalles del Monto</h6>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
@@ -113,7 +110,6 @@ const FetchedExamDetails: React.FC<{ exam: ExamDocument }> = ({ exam }) => {
                         <FetchedDetailItem label="Cantidad en Letras" value={solicitud.cantidadEnLetras} icon={FileText} />
                         </div>
                     </div>
-                    {/* Section 2: Detalles de la Solicitud */}
                     <div className="pt-2">
                         <h6 className="text-sm font-medium text-accent mb-1">Información Adicional</h6>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
@@ -124,7 +120,6 @@ const FetchedExamDetails: React.FC<{ exam: ExamDocument }> = ({ exam }) => {
                         <FetchedDetailItem label="Código 2" value={solicitud.codigo2} icon={Code} />
                         </div>
                     </div>
-                     {/* Section 3: Cuenta Bancaria */}
                     <div className="pt-2">
                         <h6 className="text-sm font-medium text-accent mb-1">Cuenta Bancaria</h6>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
@@ -137,7 +132,6 @@ const FetchedExamDetails: React.FC<{ exam: ExamDocument }> = ({ exam }) => {
                         )}
                         </div>
                     </div>
-                    {/* Section 4: Beneficiarios */}
                     <div className="pt-2">
                         <h6 className="text-sm font-medium text-accent mb-1">Beneficiario del Pago</h6>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
@@ -145,7 +139,6 @@ const FetchedExamDetails: React.FC<{ exam: ExamDocument }> = ({ exam }) => {
                         <FetchedDetailItem label="Elaborar Transferencia A" value={solicitud.elaborarTransferenciaA} icon={User} />
                         </div>
                     </div>
-                     {/* Section 5: Checkboxes */}
                     <div className="pt-2">
                         <h6 className="text-sm font-medium text-accent mb-1">Documentación y Estados</h6>
                         <div className="space-y-1">
@@ -168,7 +161,6 @@ const FetchedExamDetails: React.FC<{ exam: ExamDocument }> = ({ exam }) => {
                             )}
                         </div>
                     </div>
-                    {/* Section 6: Otros */}
                     <div className="pt-2">
                         <h6 className="text-sm font-medium text-accent mb-1">Comunicación</h6>
                         <FetchedDetailItem label="Correos de Notificación" value={solicitud.correo} icon={Mail} />
@@ -187,20 +179,26 @@ const FetchedExamDetails: React.FC<{ exam: ExamDocument }> = ({ exam }) => {
   );
 };
 
-
 export default function DatabasePage() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [searchTermNE, setSearchTermNE] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fetchedExam, setFetchedExam] = useState<ExamDocument | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && (!user || !user.isStaticUser)) {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient || authLoading) return;
+
+    if (!user || !user.isStaticUser) {
       router.push('/');
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, isClient]);
 
   const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
@@ -219,7 +217,6 @@ export default function DatabasePage() {
 
       if (docSnap.exists()) {
         const data = docSnap.data() as ExamDocument;
-        // Ensure exam.date is a Date object for consistency
         if (data.date && data.date instanceof FirestoreTimestamp) {
             data.date = data.date.toDate();
         }
@@ -241,17 +238,16 @@ export default function DatabasePage() {
 
   const handleExport = () => {
     if (fetchedExam) {
-       // Pass 'solicitudes' as 'products' for compatibility with existing exporter
       downloadExcelFile({ ...fetchedExam, products: fetchedExam.solicitudes });
     } else {
       alert("No hay datos de examen para exportar. Realice una búsqueda primero.");
     }
   };
 
-  if (authLoading || !user || (user && !user.isStaticUser) ) {
+  if (!isClient || authLoading || (!user || (user && !user.isStaticUser))) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center grid-bg"> {/* Ensure grid-bg for consistency */}
+        <Loader2 className="h-12 w-12 animate-spin text-white" /> {/* text-white for grid-bg */}
       </div>
     );
   }
