@@ -4,11 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAppContext, ExamStep } from '@/context/AppContext';
 import { downloadTxtFile, downloadExcelFile } from '@/lib/fileExporter';
-import type { SolicitudData } from '@/types'; // Changed Product to SolicitudData
-import { Download, Check, ArrowLeft, Banknote, User, FileText, Landmark, AlertTriangle } from 'lucide-react';
+import type { SolicitudData } from '@/types'; 
+import { Download, Check, ArrowLeft, Banknote, User, FileText, Landmark, AlertTriangle, FileType } from 'lucide-react'; // Added FileType for PDF
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import { SolicitudDocument } from '@/components/pdf/SolicitudDocument'; // Import the PDF document component
+import { useState, useEffect } from 'react';
+
 
 // Helper component for displaying detail items in Preview
 const PreviewDetailItem: React.FC<{ label: string; value?: string | number | null | boolean, icon?: React.ElementType }> = ({ label, value, icon: Icon }) => {
@@ -32,27 +36,31 @@ const PreviewDetailItem: React.FC<{ label: string; value?: string | number | nul
 
 
 export function PreviewScreen() {
-  const { examData, solicitudes, setCurrentStep } = useAppContext(); // Use solicitudes
+  const { examData, solicitudes, setCurrentStep } = useAppContext(); 
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true); // Component has mounted, so it's client-side
+  }, []);
+
 
   if (!examData) {
     return <div className="text-center p-10">Error: No se encontraron datos del examen.</div>;
   }
 
   const handleConfirm = () => {
-    // Here you would typically save the data to a database or send it via email
-    // For now, it just proceeds to the success step
     setCurrentStep(ExamStep.SUCCESS);
   };
 
   const handleDownloadExcel = () => {
     if (examData) {
-      downloadExcelFile({ ...examData, products: solicitudes }); // Pass solicitudes as products
+      downloadExcelFile({ ...examData, products: solicitudes }); 
     }
   };
   
   const handleDownloadTxt = () => {
      if (examData) {
-      downloadTxtFile(examData, solicitudes); // Pass solicitudes
+      downloadTxtFile(examData, solicitudes); 
     }
   }
 
@@ -111,7 +119,7 @@ export function PreviewScreen() {
           <h4 className="text-lg font-medium mb-3 text-foreground">Solicitudes ({solicitudes.length})</h4>
           {solicitudes.length > 0 ? (
             <div className="space-y-6">
-              {solicitudes.map((solicitud, index) => ( // Iterate over solicitudes
+              {solicitudes.map((solicitud, index) => ( 
                 <div key={solicitud.id} className="p-4 border border-border bg-card rounded-lg shadow">
                   <h5 className="text-md font-semibold mb-3 text-primary">
                     Solicitud {index + 1}
@@ -150,6 +158,22 @@ export function PreviewScreen() {
                 <Button variant="outline" onClick={handleDownloadExcel} className="hover:bg-accent/50">
                     <Download className="mr-2 h-4 w-4" /> Descargar Excel
                 </Button>
+                {isClient && examData && solicitudes.length > 0 ? (
+                  <PDFDownloadLink
+                    document={<SolicitudDocument examData={examData} solicitudes={solicitudes} />}
+                    fileName={`SolicitudCheque_${examData.ne || 'SIN_NE'}_${new Date().toISOString().split('T')[0]}.pdf`}
+                  >
+                    {({ loading }) => (
+                      <Button variant="outline" className="hover:bg-accent/50" disabled={loading}>
+                        <FileType className="mr-2 h-4 w-4" /> {loading ? 'Generando PDF...' : 'Descargar PDF'}
+                      </Button>
+                    )}
+                  </PDFDownloadLink>
+                ) : (
+                  <Button variant="outline" className="hover:bg-accent/50" disabled>
+                    <FileType className="mr-2 h-4 w-4" /> Descargar PDF
+                  </Button>
+                )}
                 <Button onClick={handleConfirm} className="btn-primary">
                     <Check className="mr-2 h-4 w-4" /> Confirmar Solicitud
                 </Button>
