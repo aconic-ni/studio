@@ -164,7 +164,6 @@ export default function SolicitudDetailPage() {
 
             <div className="space-y-3 divide-y divide-border">
               <div className="pt-2">
-                {/* Title "Detalles del Monto" can be kept or removed based on preference. For now, keeping it. */}
                 <h4 className="text-md font-medium text-primary mb-1">Detalles del Monto</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
                   <DetailItem label="Monto Solicitado" value={formatCurrency(solicitud.monto, solicitud.montoMoneda)} icon={Banknote} />
@@ -173,19 +172,17 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-                {/* Title "Información Adicional de Solicitud" removed */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
                   <DetailItem label="Consignatario" value={solicitud.consignatario} icon={Users} />
                   <DetailItem label="Declaración Número" value={solicitud.declaracionNumero} icon={Hash} />
                   <DetailItem label="Unidad Recaudadora" value={solicitud.unidadRecaudadora} icon={Building} />
                   <DetailItem label="Código 1" value={solicitud.codigo1} icon={Code} />
-                  <DetailItem label="Código 2" value={solicitud.codigo2} icon={Code} />
+                  <DetailItem label="Codigo MUR" value={solicitud.codigo2} icon={Code} />
                 </div>
               </div>
 
               <div className="pt-3">
-                {/* Title "Cuenta Bancaria" removed */}
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 items-start"> {/* Changed to md:grid-cols-3 */}
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 items-start"> 
                     <DetailItem label="Banco" value={getBancoDisplay(solicitud)} icon={Landmark} />
                     {solicitud.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO' && (
                         <>
@@ -197,7 +194,6 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-                {/* Title "Beneficiario del Pago" removed */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
                   <DetailItem label="Elaborar Cheque A" value={solicitud.elaborarChequeA} icon={User} />
                   <DetailItem label="Elaborar Transferencia A" value={solicitud.elaborarTransferenciaA} icon={User} />
@@ -205,7 +201,6 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-                {/* Title "Detalles Adicionales y Documentación" removed */}
                 <div className="space-y-1">
                     <CheckboxDetailItem label="Impuestos pagados por el cliente" checked={solicitud.impuestosPagadosCliente} />
                     {solicitud.impuestosPagadosCliente && (
@@ -228,7 +223,6 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-                {/* Title "Comunicación y Observaciones" removed */}
                 <DetailItem label="Correos de Notificación" value={solicitud.correo} icon={Mail} />
                 <DetailItem label="Observación" value={solicitud.observation} icon={MessageSquare} />
               </div>
@@ -259,5 +253,3 @@ export default function SolicitudDetailPage() {
     </AppShell>
   );
 }
-
-    

@@ -42,7 +42,7 @@ export function AddProductModal() {
       declaracionNumero: '',
       unidadRecaudadora: '',
       codigo1: '',
-      codigo2: '',
+      codigo2: '', // Field name remains codigo2
       banco: undefined,
       bancoOtros: '',
       numeroCuenta: '',
@@ -110,7 +110,7 @@ export function AddProductModal() {
         declaracionNumero: '',
         unidadRecaudadora: '',
         codigo1: '',
-        codigo2: '',
+        codigo2: '', // Field name remains codigo2
         banco: undefined,
         bancoOtros: '',
         numeroCuenta: '',
@@ -264,7 +264,7 @@ export function AddProductModal() {
 
             <div className="space-y-4 p-4 border rounded-md">
               <h4 className="text-md font-medium text-primary mb-2">Información Adicional de Solicitud</h4>
-              <FormField control={form.control} name="consignatario" render={({ field }) => (
+               <FormField control={form.control} name="consignatario" render={({ field }) => (
                 <FormItem>
                   <FormLabel className="flex items-center"><User className="mr-2 h-4 w-4 text-primary" />Consignatario</FormLabel>
                   <FormControl><Input placeholder="Nombre del consignatario" {...field} value={field.value ?? ''} /></FormControl><FormMessage />
@@ -291,7 +291,7 @@ export function AddProductModal() {
                 )}/>
                 <FormField control={form.control} name="codigo2" render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center"><Code className="mr-2 h-4 w-4 text-primary" />Codigo</FormLabel>
+                    <FormLabel className="flex items-center"><Code className="mr-2 h-4 w-4 text-primary" />Codigo MUR</FormLabel>
                     <FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage />
                   </FormItem>
                 )}/>

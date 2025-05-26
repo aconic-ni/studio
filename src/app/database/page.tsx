@@ -117,7 +117,7 @@ const FetchedExamDetails: React.FC<{ exam: ExamDocument }> = ({ exam }) => {
                         <FetchedDetailItem label="Declaración Número" value={solicitud.declaracionNumero} icon={Hash} />
                         <FetchedDetailItem label="Unidad Recaudadora" value={solicitud.unidadRecaudadora} icon={Building} />
                         <FetchedDetailItem label="Código 1" value={solicitud.codigo1} icon={Code} />
-                        <FetchedDetailItem label="Código 2" value={solicitud.codigo2} icon={Code} />
+                        <FetchedDetailItem label="Codigo MUR" value={solicitud.codigo2} icon={Code} />
                         </div>
                     </div>
                     <div className="pt-2">
@@ -217,9 +217,18 @@ export default function DatabasePage() {
 
       if (docSnap.exists()) {
         const data = docSnap.data() as ExamDocument;
+        // Convert Firestore Timestamps to Date objects for ExamData
         if (data.date && data.date instanceof FirestoreTimestamp) {
             data.date = data.date.toDate();
         }
+        // Convert Firestore Timestamps within SolicitudData items
+        if (data.solicitudes && Array.isArray(data.solicitudes)) {
+            data.solicitudes = data.solicitudes.map(solicitud => ({
+                ...solicitud,
+                // Add any date fields within solicitud that need conversion
+            }));
+        }
+
         setFetchedExam(data);
       } else {
         setError("Archivo erróneo o no ha sido creado por gestor para el NE: " + searchTermNE);
