@@ -5,25 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useAppContext, ExamStep } from '@/context/AppContext';
 import { downloadTxtFile, downloadExcelFile } from '@/lib/fileExporter';
 import type { SolicitudData } from '@/types';
-import { Download, Check, ArrowLeft, FileType, User, Landmark, FileText } from 'lucide-react'; // Added User, Landmark, FileText
+import { Download, Check, ArrowLeft, FileType, User, Landmark, FileText } from 'lucide-react'; 
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
-// Removed direct import of PDFDownloadLink and SolicitudDocument
-import { useState, useEffect } from 'react';
-// import dynamic from 'next/dynamic';
 
-// const DynamicClientPDFDownload = dynamic(
-//   () => import('@/components/pdf/ClientPDFDownload').then(mod => mod.ClientPDFDownload),
-//   {
-//     ssr: false,
-//     loading: () => (
-//       <Button variant="outline" className="hover:bg-accent/50 w-full sm:w-auto" disabled>
-//         <FileType className="mr-2 h-4 w-4" /> Cargando PDF...
-//       </Button>
-//     ),
-//   }
-// );
+import { useState, useEffect } from 'react';
 
 
 // Helper component for displaying detail items in Preview
@@ -126,13 +113,13 @@ export function PreviewScreen() {
       </CardHeader>
       <CardContent className="space-y-6">
         <div>
-          <h4 className="text-lg font-medium mb-2 text-foreground">Información General del Examen</h4>
+          <h4 className="text-lg font-medium mb-2 text-foreground">Informacion General</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 bg-secondary/30 p-4 rounded-md shadow-sm text-sm">
             <div><span className="font-semibold text-foreground/80">NE:</span> {examData.ne}</div>
             <div><span className="font-semibold text-foreground/80">Referencia:</span> {examData.reference || 'N/A'}</div>
             <div><span className="font-semibold text-foreground/80">De:</span> {examData.manager}</div>
             <div><span className="font-semibold text-foreground/80">A:</span> {examData.recipient}</div>
-            <div><span className="font-semibold text-foreground/80">Fecha:</span> {examData.date ? format(examData.date, "PPP", { locale: es }) : 'N/A'}</div>
+            <div><span className="font-semibold text-foreground/80">Fecha:</span> {examData.date ? format(new Date(examData.date), "PPP", { locale: es }) : 'N/A'}</div>
           </div>
         </div>
 
