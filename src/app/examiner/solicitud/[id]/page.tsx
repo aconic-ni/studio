@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAppContext } from '@/context/AppContext';
-import type { SolicitudData, ExamData } from '@/types';
+import type { SolicitudData } from '@/types';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,7 +67,6 @@ export default function SolicitudDetailPage() {
       }
       setLoading(false);
     } else if (solicitudes.length === 0 && !loading && solicitudId) {
-      // This condition might trigger if user navigates directly to this page and context isn't populated
       toast({ title: "Información no disponible", description: "Los datos de la solicitud no están cargados. Intente volver a la lista.", variant: "default" });
       router.push('/examiner');
       setLoading(false);
@@ -168,7 +167,6 @@ export default function SolicitudDetailPage() {
                 />
             </div>
 
-
             {examData && (
               <div className="mb-6 p-4 border border-border rounded-md bg-secondary/30 card-print-styles">
                 <h3 className="text-lg font-semibold mb-2 text-primary">Solicitud de Cheque</h3>
@@ -182,86 +180,85 @@ export default function SolicitudDetailPage() {
               </div>
             )}
 
-            <div className="space-y-3 divide-y divide-border">
-              <div className="pt-2">
-                <p className="text-sm font-medium text-muted-foreground mb-2">
-                  Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 items-start">
-                  <div className="flex items-baseline py-1">
-                    <Banknote className="h-4 w-4 mr-1.5 text-primary shrink-0" />
-                    <p className="text-sm text-foreground break-words">{formatCurrency(solicitud.monto, solicitud.montoMoneda)}</p>
-                  </div>
-                  <div className="flex items-baseline py-1">
-                    <FileText className="h-4 w-4 mr-1.5 text-primary shrink-0" />
-                    <p className="text-sm text-foreground break-words">{solicitud.cantidadEnLetras || 'N/A'}</p>
-                  </div>
+            {/* New wrapper for solicitud-specific details */}
+            <div className="mb-6 p-4 border border-border rounded-md bg-secondary/30 card-print-styles">
+              <p className="text-sm font-medium text-muted-foreground mb-2">
+                Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 items-start mb-3">
+                <div className="flex items-baseline py-1">
+                  <Banknote className="h-4 w-4 mr-1.5 text-primary shrink-0" />
+                  <p className="text-sm text-foreground break-words">{formatCurrency(solicitud.monto, solicitud.montoMoneda)}</p>
+                </div>
+                <div className="flex items-baseline py-1">
+                  <FileText className="h-4 w-4 mr-1.5 text-primary shrink-0" />
+                  <p className="text-sm text-foreground break-words">{solicitud.cantidadEnLetras || 'N/A'}</p>
                 </div>
               </div>
 
-              <div className="pt-3">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
-                  <DetailItem label="Consignatario" value={solicitud.consignatario} icon={Users} />
-                  <DetailItem label="Declaración Número" value={solicitud.declaracionNumero} icon={Hash} />
-                  <DetailItem label="Unidad Recaudadora" value={solicitud.unidadRecaudadora} icon={Building} />
-                  <DetailItem label="Código 1" value={solicitud.codigo1} icon={Code} />
-                  <DetailItem label="Codigo MUR" value={solicitud.codigo2} icon={Code} />
-                </div>
-              </div>
-
-              <div className="pt-3">
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 items-start">
-                    <DetailItem label="Banco" value={getBancoDisplay(solicitud)} icon={Landmark} />
-                    {solicitud.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO' && (
-                        <>
-                        <DetailItem label="Número de Cuenta" value={solicitud.numeroCuenta} icon={Hash} />
-                        <DetailItem label="Moneda de la Cuenta" value={getMonedaCuentaDisplay(solicitud)} icon={Banknote} />
-                        </>
-                    )}
-                 </div>
-              </div>
-
-              <div className="pt-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                  <DetailItem label="Elaborar Cheque A" value={solicitud.elaborarChequeA} icon={User} />
-                  <DetailItem label="Elaborar Transferencia A" value={solicitud.elaborarTransferenciaA} icon={User} />
-                </div>
-              </div>
-
-              <div className="pt-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
-                  {/* Column 1 for Checkboxes */}
-                  <div className="space-y-1">
-                    <CheckboxDetailItem label="Impuestos pendientes de pago por el cliente" checked={solicitud.impuestosPendientesCliente} />
-                    <CheckboxDetailItem label="Impuestos pagados por el cliente mediante:" checked={solicitud.impuestosPagadosCliente} />
-                    {solicitud.impuestosPagadosCliente && (
-                      <div className="ml-6 pl-2 border-l border-dashed">
-                        <DetailItem label="R/C No." value={solicitud.impuestosPagadosRC} />
-                        <DetailItem label="T/B No." value={solicitud.impuestosPagadosTB} />
-                        <DetailItem label="Cheque No." value={solicitud.impuestosPagadosCheque} />
-                      </div>
-                    )}
-                  </div>
-                  {/* Column 2 for Checkboxes */}
-                  <div className="space-y-1">
-                    <CheckboxDetailItem label="Se añaden documentos adjuntos" checked={solicitud.documentosAdjuntos} />
-                    <CheckboxDetailItem label="Constancias de no retención" checked={solicitud.constanciasNoRetencion} />
-                    {solicitud.constanciasNoRetencion && (
-                      <div className="ml-6 pl-2 border-l border-dashed">
-                        <CheckboxDetailItem label="1%" checked={solicitud.constanciasNoRetencion1} />
-                        <CheckboxDetailItem label="2%" checked={solicitud.constanciasNoRetencion2} />
-                      </div>
-                    )}
+              <div className="space-y-3 divide-y divide-border">
+                <div className="pt-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+                    <DetailItem label="Consignatario" value={solicitud.consignatario} icon={Users} />
+                    <DetailItem label="Declaración Número" value={solicitud.declaracionNumero} icon={Hash} />
+                    <DetailItem label="Unidad Recaudadora" value={solicitud.unidadRecaudadora} icon={Building} />
+                    <DetailItem label="Código 1" value={solicitud.codigo1} icon={Code} />
+                    <DetailItem label="Codigo MUR" value={solicitud.codigo2} icon={Code} />
                   </div>
                 </div>
-              </div>
 
+                <div className="pt-3">
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 items-start">
+                      <DetailItem label="Banco" value={getBancoDisplay(solicitud)} icon={Landmark} />
+                      {solicitud.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO' && (
+                          <>
+                          <DetailItem label="Número de Cuenta" value={solicitud.numeroCuenta} icon={Hash} />
+                          <DetailItem label="Moneda de la Cuenta" value={getMonedaCuentaDisplay(solicitud)} icon={Banknote} />
+                          </>
+                      )}
+                   </div>
+                </div>
 
-              <div className="pt-3">
-                <DetailItem label="Correos de Notificación" value={solicitud.correo} icon={Mail} />
-                <DetailItem label="Observación" value={solicitud.observation} icon={MessageSquare} />
+                <div className="pt-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                    <DetailItem label="Elaborar Cheque A" value={solicitud.elaborarChequeA} icon={User} />
+                    <DetailItem label="Elaborar Transferencia A" value={solicitud.elaborarTransferenciaA} icon={User} />
+                  </div>
+                </div>
+
+                <div className="pt-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                    <div className="space-y-1">
+                      <CheckboxDetailItem label="Impuestos pendientes de pago por el cliente" checked={solicitud.impuestosPendientesCliente} />
+                      <CheckboxDetailItem label="Impuestos pagados por el cliente mediante:" checked={solicitud.impuestosPagadosCliente} />
+                      {solicitud.impuestosPagadosCliente && (
+                        <div className="ml-6 pl-2 border-l border-dashed">
+                          <DetailItem label="R/C No." value={solicitud.impuestosPagadosRC} />
+                          <DetailItem label="T/B No." value={solicitud.impuestosPagadosTB} />
+                          <DetailItem label="Cheque No." value={solicitud.impuestosPagadosCheque} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <CheckboxDetailItem label="Se añaden documentos adjuntos" checked={solicitud.documentosAdjuntos} />
+                      <CheckboxDetailItem label="Constancias de no retención" checked={solicitud.constanciasNoRetencion} />
+                      {solicitud.constanciasNoRetencion && (
+                        <div className="ml-6 pl-2 border-l border-dashed">
+                          <CheckboxDetailItem label="1%" checked={solicitud.constanciasNoRetencion1} />
+                          <CheckboxDetailItem label="2%" checked={solicitud.constanciasNoRetencion2} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3">
+                  <DetailItem label="Correos de Notificación" value={solicitud.correo} icon={Mail} />
+                  <DetailItem label="Observación" value={solicitud.observation} icon={MessageSquare} />
+                </div>
               </div>
-            </div>
+            </div> {/* End of new wrapper for solicitud-specific details */}
+
 
             <div className="mt-6 w-full">
               <Image
@@ -288,5 +285,3 @@ export default function SolicitudDetailPage() {
     </AppShell>
   );
 }
-
-    
