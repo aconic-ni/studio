@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -185,4 +186,99 @@ body {
 }
 .custom-checkbox-input:checked ~ .custom-checkbox-checkmark:after {
   @apply block;
+}
+
+@media print {
+  body > header, /* Hides AppHeader */
+  body > footer, /* Hides AppFooter */
+  body > [id^="radix-"], /* Hides Radix UI primitives like tooltips, toasts, etc. */
+  body > [data-radix-dialog-overlay], /* Hides dialog overlays */
+  iframe[src^="https://www.google.com/recaptcha"] /* Hides ReCAPTCHA if present */
+  {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Hide all direct children of main, then re-show only our printable dialog area */
+  body > main > :not(.printable-dialog-area) {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  .printable-dialog-area {
+    visibility: visible !important;
+    display: block !important;
+    position: absolute !important; 
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 20px !important; /* Standard print padding */
+    margin: 0 !important;
+    background: white !important; /* Ensure white background for printing */
+    z-index: 99999 !important; /* Ensure it's on top of everything */
+    font-size: 10pt !important; /* Adjust base font size for print if needed */
+  }
+
+  /* Ensure all children of the printable area are visible by default */
+  .printable-dialog-area *, .printable-dialog-area *:before, .printable-dialog-area *:after {
+    visibility: visible !important;
+    background-color: transparent !important; /* Avoid unwanted backgrounds from screen styles */
+    color: black !important; /* Ensure text is black for print */
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  
+  /* Specifically hide elements marked with data-no-print="true" */
+  .printable-dialog-area [data-no-print="true"] {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  
+  /* Hide the main Radix close button ('X') if it's a direct child of .printable-dialog-area */
+   .printable-dialog-area > button[aria-label="Cerrar"],
+   .printable-dialog-area > button[aria-label="Close"] {
+     display: none !important;
+   }
+
+  /* Make sure the ScrollArea and its content are visible and take full height */
+  .printable-dialog-area [data-radix-scroll-area-viewport] {
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+  }
+   /* Hide scrollbars themselves during print */
+  .printable-dialog-area ::-webkit-scrollbar {
+    display: none !important;
+  }
+  .printable-dialog-area [data-orientation="vertical"], /* Shadcn scrollbar parts */
+  .printable-dialog-area [data-orientation="horizontal"] {
+    display: none !important;
+  }
+
+  /* Optional: Improve heading appearance for print */
+  .printable-dialog-area h1, .printable-dialog-area h2, .printable-dialog-area h3, .printable-dialog-area h4, .printable-dialog-area h5, .printable-dialog-area h6 {
+    color: black !important;
+    page-break-after: avoid;
+  }
+
+  .printable-dialog-area p {
+    orphans: 3;
+    widows: 3;
+  }
+  
+  .printable-dialog-area a {
+    color: #000 !important; /* Ensure links are black for print */
+    text-decoration: underline !important; /* Underline links to show they are clickable */
+  }
+  
+  /* Ensure table borders are visible for print if you are using them */
+  .printable-dialog-area table, .printable-dialog-area th, .printable-dialog-area td {
+    border-color: #ccc !important; /* Light gray border for tables */
+  }
 }

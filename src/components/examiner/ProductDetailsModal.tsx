@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useAppContext } from '@/context/AppContext';
 import type { SolicitudData } from '@/types'; 
-import { X, CheckSquare, Square, Banknote, Landmark, Hash, User, FileText, Mail, MessageSquare, Building, Code } from 'lucide-react';
+import { X, CheckSquare, Square, Banknote, Landmark, Hash, User, FileText, Mail, MessageSquare, Building, Code, Printer } from 'lucide-react';
 
 // Helper component for displaying detail items
 const DetailItem: React.FC<{ label: string; value?: string | number | null | boolean; icon?: React.ElementType }> = ({ label, value, icon: Icon }) => {
@@ -68,9 +68,13 @@ export function ProductDetailsModal() {
     return s.monedaCuenta;
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <Dialog open={isProductDetailModalOpen} onOpenChange={(open) => !open && closeProductDetailModal()}>
-      <DialogContent className="max-w-3xl w-full p-0">
+      <DialogContent className="max-w-3xl w-full p-0 printable-dialog-area">
         <ScrollArea className="max-h-[85vh]">
           <div className="p-6">
             <DialogHeader className="mb-4">
@@ -79,6 +83,7 @@ export function ProductDetailsModal() {
                 onClick={closeProductDetailModal}
                 className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
                 aria-label="Cerrar"
+                data-no-print="true" 
               >
                 <X className="h-6 w-6" />
               </button>
@@ -161,7 +166,10 @@ export function ProductDetailsModal() {
               </div>
             </div>
 
-            <DialogFooter className="mt-6">
+            <DialogFooter className="mt-6" data-no-print="true">
+              <Button variant="outline" onClick={handlePrint}>
+                <Printer className="mr-2 h-4 w-4" /> Imprimir
+              </Button>
               <Button variant="outline" onClick={closeProductDetailModal}>Cerrar</Button>
             </DialogFooter>
           </div>
