@@ -142,7 +142,7 @@ export default function SolicitudDetailPage() {
           <CardContent className="pt-6">
             <div className="mb-6 w-full">
               <Image
-                src="/imagenes/HEADERSOLICITUDDETAIL.png"
+                src="/imagenes/HeaderSolicitudDetail.png"
                 alt="Header Solicitud Detail"
                 width={800}
                 height={100}
@@ -237,7 +237,7 @@ export default function SolicitudDetailPage() {
 
             <div className="mt-6 w-full">
               <Image
-                src="/imagenes/FOOTERSOLICITUDETAIL.png"
+                src="/imagenes/FooterSolicitudDetail.png"
                 alt="Footer Solicitud Detail"
                 width={800}
                 height={100}
