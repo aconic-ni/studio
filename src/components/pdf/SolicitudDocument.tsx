@@ -1,5 +1,5 @@
 
-"use client"; // This directive might be needed if we use hooks or browser APIs directly
+"use client"; 
 import React, { type FC } from 'react';
 import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
 import type { ExamData, SolicitudData } from '@/types';
