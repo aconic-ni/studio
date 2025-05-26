@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useAppContext, ExamStep } from '@/context/AppContext';
 import { CheckCircle, FilePlus, RotateCcw, Save } from 'lucide-react';
-// Removed Link import as it's commented out
+// Link import commented out as per previous request
+// import Link from 'next/link';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, Timestamp } from "firebase/firestore";
 import { useAuth } from '@/context/AuthContext';
@@ -73,31 +74,34 @@ export function SuccessModal() {
            <div className="text-center text-muted-foreground space-y-3">
               <div>La solicitud de cheque ha sido registrada correctamente.</div>
               {examData?.manager && <div>Gracias por tu desempeño, {examData.manager}.</div>}
-              <div className="flex justify-center pt-2 pb-1"> {/* Centering the Save button */}
-                {/* Link to SharePoint - configure later
-                <Link
-                  href="https://aconisani-my.sharepoint.com/:f:/g/personal/asuntos_juridicos_aconic_com_ni/Emrpj4Ss8bhDifpuYc8U_bwBj9r29FGcXxzfxu4PSh2tEQ?e=FhIPTt"
-                  target="_blank"
-                  className="text-primary underline hover:text-primary/80"
-                >
-                  Añadir imágenes/soportes del predio/solicitud aquí
-                </Link>
-                */}
-                {/* Text removed, Save button moved here */}
+              
+              <div className="flex flex-col items-center justify-center pt-2 pb-1"> {/* Centering the Save button and note */}
                 <Button
                   onClick={handleSaveToDatabase}
                   variant="destructive"
-                  size="sm"
-                  className="p-2" 
+                  size="sm" 
+                  className="p-2" // Padding to make it look more square with size="sm"
                   aria-label="Guardar en BD"
                 >
                   <Save className="h-4 w-4" />
                 </Button>
+                <p className="text-xs text-muted-foreground mt-1">Dar click al Disquet para Guardar</p>
               </div>
+              {/* Commented out SharePoint Link
+              <div className="text-sm"> 
+                Puedes añadir imágenes/soportes del predio/solicitud (enlace a configurar).
+                 <Link
+                  href="https://aconisani-my.sharepoint.com/:f:/g/personal/asuntos_juridicos_aconic_com_ni/Emrpj4Ss8bhDifpuYc8U_bwBj9r29FGcXxzfxu4PSh2tEQ?e=FhIPTt"
+                  target="_blank"
+                  className="text-primary underline hover:text-primary/80"
+                >
+                  aquí
+                </Link> 
+              </div>
+              */}
            </div>
         </DialogDescription>
         <div className="mt-4 flex flex-col space-y-3 sm:flex-row sm:gap-3 sm:justify-center items-center">
-          {/* Save button moved from here */}
           <Button onClick={() => setCurrentStep(ExamStep.PREVIEW)} variant="outline" size="sm" className="w-full sm:w-auto">
              <RotateCcw className="mr-2 h-4 w-4" /> Revisar Solicitud
           </Button>
