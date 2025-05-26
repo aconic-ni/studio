@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { ExamDocument } from '@/types';
 
 export function SuccessModal() {
-  const { currentStep, setCurrentStep, resetApp, examData, solicitudes } = useAppContext(); // use solicitudes
+  const { currentStep, setCurrentStep, resetApp, examData, solicitudes } = useAppContext();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -35,11 +35,10 @@ export function SuccessModal() {
     }
 
     try {
-      const examDocRef = doc(db, "examenesPrevios", examData.ne); // Collection name "examenesPrevios"
-      // Ensure 'solicitudes' is passed to the document
+      const examDocRef = doc(db, "examenesPrevios", examData.ne);
       const dataToSave: Omit<ExamDocument, 'id'> = { 
         ...examData,
-        solicitudes: solicitudes, // Save solicitudes array
+        solicitudes: solicitudes,
         savedAt: Timestamp.fromDate(new Date()),
         savedBy: user.email,
       };
@@ -91,20 +90,21 @@ export function SuccessModal() {
               </div>
            </div>
         </DialogDescription>
-        <div className="mt-6 flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:gap-3 sm:justify-center items-center">
+        <div className="mt-6 flex flex-col space-y-3 sm:flex-row sm:gap-3 sm:justify-center items-center">
           <Button
             onClick={handleSaveToDatabase}
-            variant="default" // Changed from destructive for better UX as primary save action
-            size="sm" // Consistent size
-            className="btn-primary"
+            variant="destructive"
+            size="icon"
+            className="w-full sm:w-auto"
+            aria-label="Guardar en Base de Datos"
           >
-            <Save className="mr-2 h-4 w-4" /> Guardar en BD
-          </Button>
-          <Button onClick={() => resetApp()} className="btn-primary w-full sm:w-auto" size="sm">
-            <FilePlus className="mr-2 h-4 w-4" /> Empezar Nuevo
+            <Save className="h-4 w-4" />
           </Button>
           <Button onClick={() => setCurrentStep(ExamStep.PREVIEW)} variant="outline" className="w-full sm:w-auto" size="sm">
              <RotateCcw className="mr-2 h-4 w-4" /> Revisar Solicitud
+          </Button>
+          <Button onClick={() => resetApp()} className="btn-primary w-full sm:w-auto" size="sm">
+            <FilePlus className="mr-2 h-4 w-4" /> Empezar Nuevo
           </Button>
         </div>
       </DialogContent>
