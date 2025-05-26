@@ -2,9 +2,9 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Image from 'next/image'; // Import next/image
+import Image from 'next/image';
 import { useAppContext } from '@/context/AppContext';
-import type { ExamData, SolicitudData } from '@/types';
+import type { SolicitudData } from '@/types'; // Ensure ExamData is also imported if used directly
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +13,6 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from "@/hooks/use-toast";
 
-// Helper components (can be moved to a shared file if reused extensively)
 const DetailItem: React.FC<{ label: string; value?: string | number | null | boolean; icon?: React.ElementType; className?: string }> = ({ label, value, icon: Icon, className }) => {
   let displayValue: string;
   if (typeof value === 'boolean') {
@@ -30,7 +29,7 @@ const DetailItem: React.FC<{ label: string; value?: string | number | null | boo
         {Icon && <Icon className="h-3.5 w-3.5 mr-1.5 text-primary/70" />}
         {label}
       </p>
-      <p className="text-sm text-foreground">{displayValue}</p>
+      <p className="text-sm text-foreground break-words">{displayValue}</p>
     </div>
   );
 };
@@ -61,18 +60,12 @@ export default function SolicitudDetailPage() {
         setSolicitud(foundSolicitud);
       } else {
         toast({ title: "Error", description: "Solicitud no encontrada.", variant: "destructive" });
-        router.push('/examiner'); // Redirect if not found
+        router.push('/examiner'); 
       }
       setLoading(false);
     } else if (solicitudes.length === 0 && !loading && solicitudId) { 
-      // This condition handles direct navigation or refresh when context might be empty initially
-      // Consider fetching data here if context is empty, or rely on Auth guard to redirect if appropriate
-      // For now, if solicitudes array is empty and we have an ID, it might mean data isn't ready.
-      // Let's assume the context will eventually populate or a guard will redirect.
-      // If still loading from context, it's fine. If not loading AND no solicitudes, it's an issue.
       toast({ title: "Información no disponible", description: "Los datos de la solicitud no están cargados. Intente volver a la lista.", variant: "default" });
-      // router.push('/examiner'); // Optionally redirect
-      setLoading(false); // Set loading to false if we are not actively loading and no data
+      setLoading(false); 
     }
   }, [solicitudId, solicitudes, router, toast, loading]);
 
@@ -104,7 +97,7 @@ export default function SolicitudDetailPage() {
   };
 
 
-  if (loading && !solicitud) { // Keep showing loader if actively loading and no specific solicitud found yet
+  if (loading && !solicitud) { 
     return (
       <AppShell>
         <div className="flex justify-center items-center h-screen">
@@ -171,6 +164,7 @@ export default function SolicitudDetailPage() {
 
             <div className="space-y-3 divide-y divide-border">
               <div className="pt-2">
+                {/* Title "Detalles del Monto" can be kept or removed based on preference. For now, keeping it. */}
                 <h4 className="text-md font-medium text-primary mb-1">Detalles del Monto</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
                   <DetailItem label="Monto Solicitado" value={formatCurrency(solicitud.monto, solicitud.montoMoneda)} icon={Banknote} />
@@ -179,7 +173,7 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-                <h4 className="text-md font-medium text-primary mb-1">Información Adicional de Solicitud</h4>
+                {/* Title "Información Adicional de Solicitud" removed */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
                   <DetailItem label="Consignatario" value={solicitud.consignatario} icon={Users} />
                   <DetailItem label="Declaración Número" value={solicitud.declaracionNumero} icon={Hash} />
@@ -190,8 +184,8 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-                <h4 className="text-md font-medium text-primary mb-1">Cuenta Bancaria</h4>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                {/* Title "Cuenta Bancaria" removed */}
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 items-start"> {/* Changed to md:grid-cols-3 */}
                     <DetailItem label="Banco" value={getBancoDisplay(solicitud)} icon={Landmark} />
                     {solicitud.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO' && (
                         <>
@@ -203,7 +197,7 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-                <h4 className="text-md font-medium text-primary mb-1">Beneficiario del Pago</h4>
+                {/* Title "Beneficiario del Pago" removed */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
                   <DetailItem label="Elaborar Cheque A" value={solicitud.elaborarChequeA} icon={User} />
                   <DetailItem label="Elaborar Transferencia A" value={solicitud.elaborarTransferenciaA} icon={User} />
@@ -211,7 +205,7 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-                <h4 className="text-md font-medium text-primary mb-1">Detalles Adicionales y Documentación</h4>
+                {/* Title "Detalles Adicionales y Documentación" removed */}
                 <div className="space-y-1">
                     <CheckboxDetailItem label="Impuestos pagados por el cliente" checked={solicitud.impuestosPagadosCliente} />
                     {solicitud.impuestosPagadosCliente && (
@@ -234,7 +228,7 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-                <h4 className="text-md font-medium text-primary mb-1">Comunicación y Observaciones</h4>
+                {/* Title "Comunicación y Observaciones" removed */}
                 <DetailItem label="Correos de Notificación" value={solicitud.correo} icon={Mail} />
                 <DetailItem label="Observación" value={solicitud.observation} icon={MessageSquare} />
               </div>
