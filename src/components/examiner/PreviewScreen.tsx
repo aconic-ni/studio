@@ -5,13 +5,25 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useAppContext, ExamStep } from '@/context/AppContext';
 import { downloadTxtFile, downloadExcelFile } from '@/lib/fileExporter';
 import type { SolicitudData } from '@/types'; 
-import { Download, Check, ArrowLeft, Banknote, User, FileText, Landmark, AlertTriangle, FileType } from 'lucide-react'; // Added FileType for PDF
+import { Download, Check, ArrowLeft, Banknote, User, FileText, Landmark, AlertTriangle, FileType } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import { SolicitudDocument } from '@/components/pdf/SolicitudDocument'; // Import the PDF document component
+// Removed direct import of PDFDownloadLink and SolicitudDocument
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+
+const DynamicClientPDFDownload = dynamic(
+  () => import('@/components/pdf/ClientPDFDownload').then(mod => mod.ClientPDFDownload),
+  {
+    ssr: false,
+    loading: () => (
+      <Button variant="outline" className="hover:bg-accent/50 w-full sm:w-auto" disabled>
+        <FileType className="mr-2 h-4 w-4" /> Cargando PDF...
+      </Button>
+    ),
+  }
+);
 
 
 // Helper component for displaying detail items in Preview
@@ -148,33 +160,24 @@ export function PreviewScreen() {
         </div>
 
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-border mt-6">
-            <Button variant="outline" onClick={() => setCurrentStep(ExamStep.PRODUCT_LIST)} className="hover:bg-accent/50">
+            <Button variant="outline" onClick={() => setCurrentStep(ExamStep.PRODUCT_LIST)} className="hover:bg-accent/50 w-full sm:w-auto">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Lista de Solicitudes
             </Button>
-            <div className="flex flex-col sm:flex-row gap-3">
-                <Button variant="outline" onClick={handleDownloadTxt} className="hover:bg-accent/50">
+            <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center sm:justify-end gap-3">
+                <Button variant="outline" onClick={handleDownloadTxt} className="hover:bg-accent/50 w-full sm:w-auto">
                     <Download className="mr-2 h-4 w-4" /> Descargar TXT
                 </Button>
-                <Button variant="outline" onClick={handleDownloadExcel} className="hover:bg-accent/50">
+                <Button variant="outline" onClick={handleDownloadExcel} className="hover:bg-accent/50 w-full sm:w-auto">
                     <Download className="mr-2 h-4 w-4" /> Descargar Excel
                 </Button>
                 {isClient && examData && solicitudes.length > 0 ? (
-                  <PDFDownloadLink
-                    document={<SolicitudDocument examData={examData} solicitudes={solicitudes} />}
-                    fileName={`SolicitudCheque_${examData.ne || 'SIN_NE'}_${new Date().toISOString().split('T')[0]}.pdf`}
-                  >
-                    {({ loading }) => (
-                      <Button variant="outline" className="hover:bg-accent/50" disabled={loading}>
-                        <FileType className="mr-2 h-4 w-4" /> {loading ? 'Generando PDF...' : 'Descargar PDF'}
-                      </Button>
-                    )}
-                  </PDFDownloadLink>
+                  <DynamicClientPDFDownload examData={examData} solicitudes={solicitudes} />
                 ) : (
-                  <Button variant="outline" className="hover:bg-accent/50" disabled>
+                  <Button variant="outline" className="hover:bg-accent/50 w-full sm:w-auto" disabled>
                     <FileType className="mr-2 h-4 w-4" /> Descargar PDF
                   </Button>
                 )}
-                <Button onClick={handleConfirm} className="btn-primary">
+                <Button onClick={handleConfirm} className="btn-primary w-full sm:w-auto">
                     <Check className="mr-2 h-4 w-4" /> Confirmar Solicitud
                 </Button>
             </div>
