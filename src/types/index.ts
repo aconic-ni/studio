@@ -53,41 +53,48 @@ export interface AppUser {
   email: string | null;
   displayName?: string | null;
   isStaticUser?: boolean;
+  role?: string; // Added for user role (e.g., 'revisor')
 }
 
 // Represents the structure of each document in the "SolicitudCheques" collection
 export interface SolicitudRecord {
   // Fields from ExamData (general context)
   examNe: string;
-  examReference: string | null; // Ensure optional fields can be null
+  examReference: string | null;
   examManager: string;
-  examDate: Timestamp;
+  examDate: Timestamp; // Firestore Timestamp
   examRecipient: string;
 
   // All fields from the specific SolicitudData being saved
-  solicitudId: string;
-  monto: number | null; // Ensure this can be null
+  solicitudId: string; // This is the Firestore document ID for this record
+
+  monto: number | null;
   montoMoneda: string | null;
   cantidadEnLetras: string | null;
+
   consignatario: string | null;
   declaracionNumero: string | null;
   unidadRecaudadora: string | null;
   codigo1: string | null;
   codigo2: string | null; // Codigo MUR
+
   banco: string | null;
   bancoOtros: string | null;
   numeroCuenta: string | null;
   monedaCuenta: string | null;
   monedaCuentaOtros: string | null;
+
   elaborarChequeA: string | null;
   elaborarTransferenciaA: string | null;
 
-  impuestosPagadosCliente: boolean; // Booleans usually default to false if not explicitly null
+  impuestosPagadosCliente: boolean;
   impuestosPagadosRC: string | null;
   impuestosPagadosTB: string | null;
   impuestosPagadosCheque: string | null;
+
   impuestosPendientesCliente: boolean;
   documentosAdjuntos: boolean;
+
   constanciasNoRetencion: boolean;
   constanciasNoRetencion1: boolean;
   constanciasNoRetencion2: boolean;
@@ -96,8 +103,8 @@ export interface SolicitudRecord {
   observation: string | null;
 
   // Metadata
-  savedAt: Timestamp;
-  savedBy: string | null;
+  savedAt: Timestamp; // Firestore Timestamp
+  savedBy: string | null; // User's email
 }
 
 

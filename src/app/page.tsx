@@ -19,28 +19,24 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    // This effect handles redirection once the user state is definitive
     if (!isClient || loading) return;
 
-    if (user) { // If user object exists, redirect
+    if (user) { 
       if (user.isStaticUser) {
         router.push('/database');
-      } else {
+      } else if (user.role === 'revisor') {
+        router.push('/database');
+      } else { // Default for other Firebase authenticated users
         router.push('/examiner');
       }
     }
-    // If user is null (and not loading, and on client), this component will render the main page content
   }, [user, loading, router, isClient]);
 
   const handleLoginSuccess = (isStaticUser?: boolean) => {
-    // LoginModal itself will no longer call its onClose upon success.
-    // We just need to ensure our local state for the modal is also updated if login was triggered from here.
     setIsLoginModalOpen(false);
-    // The useEffect listening to AuthContext's 'user' state (above) will handle redirection.
   };
 
   if (!isClient || loading) {
-    // If not on client yet, or auth state is loading, show a global loader
     return (
       <div className="min-h-screen flex items-center justify-center grid-bg">
         <Loader2 className="h-16 w-16 animate-spin text-white" />
@@ -48,10 +44,7 @@ export default function HomePage() {
     );
   }
 
-  // At this point: isClient is true, and loading is false.
   if (user) {
-    // If user is truthy, it means authentication is successful (or user was already logged in)
-    // and the useEffect above is (or will soon be) redirecting. Show a loader.
      return (
       <div className="min-h-screen flex items-center justify-center grid-bg">
         <Loader2 className="h-16 w-16 animate-spin text-white" />
@@ -60,11 +53,6 @@ export default function HomePage() {
     );
   }
   
-  // If we reach here, it means:
-  // - We are on the client (isClient is true)
-  // - Auth loading is complete (loading is false)
-  // - User is not authenticated (user is null)
-  // Render the main page content.
   return (
     <div className="min-h-screen flex flex-col items-center justify-center grid-bg text-white p-4">
       <main className="flex flex-col items-center text-center">
@@ -98,7 +86,7 @@ export default function HomePage() {
 
       <LoginModal
         isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)} // This handles manual close from HomePage
+        onClose={() => setIsLoginModalOpen(false)} 
         onLoginSuccess={handleLoginSuccess}
       />
     </div>

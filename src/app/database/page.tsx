@@ -72,7 +72,7 @@ const FetchedExamDisplay: React.FC<{ solicitudes: SolicitudRecord[] }> = ({ soli
     return <p className="text-muted-foreground text-center py-4">No se encontraron solicitudes para este NE.</p>;
   }
 
-  const firstSolicitud = solicitudes[0]; // Common exam data can be taken from the first record
+  const firstSolicitud = solicitudes[0]; 
 
   return (
     <Card className="mt-6 w-full custom-shadow">
@@ -90,7 +90,7 @@ const FetchedExamDisplay: React.FC<{ solicitudes: SolicitudRecord[] }> = ({ soli
             <FetchedDetailItem label="Referencia" value={firstSolicitud.examReference} icon={FileText}/>
             <FetchedDetailItem label="De (Colaborador)" value={firstSolicitud.examManager} icon={User}/>
             <FetchedDetailItem label="A (Destinatario)" value={firstSolicitud.examRecipient} icon={Send}/>
-            <FetchedDetailItem label="Fecha de Examen" value={firstSolicitud.examDate} icon={CalendarDays}/>
+            <FetchedDetailItem label="Fecha de Examen" value={firstSolicitud.examDate instanceof FirestoreTimestamp ? firstSolicitud.examDate.toDate() : firstSolicitud.examDate} icon={CalendarDays}/>
           </div>
         </div>
 
@@ -98,7 +98,7 @@ const FetchedExamDisplay: React.FC<{ solicitudes: SolicitudRecord[] }> = ({ soli
           <h4 className="text-lg font-medium mb-2 text-foreground">Detalles de Guardado (Primer Solicitud)</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 bg-secondary/30 p-4 rounded-md shadow-sm text-sm">
              <FetchedDetailItem label="Guardado por (correo)" value={firstSolicitud.savedBy} icon={Mail}/>
-             <FetchedDetailItem label="Fecha y Hora de Guardado" value={firstSolicitud.savedAt} icon={CalendarDays}/>
+             <FetchedDetailItem label="Fecha y Hora de Guardado" value={firstSolicitud.savedAt instanceof FirestoreTimestamp ? firstSolicitud.savedAt.toDate() : firstSolicitud.savedAt} icon={CalendarDays}/>
           </div>
         </div>
 
@@ -198,8 +198,8 @@ export default function DatabasePage() {
   useEffect(() => {
     if (!isClient || authLoading) return;
 
-    if (!user || !user.isStaticUser) {
-      router.push('/');
+    if (!user || (!user.isStaticUser && user.role !== 'revisor')) {
+      router.push('/'); // Redirect if not authorized
     }
   }, [user, authLoading, router, isClient]);
 
@@ -215,20 +215,20 @@ export default function DatabasePage() {
     setFetchedSolicitudes(null);
 
     try {
-      const solicitudsCollectionRef = collection(db, "SolicitudCheques"); // Updated collection name
+      const solicitudsCollectionRef = collection(db, "SolicitudCheques");
       const q = query(solicitudsCollectionRef, where("examNe", "==", searchTermNE.trim()));
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
         const data = querySnapshot.docs.map(doc => {
-          const docData = doc.data() as SolicitudRecord;
+          const docData = doc.data() as Omit<SolicitudRecord, 'examDate' | 'savedAt'> & { examDate: FirestoreTimestamp | Date, savedAt: FirestoreTimestamp | Date };
           return {
             ...docData,
-            examDate: docData.examDate instanceof FirestoreTimestamp ? docData.examDate.toDate() : docData.examDate,
-            savedAt: docData.savedAt instanceof FirestoreTimestamp ? docData.savedAt.toDate() : docData.savedAt,
-          };
+            examDate: docData.examDate instanceof FirestoreTimestamp ? docData.examDate.toDate() : docData.examDate as Date,
+            savedAt: docData.savedAt instanceof FirestoreTimestamp ? docData.savedAt.toDate() : docData.savedAt as Date,
+          } as SolicitudRecord;
         });
-        setFetchedSolicitudes(data as SolicitudRecord[]);
+        setFetchedSolicitudes(data);
       } else {
         setError("No se encontraron solicitudes para el NE: " + searchTermNE);
       }
@@ -249,22 +249,46 @@ export default function DatabasePage() {
   const handleExport = () => {
     if (fetchedSolicitudes && fetchedSolicitudes.length > 0) {
       const firstSolicitud = fetchedSolicitudes[0];
-      const examDataForExport = {
+      const examDataForExport: ExportableExamData = {
         ne: firstSolicitud.examNe,
-        reference: firstSolicitud.examReference,
+        reference: firstSolicitud.examReference || '',
         manager: firstSolicitud.examManager,
         recipient: firstSolicitud.examRecipient,
-        date: firstSolicitud.examDate instanceof FirestoreTimestamp
-              ? firstSolicitud.examDate.toDate()
-              : firstSolicitud.examDate,
+        date: firstSolicitud.examDate instanceof FirestoreTimestamp 
+              ? firstSolicitud.examDate.toDate() 
+              : (firstSolicitud.examDate instanceof Date ? firstSolicitud.examDate : new Date()), // Ensure Date
         savedBy: firstSolicitud.savedBy,
-        savedAt: firstSolicitud.savedAt instanceof FirestoreTimestamp
-              ? firstSolicitud.savedAt.toDate()
-              : firstSolicitud.savedAt,
-        products: fetchedSolicitudes.map(s => ({
-          ...s,
-          // Convert SolicitudRecord to SolicitudData-like structure for exporter
-          // This might involve picking specific fields if SolicitudRecord has more than SolicitudData expects
+        savedAt: firstSolicitud.savedAt instanceof FirestoreTimestamp 
+              ? firstSolicitud.savedAt.toDate() 
+              : (firstSolicitud.savedAt instanceof Date ? firstSolicitud.savedAt : new Date()), // Ensure Date
+        products: fetchedSolicitudes.map(s => ({ // Map SolicitudRecord to SolicitudData-like structure
+          id: s.solicitudId,
+          monto: s.monto,
+          montoMoneda: s.montoMoneda,
+          cantidadEnLetras: s.cantidadEnLetras,
+          consignatario: s.consignatario,
+          declaracionNumero: s.declaracionNumero,
+          unidadRecaudadora: s.unidadRecaudadora,
+          codigo1: s.codigo1,
+          codigo2: s.codigo2,
+          banco: s.banco,
+          bancoOtros: s.bancoOtros,
+          numeroCuenta: s.numeroCuenta,
+          monedaCuenta: s.monedaCuenta,
+          monedaCuentaOtros: s.monedaCuentaOtros,
+          elaborarChequeA: s.elaborarChequeA,
+          elaborarTransferenciaA: s.elaborarTransferenciaA,
+          impuestosPagadosCliente: s.impuestosPagadosCliente,
+          impuestosPagadosRC: s.impuestosPagadosRC,
+          impuestosPagadosTB: s.impuestosPagadosTB,
+          impuestosPagadosCheque: s.impuestosPagadosCheque,
+          impuestosPendientesCliente: s.impuestosPendientesCliente,
+          documentosAdjuntos: s.documentosAdjuntos,
+          constanciasNoRetencion: s.constanciasNoRetencion,
+          constanciasNoRetencion1: s.constanciasNoRetencion1,
+          constanciasNoRetencion2: s.constanciasNoRetencion2,
+          correo: s.correo,
+          observation: s.observation,
         }))
       };
       downloadExcelFile(examDataForExport);
@@ -273,7 +297,7 @@ export default function DatabasePage() {
     }
   };
 
-  if (!isClient || authLoading || (!user || (user && !user.isStaticUser))) {
+  if (!isClient || authLoading || (!user || (!user.isStaticUser && user.role !== 'revisor'))) {
     return (
       <div className="min-h-screen flex items-center justify-center grid-bg">
         <Loader2 className="h-12 w-12 animate-spin text-white" />
