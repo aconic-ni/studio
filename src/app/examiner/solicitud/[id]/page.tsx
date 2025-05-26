@@ -67,9 +67,6 @@ export default function SolicitudDetailPage() {
       }
       setLoading(false);
     } else if (solicitudes.length === 0 && !loading && solicitudId) {
-      // This condition might occur if the page is loaded directly and context hasn't populated solicitudes yet.
-      // Consider fetching solicitud by ID if context is empty, or redirecting more gracefully.
-      // For now, it redirects to /examiner.
       toast({ title: "Información no disponible", description: "Los datos de la solicitud no están cargados. Intente volver a la lista.", variant: "default" });
       router.push('/examiner');
       setLoading(false);
@@ -78,6 +75,7 @@ export default function SolicitudDetailPage() {
 
 
   const handlePrint = () => {
+    console.log("Imprimir button clicked. Attempting to call window.print().");
     window.print();
   };
 
@@ -286,3 +284,5 @@ export default function SolicitudDetailPage() {
     </AppShell>
   );
 }
+
+    
