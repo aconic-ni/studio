@@ -198,17 +198,17 @@ body {
     overflow: visible !important;
     margin: 0 !important;
     padding: 0 !important;
-    font-size: 10pt !important; /* Base font size for print */
+    font-size: 9pt !important; /* Base font size for print, slightly reduced */
+    color: black !important;
   }
 
-  /* This targets the main content area of the solicitud detail page */
   .solicitud-detail-print-area, .solicitud-detail-print-area * {
     visibility: visible !important;
     background-color: transparent !important;
     color: black !important;
     box-shadow: none !important;
     text-shadow: none !important;
-    border: none !important;
+    border-color: #ccc !important; /* Light border for elements that have borders */
   }
 
   .solicitud-detail-print-area {
@@ -219,10 +219,9 @@ body {
     height: auto !important;
     max-height: none !important;
     overflow: visible !important;
-    padding: 20px !important; /* Add some padding for print */
+    padding: 15px !important; /* Reduced padding for print */
     margin: 0 !important;
-    z-index: 99999 !important;
-    box-shadow: none !important; /* Ensure no shadow */
+    box-shadow: none !important;
   }
 
   .solicitud-detail-print-area .no-print {
@@ -230,37 +229,97 @@ body {
     visibility: hidden !important;
   }
   
-  .solicitud-detail-print-area .card-print-styles { /* Target the Card within the print area */
-     border: 1px solid #ccc !important; /* Optional: light border for the card */
-     padding: 15px !important;
-     margin-bottom: 15px !important;
+  .solicitud-detail-print-area .card-print-styles {
+     border: 1px solid #ccc !important;
+     padding: 10px !important; /* Reduced padding for the card */
+     margin-bottom: 10px !important;
   }
 
-  /* Hide AppHeader, AppFooter, and any other global non-printable elements */
   header.sticky, footer.py-4, .app-shell-footer {
     display: none !important;
     visibility: hidden !important;
   }
 
-  /* General print typography improvements */
-  .solicitud-detail-print-area h1, .solicitud-detail-print-area h2, .solicitud-detail-print-area h3, .solicitud-detail-print-area h4, .solicitud-detail-print-area h5, .solicitud-detail-print-area h6 {
+  .solicitud-detail-print-area h1, 
+  .solicitud-detail-print-area h2, 
+  .solicitud-detail-print-area h3, 
+  .solicitud-detail-print-area h4, 
+  .solicitud-detail-print-area h5, 
+  .solicitud-detail-print-area h6 {
     color: black !important;
     page-break-after: avoid;
+    margin-bottom: 0.3rem !important; /* Reduced bottom margin for headers */
+    font-size: 11pt !important; /* Slightly larger for section titles */
   }
+  .solicitud-detail-print-area h3.text-lg { /* Targeting exam info title */
+    font-size: 10pt !important;
+  }
+  .solicitud-detail-print-area h4.text-md { /* Targeting solicitud section titles */
+    font-size: 9pt !important;
+  }
+
 
   .solicitud-detail-print-area p {
     orphans: 3;
     widows: 3;
     color: black !important;
+    margin-bottom: 0.1rem !important; /* Reduced bottom margin for paragraphs */
   }
+  .solicitud-detail-print-area .text-xs { /* Label font size */
+    font-size: 7pt !important;
+  }
+  .solicitud-detail-print-area .text-sm { /* Value font size */
+    font-size: 8pt !important;
+  }
+
 
   .solicitud-detail-print-area a {
     color: #000 !important;
     text-decoration: underline !important;
   }
   
-  .solicitud-detail-print-area table, .solicitud-detail-print-area th, .solicitud-detail-print-area td {
+  .solicitud-detail-print-area table, 
+  .solicitud-detail-print-area th, 
+  .solicitud-detail-print-area td {
     border-color: #ccc !important;
   }
-}
 
+  /* Force grid containers in detail sections to be 2 columns */
+  .solicitud-detail-print-area .card-print-styles .grid[class*="md:grid-cols-2"],
+  .solicitud-detail-print-area .card-print-styles .grid[class*="md:grid-cols-3"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.1rem 0.3rem !important; /* Tighter gaps */
+  }
+  
+  /* Ensure elements that span columns still do so if the parent is 2-col */
+  .solicitud-detail-print-area .card-print-styles .grid .md\:col-span-2,
+  .solicitud-detail-print-area .card-print-styles .grid .md\:col-span-3, /* if originally 3 cols, now spans 2 */
+  .solicitud-detail-print-area .card-print-styles .grid .lg\:col-span-2 {
+     grid-column: span 2 / span 2 !important;
+  }
+
+  /* Reduce padding for DetailItem container */
+  .solicitud-detail-print-area .card-print-styles div[class*="py-1"] {
+    padding-top: 0.05rem !important;
+    padding-bottom: 0.05rem !important;
+  }
+
+  /* Ensure icons in DetailItem are smaller or hidden for print if they take too much space */
+  .solicitud-detail-print-area .card-print-styles .lucide-icon { /* Add this class to icons if needed */
+    display: none !important; /* Or make them smaller: height: 0.6rem !important; width: 0.6rem !important; */
+  }
+  .solicitud-detail-print-area .card-print-styles .text-muted-foreground {
+    color: #444 !important; /* Darker gray for muted text for better print contrast */
+  }
+  .solicitud-detail-print-area .divide-y > :not([hidden]) ~ :not([hidden]) {
+    border-top-width: 1px !important;
+    border-color: #eee !important; /* Lighter divider */
+  }
+  .solicitud-detail-print-area .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.5rem !important; /* Reduced space between sections */
+  }
+  .solicitud-detail-print-area .pt-2,
+  .solicitud-detail-print-area .pt-3 {
+    padding-top: 0.3rem !important; /* Reduced top padding for sections */
+  }
+}
