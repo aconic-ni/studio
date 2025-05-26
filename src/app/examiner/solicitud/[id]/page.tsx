@@ -67,6 +67,9 @@ export default function SolicitudDetailPage() {
       }
       setLoading(false);
     } else if (solicitudes.length === 0 && !loading && solicitudId) {
+      // This condition might occur if the page is loaded directly and context hasn't populated solicitudes yet.
+      // Consider fetching solicitud by ID if context is empty, or redirecting more gracefully.
+      // For now, it redirects to /examiner.
       toast({ title: "Información no disponible", description: "Los datos de la solicitud no están cargados. Intente volver a la lista.", variant: "default" });
       router.push('/examiner');
       setLoading(false);
@@ -142,8 +145,7 @@ export default function SolicitudDetailPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="mb-6 w-full">
-              <Image
+            <Image
                 src="/imagenes/HEADERSOLICITUDDETAIL.svg"
                 alt="Header Solicitud Detail"
                 width={800}
@@ -151,9 +153,9 @@ export default function SolicitudDetailPage() {
                 className="w-full h-auto object-contain"
                 data-ai-hint="company logo banner"
               />
-            </div>
-
-            <div className="grid grid-cols-[auto,1fr] gap-x-3 items-center mb-4 p-4 border rounded-md bg-secondary/5 card-print-styles">
+            
+            {/* Block 1: ID de Solicitud */}
+            <div className="grid grid-cols-[auto,1fr] gap-x-3 items-center mb-0.5 p-4 border rounded-md bg-secondary/5 card-print-styles">
                 <Label htmlFor="solicitudIdDisplay" className="flex items-center text-sm text-muted-foreground">
                   <Info className="mr-2 h-4 w-4 text-primary/70" />
                   ID de Solicitud
@@ -167,8 +169,9 @@ export default function SolicitudDetailPage() {
                 />
             </div>
 
+            {/* Block 2: Solicitud de Cheque (examData) */}
             {examData && (
-              <div className="mb-6 p-4 border border-border rounded-md bg-secondary/30 card-print-styles">
+              <div className="mb-0.5 p-4 border border-border rounded-md bg-secondary/30 card-print-styles">
                 <h3 className="text-lg font-semibold mb-2 text-primary">Solicitud de Cheque</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-0">
                   <DetailItem label="A" value={examData.recipient} icon={Send} />
@@ -180,8 +183,8 @@ export default function SolicitudDetailPage() {
               </div>
             )}
 
-            {/* New wrapper for solicitud-specific details */}
-            <div className="mb-6 p-4 border border-border rounded-md bg-secondary/30 card-print-styles">
+            {/* Block 3: Solicitud-specific details */}
+            <div className="mb-0.5 p-4 border border-border rounded-md bg-secondary/30 card-print-styles">
               <p className="text-sm font-medium text-muted-foreground mb-2">
                 Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:
               </p>
@@ -257,19 +260,17 @@ export default function SolicitudDetailPage() {
                   <DetailItem label="Observación" value={solicitud.observation} icon={MessageSquare} />
                 </div>
               </div>
-            </div> {/* End of new wrapper for solicitud-specific details */}
+            </div> 
 
 
-            <div className="mt-6 w-full">
-              <Image
+            <Image
                 src="/imagenes/FOOTERSOLICITUDETAIL.svg"
                 alt="Footer Solicitud Detail"
                 width={800}
                 height={100}
-                className="w-full h-auto object-contain"
+                className="w-full h-auto object-contain mt-6" 
                 data-ai-hint="company seal official"
               />
-            </div>
 
             <div className="mt-8 flex justify-end space-x-3 no-print">
                 <Button variant="outline" onClick={() => router.push('/examiner')}>
