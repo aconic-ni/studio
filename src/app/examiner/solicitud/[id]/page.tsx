@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAppContext } from '@/context/AppContext';
-import type { SolicitudData } from '@/types';
+import type { SolicitudData, ExamData } from '@/types';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,10 +26,10 @@ const DetailItem: React.FC<{ label: string; value?: string | number | null | boo
   }
 
   return (
-    <div className={className || "py-1"}>
-      <p className="text-xs font-medium text-muted-foreground flex items-center">
+    <div className={cn("py-1 flex items-baseline", className)}>
+      <p className="text-xs font-medium text-muted-foreground flex items-center shrink-0">
         {Icon && <Icon className="h-3.5 w-3.5 mr-1.5 text-primary/70" />}
-        {label}
+        {label}:&nbsp;
       </p>
       <p className="text-sm text-foreground break-words">{displayValue}</p>
     </div>
@@ -66,6 +66,7 @@ export default function SolicitudDetailPage() {
       }
       setLoading(false);
     } else if (solicitudes.length === 0 && !loading && solicitudId) {
+      // This condition might trigger if user navigates directly to this page and context isn't populated
       toast({ title: "Información no disponible", description: "Los datos de la solicitud no están cargados. Intente volver a la lista.", variant: "default" });
       router.push('/examiner');
       setLoading(false);
@@ -152,8 +153,7 @@ export default function SolicitudDetailPage() {
               />
             </div>
 
-            {solicitud && (
-              <div className="grid grid-cols-[auto,1fr] gap-x-3 items-center mb-4 p-4 border rounded-md bg-secondary/5 card-print-styles">
+            <div className="grid grid-cols-[auto,1fr] gap-x-3 items-center mb-4 p-4 border rounded-md bg-secondary/5 card-print-styles">
                 <Label htmlFor="solicitudIdDisplay" className="flex items-center text-sm text-muted-foreground">
                   <Info className="mr-2 h-4 w-4 text-primary/70" />
                   ID de Solicitud
@@ -165,18 +165,18 @@ export default function SolicitudDetailPage() {
                   disabled
                   className="bg-muted/50 cursor-not-allowed text-sm text-foreground"
                 />
-              </div>
-            )}
+            </div>
+
 
             {examData && (
               <div className="mb-6 p-4 border border-border rounded-md bg-secondary/30 card-print-styles">
                 <h3 className="text-lg font-semibold mb-2 text-primary">Solicitud de Cheque</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
-                  <DetailItem label="A (Destinatario)" value={examData.recipient} icon={Send} />
-                  <DetailItem label="De (Colaborador)" value={examData.manager} icon={User} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-0"> {/* Reduced gap-y */}
+                  <DetailItem label="A" value={examData.recipient} icon={Send} />
+                  <DetailItem label="De" value={examData.manager} icon={User} />
                   <DetailItem label="Fecha de Examen" value={examData.date ? format(new Date(examData.date), "PPP", { locale: es }) : 'N/A'} icon={CalendarDays} />
                   <DetailItem label="NE (Tracking NX1)" value={examData.ne} icon={Info} />
-                  <DetailItem label="Referencia" value={examData.reference || 'N/A'} icon={FileText} />
+                  <DetailItem label="Referencia" value={examData.reference || 'N/A'} icon={FileText} className="md:col-span-2"/>
                 </div>
               </div>
             )}
@@ -228,26 +228,33 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-                <div className="space-y-1">
-                    <CheckboxDetailItem label="Impuestos pagados por el cliente" checked={solicitud.impuestosPagadosCliente} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                  {/* Column 1 for Checkboxes */}
+                  <div className="space-y-1">
+                    <CheckboxDetailItem label="Impuestos pendientes de pago por el cliente" checked={solicitud.impuestosPendientesCliente} />
+                    <CheckboxDetailItem label="Impuestos pagados por el cliente mediante:" checked={solicitud.impuestosPagadosCliente} />
                     {solicitud.impuestosPagadosCliente && (
-                    <div className="ml-6 pl-2 border-l border-dashed">
+                      <div className="ml-6 pl-2 border-l border-dashed">
                         <DetailItem label="R/C No." value={solicitud.impuestosPagadosRC} />
                         <DetailItem label="T/B No." value={solicitud.impuestosPagadosTB} />
                         <DetailItem label="Cheque No." value={solicitud.impuestosPagadosCheque} />
-                    </div>
+                      </div>
                     )}
-                    <CheckboxDetailItem label="Impuestos pendientes de pago por el cliente" checked={solicitud.impuestosPendientesCliente} />
+                  </div>
+                  {/* Column 2 for Checkboxes */}
+                  <div className="space-y-1">
                     <CheckboxDetailItem label="Se añaden documentos adjuntos" checked={solicitud.documentosAdjuntos} />
                     <CheckboxDetailItem label="Constancias de no retención" checked={solicitud.constanciasNoRetencion} />
                     {solicitud.constanciasNoRetencion && (
-                    <div className="ml-6 pl-2 border-l border-dashed">
+                      <div className="ml-6 pl-2 border-l border-dashed">
                         <CheckboxDetailItem label="1%" checked={solicitud.constanciasNoRetencion1} />
                         <CheckboxDetailItem label="2%" checked={solicitud.constanciasNoRetencion2} />
-                    </div>
+                      </div>
                     )}
+                  </div>
                 </div>
               </div>
+
 
               <div className="pt-3">
                 <DetailItem label="Correos de Notificación" value={solicitud.correo} icon={Mail} />
@@ -281,4 +288,4 @@ export default function SolicitudDetailPage() {
   );
 }
 
-
+    
