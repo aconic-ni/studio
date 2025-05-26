@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Printer, CheckSquare, Square, Banknote, Landmark, Hash, User, FileText, Mail, MessageSquare, Building, Code, CalendarDays, Info, Send, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from "@/hooks/use-toast";
 
 // Helper components (can be moved to a shared file if reused extensively)
 const DetailItem: React.FC<{ label: string; value?: string | number | null | boolean; icon?: React.ElementType; className?: string }> = ({ label, value, icon: Icon, className }) => {
@@ -64,10 +64,15 @@ export default function SolicitudDetailPage() {
         router.push('/examiner'); // Redirect if not found
       }
       setLoading(false);
-    } else if (solicitudes.length === 0 && !loading) {
-      // Edge case: context might not be ready on direct load
-      // Potentially fetch data here if context is empty, or rely on Auth guard to redirect
-      setLoading(false);
+    } else if (solicitudes.length === 0 && !loading && solicitudId) { 
+      // This condition handles direct navigation or refresh when context might be empty initially
+      // Consider fetching data here if context is empty, or rely on Auth guard to redirect if appropriate
+      // For now, if solicitudes array is empty and we have an ID, it might mean data isn't ready.
+      // Let's assume the context will eventually populate or a guard will redirect.
+      // If still loading from context, it's fine. If not loading AND no solicitudes, it's an issue.
+      toast({ title: "Información no disponible", description: "Los datos de la solicitud no están cargados. Intente volver a la lista.", variant: "default" });
+      // router.push('/examiner'); // Optionally redirect
+      setLoading(false); // Set loading to false if we are not actively loading and no data
     }
   }, [solicitudId, solicitudes, router, toast, loading]);
 
@@ -99,7 +104,7 @@ export default function SolicitudDetailPage() {
   };
 
 
-  if (loading) {
+  if (loading && !solicitud) { // Keep showing loader if actively loading and no specific solicitud found yet
     return (
       <AppShell>
         <div className="flex justify-center items-center h-screen">
@@ -113,7 +118,7 @@ export default function SolicitudDetailPage() {
     return (
       <AppShell>
         <div className="flex flex-col items-center justify-center h-screen text-center">
-          <p className="text-xl mb-4">Solicitud no encontrada.</p>
+          <p className="text-xl mb-4">Solicitud no encontrada o datos no disponibles.</p>
           <Button onClick={() => router.push('/examiner')}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Lista de Solicitudes
           </Button>
@@ -260,3 +265,5 @@ export default function SolicitudDetailPage() {
     </AppShell>
   );
 }
+
+    
