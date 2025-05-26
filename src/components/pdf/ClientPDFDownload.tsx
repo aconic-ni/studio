@@ -1,7 +1,7 @@
 
 "use client";
 
-import type React from 'react';
+import React, { useState, useEffect } from 'react'; // Added useState and useEffect
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { SolicitudDocument } from '@/components/pdf/SolicitudDocument';
 import { Button } from '@/components/ui/button';
@@ -15,8 +15,20 @@ interface ClientPDFDownloadProps {
 }
 
 export const ClientPDFDownload: React.FC<ClientPDFDownloadProps> = ({ examData, solicitudes, className }) => {
-  // The parent component (PreviewScreen) already checks if examData and solicitudes are valid
-  // and if it's client-side. So, we can assume valid props here.
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted || !examData || solicitudes.length === 0) {
+    // Render a placeholder or disabled button until mounted or if data is missing
+    return (
+      <Button variant="outline" className="hover:bg-accent/50 w-full sm:w-auto" disabled>
+        <FileType className="mr-2 h-4 w-4" /> {isMounted ? 'Descargar PDF' : 'Cargando PDF...'}
+      </Button>
+    );
+  }
 
   return (
     <PDFDownloadLink
