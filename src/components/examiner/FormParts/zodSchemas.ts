@@ -16,13 +16,16 @@ export const solicitudSchema = z.object({
   id: z.string().optional(),
 
   monto: z.preprocess(
-    (val) => (val === "" || val === undefined || val === null) ? undefined : (typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : val),
-    z.number({invalid_type_error: "Monto debe ser un número."}).min(0.01, "Monto debe ser positivo.").optional()
+    (val) => (val === "" || val === undefined || val === null) ? undefined : (typeof val === 'string' ? parseFloat(String(val).replace(/,/g, '')) : val),
+    z.number({
+      required_error: "Monto es requerido y debe ser mayor que cero.",
+      invalid_type_error: "Monto debe ser un número."
+    }).min(0.01, "Monto debe ser positivo.")
   ),
   montoMoneda: z.enum(['cordoba', 'dolar', 'euro'], { errorMap: () => ({ message: "Seleccione una moneda para el monto." })}).optional(),
   cantidadEnLetras: z.string().optional(),
 
-  consignatario: z.string().optional(), // Added new field
+  consignatario: z.string().optional(),
   declaracionNumero: z.string().optional(),
   unidadRecaudadora: z.string().optional(),
   codigo1: z.string().optional(),
@@ -69,19 +72,7 @@ export const solicitudSchema = z.object({
       path: ['monedaCuentaOtros'],
     });
   }
-  // Allow no beneficiario if "ACCION POR CHEQUE/NO APLICA BANCO" is selected, otherwise require one
-  if (data.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO' && !data.elaborarChequeA?.trim() && !data.elaborarTransferenciaA?.trim()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Debe especificar un beneficiario para cheque o transferencia.",
-      path: ['elaborarChequeA'], 
-    });
-     ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Debe especificar un beneficiario para cheque o transferencia.",
-      path: ['elaborarTransferenciaA'], 
-    });
-  }
+  // Removed the superRefine logic that required 'elaborarChequeA' or 'elaborarTransferenciaA'
 });
 
 export type SolicitudFormData = z.infer<typeof solicitudSchema>;
