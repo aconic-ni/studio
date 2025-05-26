@@ -127,7 +127,7 @@ body {
   }
 
   .grid-bg {
-    background-color: hsl(var(--primary) / 0.9); /* Darker blue using theme primary */
+    background-color: #1a365d; /* Restored hardcoded dark blue */
     background-image: linear-gradient(hsl(var(--primary-foreground) / 0.05) 1px, transparent 1px),
                       linear-gradient(90deg, hsl(var(--primary-foreground) / 0.05) 1px, transparent 1px);
     background-size: 20px 20px;
@@ -263,3 +263,4 @@ body {
     border-color: #ccc !important;
   }
 }
+
