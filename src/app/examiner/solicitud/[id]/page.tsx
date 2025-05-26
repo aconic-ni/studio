@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAppContext } from '@/context/AppContext';
-import type { SolicitudData } from '@/types'; // Ensure ExamData is also imported if used directly
+import type { SolicitudData } from '@/types';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,8 +64,10 @@ export default function SolicitudDetailPage() {
       }
       setLoading(false);
     } else if (solicitudes.length === 0 && !loading && solicitudId) {
+      // This case might occur if the page is loaded directly and context isn't populated yet
+      // For now, it will show loading, a better UX might fetch data if context is empty
       toast({ title: "Información no disponible", description: "Los datos de la solicitud no están cargados. Intente volver a la lista.", variant: "default" });
-      setLoading(false);
+      setLoading(false); // Ensure loading stops
     }
   }, [solicitudId, solicitudes, router, toast, loading]);
 
@@ -157,22 +159,30 @@ export default function SolicitudDetailPage() {
                   <DetailItem label="De (Colaborador)" value={examData.manager} icon={User} />
                   <DetailItem label="Fecha de Examen" value={examData.date ? format(new Date(examData.date), "PPP", { locale: es }) : 'N/A'} icon={CalendarDays} />
                   <DetailItem label="NE (Tracking NX1)" value={examData.ne} icon={Info} />
-                  <DetailItem label="Referencia" value={examData.reference} icon={FileText} />
+                  <DetailItem label="Referencia" value={examData.reference || 'N/A'} icon={FileText} />
                 </div>
               </div>
             )}
 
             <div className="space-y-3 divide-y divide-border">
               <div className="pt-2">
-                <h4 className="text-md font-medium text-primary mb-1">Detalles del Monto</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                  <DetailItem label="Monto Solicitado" value={formatCurrency(solicitud.monto, solicitud.montoMoneda)} icon={Banknote} />
-                  <DetailItem label="Cantidad en Letras" value={solicitud.cantidadEnLetras} icon={FileText} className="md:col-span-2"/>
+                <p className="text-xs font-medium text-muted-foreground mb-2">
+                  Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 items-start">
+                  <div className="flex items-baseline py-1">
+                    <Banknote className="h-4 w-4 mr-1.5 text-primary shrink-0" />
+                    <p className="text-sm text-foreground break-words">{formatCurrency(solicitud.monto, solicitud.montoMoneda)}</p>
+                  </div>
+                  <div className="flex items-baseline py-1">
+                    <FileText className="h-4 w-4 mr-1.5 text-primary shrink-0" />
+                    <p className="text-sm text-foreground break-words">{solicitud.cantidadEnLetras || 'N/A'}</p>
+                  </div>
                 </div>
               </div>
 
               <div className="pt-3">
-
+                {/* No more "Información Adicional de Solicitud" title here */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
                   <DetailItem label="Consignatario" value={solicitud.consignatario} icon={Users} />
                   <DetailItem label="Declaración Número" value={solicitud.declaracionNumero} icon={Hash} />
@@ -183,7 +193,7 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-
+                 {/* No more "Cuenta Bancaria" title here */}
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 items-start">
                     <DetailItem label="Banco" value={getBancoDisplay(solicitud)} icon={Landmark} />
                     {solicitud.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO' && (
@@ -196,7 +206,7 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-
+                {/* No more "Beneficiario del Pago" title here */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
                   <DetailItem label="Elaborar Cheque A" value={solicitud.elaborarChequeA} icon={User} />
                   <DetailItem label="Elaborar Transferencia A" value={solicitud.elaborarTransferenciaA} icon={User} />
@@ -204,7 +214,7 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-
+                {/* No more "Documentación y Estados" title here */}
                 <div className="space-y-1">
                     <CheckboxDetailItem label="Impuestos pagados por el cliente" checked={solicitud.impuestosPagadosCliente} />
                     {solicitud.impuestosPagadosCliente && (
@@ -227,7 +237,7 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-
+                {/* No more "Comunicación y Observaciones" title here */}
                 <DetailItem label="Correos de Notificación" value={solicitud.correo} icon={Mail} />
                 <DetailItem label="Observación" value={solicitud.observation} icon={MessageSquare} />
               </div>
