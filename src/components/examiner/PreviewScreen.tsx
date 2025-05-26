@@ -49,15 +49,33 @@ const PreviewDetailItem: React.FC<{ label: string; value?: string | number | nul
 
 export function PreviewScreen() {
   const { examData, solicitudes, setCurrentStep } = useAppContext(); 
-  const [isClient, setIsClient] = useState(false);
+  // isClient state is not strictly needed here anymore since DynamicClientPDFDownload handles its own mounting
+  // const [isClient, setIsClient] = useState(false);
 
-  useEffect(() => {
-    setIsClient(true); // Component has mounted, so it's client-side
-  }, []);
+  // useEffect(() => {
+  //   setIsClient(true); // Component has mounted, so it's client-side
+  // }, []);
 
 
   if (!examData) {
-    return <div className="text-center p-10">Error: No se encontraron datos del examen.</div>;
+    // This can happen if the context isn't populated yet or user navigates here directly
+    // You might want to redirect or show a more specific loading/error state
+    return (
+       <Card className="w-full max-w-5xl mx-auto custom-shadow">
+        <CardHeader>
+          <CardTitle className="text-xl md:text-2xl font-semibold text-foreground">Vista Previa de la Solicitud de Cheque</CardTitle>
+          <CardDescription className="text-muted-foreground">Cargando datos del examen...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center p-10 text-muted-foreground">
+            No se encontraron datos del examen. Por favor, inicie una nueva solicitud.
+            <Button onClick={() => setCurrentStep(ExamStep.INITIAL_INFO)} className="mt-4">
+              Ir al Inicio
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   const handleConfirm = () => {
@@ -170,13 +188,8 @@ export function PreviewScreen() {
                 <Button variant="outline" onClick={handleDownloadExcel} className="hover:bg-accent/50 w-full sm:w-auto">
                     <Download className="mr-2 h-4 w-4" /> Descargar Excel
                 </Button>
-                {isClient && examData && solicitudes.length > 0 ? (
-                  <DynamicClientPDFDownload examData={examData} solicitudes={solicitudes} />
-                ) : (
-                  <Button variant="outline" className="hover:bg-accent/50 w-full sm:w-auto" disabled>
-                    <FileType className="mr-2 h-4 w-4" /> Descargar PDF
-                  </Button>
-                )}
+                 {/* Pass examData and solicitudes directly. DynamicClientPDFDownload will handle null checks. */}
+                <DynamicClientPDFDownload examData={examData} solicitudes={solicitudes} />
                 <Button onClick={handleConfirm} className="btn-primary w-full sm:w-auto">
                     <Check className="mr-2 h-4 w-4" /> Confirmar Solicitud
                 </Button>
