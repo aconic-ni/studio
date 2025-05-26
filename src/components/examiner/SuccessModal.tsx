@@ -72,14 +72,9 @@ export function SuccessModal() {
         <DialogDescription asChild>
            <div className="text-center text-muted-foreground space-y-3">
               <div>La solicitud de cheque ha sido registrada correctamente.</div>
-              <div>
-                Se notificó a: <br />
-                <span className="font-medium">gerencia@aconic.com</span>,<br />
-                <span className="font-medium">asuntos.juridicos@aconic.com</span>,<br />
-                <span className="font-medium">coordinacion@aconic.com</span>.
-              </div>
               {examData?.manager && <div>Gracias por tu desempeño, {examData.manager}.</div>}
               <div>
+                {/* Link to SharePoint - configure later
                 <Link
                   href="https://aconisani-my.sharepoint.com/:f:/g/personal/asuntos_juridicos_aconic_com_ni/Emrpj4Ss8bhDifpuYc8U_bwBj9r29FGcXxzfxu4PSh2tEQ?e=FhIPTt"
                   target="_blank"
@@ -87,6 +82,8 @@ export function SuccessModal() {
                 >
                   Añadir imágenes/soportes del predio/solicitud aquí
                 </Link>
+                */}
+                Puedes añadir imágenes/soportes del predio/solicitud (enlace a configurar).
               </div>
            </div>
         </DialogDescription>
@@ -95,7 +92,7 @@ export function SuccessModal() {
             onClick={handleSaveToDatabase}
             variant="destructive"
             size="sm" 
-            className="p-2" // Ensures square appearance for icon with size="sm"
+            className="p-2" 
             aria-label="Guardar en Base de Datos"
           >
             <Save className="h-4 w-4" />
