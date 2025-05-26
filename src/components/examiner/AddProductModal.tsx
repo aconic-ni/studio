@@ -38,11 +38,11 @@ export function AddProductModal() {
       monto: undefined,
       montoMoneda: 'cordoba',
       cantidadEnLetras: '',
-      consignatario: '', 
+      consignatario: '',
       declaracionNumero: '',
       unidadRecaudadora: '',
       codigo1: '',
-      codigo2: '', // Field name remains codigo2
+      codigo2: '',
       banco: undefined,
       bancoOtros: '',
       numeroCuenta: '',
@@ -72,16 +72,28 @@ export function AddProductModal() {
   const watchedMontoMoneda = form.watch("montoMoneda");
 
   useEffect(() => {
-    if (watchedMonto !== undefined && watchedMontoMoneda) {
-      const montoNumero = Number(watchedMonto);
+    // watchedMonto here will be the string from field.onChange or number after Zod runs
+    // For numeroALetras, we need a clean number.
+    let montoForConversion: number | undefined = undefined;
+    if (typeof watchedMonto === 'string') {
+        const parsed = parseFloat(watchedMonto);
+        if (!isNaN(parsed)) {
+            montoForConversion = parsed;
+        }
+    } else if (typeof watchedMonto === 'number') {
+        montoForConversion = watchedMonto;
+    }
+
+    if (montoForConversion !== undefined && watchedMontoMoneda) {
+      const montoNumero = Number(montoForConversion);
       if (!isNaN(montoNumero) && montoNumero > 0) {
         const letras = numeroALetras(montoNumero, watchedMontoMoneda);
-        form.setValue('cantidadEnLetras', letras, { shouldValidate: false }); // Avoid re-validating on auto-fill
+        form.setValue('cantidadEnLetras', letras, { shouldValidate: true }); 
       } else {
-        form.setValue('cantidadEnLetras', '', { shouldValidate: false });
+        form.setValue('cantidadEnLetras', '', { shouldValidate: true });
       }
     } else {
-       form.setValue('cantidadEnLetras', '', { shouldValidate: false });
+       form.setValue('cantidadEnLetras', '', { shouldValidate: true });
     }
   }, [watchedMonto, watchedMontoMoneda, form]);
 
@@ -92,6 +104,9 @@ export function AddProductModal() {
       form.setValue('numeroCuenta', '');
       form.setValue('monedaCuenta', undefined);
       form.setValue('monedaCuentaOtros', '');
+      // Also clear beneficiaries if "NO APLICA BANCO"
+      form.setValue('elaborarChequeA', '');
+      form.setValue('elaborarTransferenciaA', '');
     }
   }, [watchedBanco, form]);
 
@@ -103,14 +118,14 @@ export function AddProductModal() {
     if (isAddProductModalOpen) {
       const defaultCorreo = user?.email || '';
       const initialValues: SolicitudFormData = {
-        monto: undefined,
+        monto: undefined, // Will be string internally due to input, Zod handles parsing
         montoMoneda: 'cordoba',
         cantidadEnLetras: '',
         consignatario: '',
         declaracionNumero: '',
         unidadRecaudadora: '',
         codigo1: '',
-        codigo2: '', // Field name remains codigo2
+        codigo2: '',
         banco: undefined,
         bancoOtros: '',
         numeroCuenta: '',
@@ -132,29 +147,32 @@ export function AddProductModal() {
       };
 
       if (editingSolicitud) {
-        const montoAsNumber = editingSolicitud.monto !== undefined ? Number(editingSolicitud.monto) : undefined;
+        // Ensure `monto` from editingSolicitud is treated as string for form's initial value
+        const montoAsString = editingSolicitud.monto !== undefined && editingSolicitud.monto !== null 
+                              ? String(editingSolicitud.monto) 
+                              : '';
+        
         const populatedEditingSolicitud = {
-          ...initialValues, // Start with defaults to ensure all fields are present
+          ...initialValues,
           ...editingSolicitud,
-          monto: montoAsNumber,
+          monto: montoAsString, // Use string for form input
           correo: editingSolicitud.correo || defaultCorreo,
         };
-        form.reset(populatedEditingSolicitud);
+        form.reset(populatedEditingSolicitud as any); // RHF expects string for controlled text input
         setShowBancoOtros(editingSolicitud.banco === 'Otros');
         setShowMonedaCuentaOtros(editingSolicitud.monedaCuenta === 'Otros');
 
         // Manually trigger conversion for existing data on edit
-        if (montoAsNumber !== undefined && populatedEditingSolicitud.montoMoneda) {
-           if (!isNaN(montoAsNumber) && montoAsNumber > 0) {
-            const letras = numeroALetras(montoAsNumber, populatedEditingSolicitud.montoMoneda);
-            form.setValue('cantidadEnLetras', letras, { shouldValidate: false });
-          } else {
+        const montoNumeroForEdit = Number(editingSolicitud.monto);
+        if (!isNaN(montoNumeroForEdit) && montoNumeroForEdit > 0 && populatedEditingSolicitud.montoMoneda) {
+          const letras = numeroALetras(montoNumeroForEdit, populatedEditingSolicitud.montoMoneda);
+          form.setValue('cantidadEnLetras', letras, { shouldValidate: false });
+        } else {
             form.setValue('cantidadEnLetras', '', { shouldValidate: false });
-          }
         }
 
       } else {
-        form.reset(initialValues);
+        form.reset(initialValues as any); // RHF expects string for controlled text input
         setShowBancoOtros(false);
         setShowMonedaCuentaOtros(false);
       }
@@ -162,15 +180,16 @@ export function AddProductModal() {
   }, [editingSolicitud, form, isAddProductModalOpen, user]);
 
   function onSubmit(data: SolicitudFormData) {
-    const solicitudData = {
+    // Zod already parsed `monto` to a number or undefined if valid
+    const solicitudDataToSave = {
         ...data,
-        monto: data.monto !== undefined ? Number(data.monto) : undefined,
+        // `data.monto` here is already processed by Zod schema's preprocess and is a number or undefined
     };
 
     if (editingSolicitud && editingSolicitud.id) {
-      updateSolicitud({ ...solicitudData, id: editingSolicitud.id } as SolicitudData);
+      updateSolicitud({ ...solicitudDataToSave, id: editingSolicitud.id } as SolicitudData);
     } else {
-      addSolicitud(solicitudData as Omit<SolicitudData, 'id'>);
+      addSolicitud(solicitudDataToSave as Omit<SolicitudData, 'id'>);
     }
     closeAddProductModal();
   }
@@ -178,6 +197,29 @@ export function AddProductModal() {
   if (!isAddProductModalOpen) return null;
 
   const isBancoNoAplica = watchedBanco === 'ACCION POR CHEQUE/NO APLICA BANCO';
+
+  const sanitizeMontoInput = (inputValue: string): string => {
+    let value = inputValue;
+    // Remove any character that is not a digit or a decimal point.
+    value = value.replace(/[^\d.]/g, "");
+
+    // Ensure only one decimal point.
+    const dotIndex = value.indexOf('.');
+    if (dotIndex !== -1) {
+      const beforeDot = value.substring(0, dotIndex + 1);
+      const afterDot = value.substring(dotIndex + 1).replace(/\./g, ''); // Remove all dots after the first
+      value = beforeDot + afterDot;
+    }
+  
+    // Limit to two decimal places if a decimal point exists.
+    if (dotIndex !== -1) {
+      const parts = value.split('.');
+      if (parts[1] && parts[1].length > 2) {
+        value = parts[0] + '.' + parts[1].substring(0, 2);
+      }
+    }
+    return value;
+  };
 
   return (
     <Dialog open={isAddProductModalOpen} onOpenChange={(open) => !open && closeAddProductModal()}>
@@ -214,7 +256,6 @@ export function AddProductModal() {
                             monto: "Monto Solicitado",
                             consignatario: "Consignatario",
                             cantidadEnLetras: "Cantidad en Letras",
-                            // Add other field name mappings as needed
                         };
                         readableFieldName = fieldNameMap[fieldName] || fieldName.replace(/([A-Z])/g, ' $1').toLowerCase();
                         return (
@@ -238,7 +279,20 @@ export function AddProductModal() {
                     Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:
                   </FormLabel>
                   <div className="flex gap-2">
-                    <FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} value={field.value ?? ''} className="w-2/3" /></FormControl>
+                    <FormControl>
+                      <Input 
+                        type="text" // Changed from "number"
+                        inputMode="decimal" // Hint for mobile keyboards
+                        placeholder="0.00" 
+                        {...field}
+                        value={field.value ?? ''} // field.value will be string from RHF
+                        onChange={(e) => {
+                          const sanitized = sanitizeMontoInput(e.target.value);
+                          field.onChange(sanitized); // Pass sanitized string to RHF
+                        }}
+                        className="w-2/3" 
+                      />
+                    </FormControl>
                     <FormField control={form.control} name="montoMoneda" render={({ field: selectField }) => (
                       <Select onValueChange={selectField.onChange} value={selectField.value || 'cordoba'}>
                         <FormControl><SelectTrigger className="w-1/3"><SelectValue placeholder="Moneda" /></SelectTrigger></FormControl>
@@ -462,3 +516,6 @@ export function AddProductModal() {
     </Dialog>
   );
 }
+
+
+    
