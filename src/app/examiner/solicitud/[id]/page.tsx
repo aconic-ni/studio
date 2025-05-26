@@ -14,7 +14,7 @@ import { ArrowLeft, Printer, CheckSquare, Square, Banknote, Landmark, Hash, User
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from "@/hooks/use-toast";
-import { cn } from '@/lib/utils'; // Added missing import
+import { cn } from '@/lib/utils';
 
 const DetailItem: React.FC<{ label: string; value?: string | number | null | boolean; icon?: React.ElementType; className?: string }> = ({ label, value, icon: Icon, className }) => {
   let displayValue: string;
@@ -172,7 +172,7 @@ export default function SolicitudDetailPage() {
             {examData && (
               <div className="mb-6 p-4 border border-border rounded-md bg-secondary/30 card-print-styles">
                 <h3 className="text-lg font-semibold mb-2 text-primary">Solicitud de Cheque</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-0"> {/* Reduced gap-y */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-0">
                   <DetailItem label="A" value={examData.recipient} icon={Send} />
                   <DetailItem label="De" value={examData.manager} icon={User} />
                   <DetailItem label="Fecha de Examen" value={examData.date ? format(new Date(examData.date), "PPP", { locale: es }) : 'N/A'} icon={CalendarDays} />
@@ -288,3 +288,5 @@ export default function SolicitudDetailPage() {
     </AppShell>
   );
 }
+
+    
