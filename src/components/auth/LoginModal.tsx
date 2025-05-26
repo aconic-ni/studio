@@ -16,7 +16,7 @@ import type { AppUser } from '@/types';
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess: (isStaticUser?: boolean) => void; // Modified to indicate static user
+  onLoginSuccess: (isStaticUser?: boolean) => void;
 }
 
 // Static credentials
@@ -29,7 +29,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { setStaticUser } = useAuth(); // Get setStaticUser from AuthContext
+  const { setStaticUser } = useAuth();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -45,33 +45,35 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
     // Check for static user credentials
     if (email === STATIC_USER_EMAIL && password === STATIC_USER_PASS) {
       const staticUser: AppUser = {
-        uid: 'static_user_uid', // Provide a mock UID
+        uid: 'static_user_uid',
         email: STATIC_USER_EMAIL,
         displayName: 'Usuario Ejecutivo',
         isStaticUser: true,
       };
-      setStaticUser(staticUser); // Set static user in context
+      setStaticUser(staticUser);
       toast({ title: 'Inicio de sesión de ejecutivo exitoso', description: 'Bienvenido.' });
-      onLoginSuccess(true); // Pass true to indicate static user
-      onClose();
+      onLoginSuccess(true);
+      // REMOVED: onClose(); // Parent will handle modal visibility based on auth state
       setLoading(false);
       return;
     }
     
     try {
-      await signInWithEmailAndPassword(auth, email, password); // Removed 'as Auth'
+      await signInWithEmailAndPassword(auth as Auth, email, password);
       setStaticUser(null); // Ensure no static user is set if Firebase login succeeds
       toast({ title: 'Inicio de sesión exitoso', description: 'Bienvenido a CustomsFA-L.' });
       onLoginSuccess(false); // Pass false for Firebase user
-      onClose();
-    } catch (err: any) {
-      console.error("Firebase Auth Error:", err);
+      // REMOVED: onClose(); // Parent will handle modal visibility or redirection
+    } catch (err: any) {     
       let userFriendlyError = 'Error al iniciar sesión. Inténtelo de nuevo.';
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         userFriendlyError = 'Correo o contraseña incorrectos.';
       } else if (err.code === 'auth/invalid-email') {
         userFriendlyError = 'El formato del correo electrónico no es válido.';
+      } else if (err.code === 'auth/too-many-requests') {
+        userFriendlyError = 'Demasiados intentos fallidos. Intente más tarde.';
       }
+      console.error("Firebase Auth Error:", err.code, err.message);
       setError(userFriendlyError);
       toast({ title: 'Error de inicio de sesión', description: userFriendlyError, variant: 'destructive' });
     } finally {
@@ -82,12 +84,16 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
   if (!isOpen) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        onClose(); // Call onClose if dialog is closed by user action (e.g., Esc key or overlay click)
+      }
+    }}>
       <DialogContent className="sm:max-w-md glass-effect text-foreground border-border/30">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-foreground">CustomsFA-L</DialogTitle>
           <button
-            onClick={onClose}
+            onClick={onClose} // This button handles manual close
             className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
             aria-label="Cerrar"
           >

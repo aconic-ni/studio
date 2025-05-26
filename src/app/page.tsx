@@ -6,7 +6,7 @@ import { Building2 } from 'lucide-react';
 import { LoginModal } from '@/components/auth/LoginModal';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react'; // Ensure Loader2 is imported
+import { Loader2 } from 'lucide-react'; 
 
 export default function HomePage() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -33,8 +33,8 @@ export default function HomePage() {
   }, [user, loading, router, isClient]);
 
   const handleLoginSuccess = (isStaticUser?: boolean) => {
-    // LoginModal will call its own onClose upon success.
-    // We just need to ensure our local state for the modal is also updated.
+    // LoginModal itself will no longer call its onClose upon success.
+    // We just need to ensure our local state for the modal is also updated if login was triggered from here.
     setIsLoginModalOpen(false);
     // The useEffect listening to AuthContext's 'user' state (above) will handle redirection.
   };
@@ -98,7 +98,7 @@ export default function HomePage() {
 
       <LoginModal
         isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
+        onClose={() => setIsLoginModalOpen(false)} // This handles manual close from HomePage
         onLoginSuccess={handleLoginSuccess}
       />
     </div>

@@ -31,9 +31,10 @@ export default function LoginPage() {
   }, [user, loading, router, isClient]);
 
   const handleLoginSuccess = (isStaticUser?: boolean) => {
-    // The LoginModal itself will call its onClose after success.
-    // The useEffect listening to AuthContext's 'user' state (above) will handle redirection.
+    // Redirection is handled by the useEffect listening to AuthContext's 'user' state.
     // No explicit router.push() here to prevent race conditions with context update.
+    // The LoginModal no longer calls its own onClose prop upon success.
+    // This page, if it remains mounted, will be redirected by the useEffect above.
   };
   
   if (!isClient || loading) { 
