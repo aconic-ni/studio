@@ -8,7 +8,7 @@ import { db } from '@/lib/firebase';
 import { doc, setDoc, Timestamp } from "firebase/firestore";
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import type { ExamDocument } from '@/types';
+import type { SolicitudRecord } from '@/types'; // Import the new type
 
 export function SuccessModal() {
   const { currentStep, setCurrentStep, resetApp, examData, solicitudes } = useAppContext();
@@ -16,41 +16,117 @@ export function SuccessModal() {
   const { toast } = useToast();
 
   const handleSaveToDatabase = async () => {
-    if (!examData || !user || !user.email) {
+    if (!examData || !user || !user.email || !solicitudes || solicitudes.length === 0) {
       toast({
         title: "Error al guardar",
-        description: "Faltan datos del examen o información del usuario.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!examData.ne) {
-      toast({
-        title: "Error al guardar",
-        description: "El número NE (Seguimiento NX1) es requerido para guardar.",
+        description: "Faltan datos del examen, información del usuario o no hay solicitudes para guardar.",
         variant: "destructive",
       });
       return;
     }
 
-    try {
-      const examDocRef = doc(db, "examenesPrevios", examData.ne);
-      const dataToSave: Omit<ExamDocument, 'id'> = { 
-        ...examData,
-        solicitudes: solicitudes,
-        savedAt: Timestamp.fromDate(new Date()),
-        savedBy: user.email,
-      };
-      await setDoc(examDocRef, dataToSave);
+    if (!examData.ne) {
       toast({
-        title: "Examen Guardado",
-        description: `El examen NE: ${examData.ne} ha sido guardado en la base de datos.`,
+        title: "Error al guardar",
+        description: "El número NE del examen es requerido para guardar.",
+        variant: "destructive",
       });
+      return;
+    }
+    if (!(examData.date instanceof Date) || isNaN(examData.date.getTime())) {
+        toast({
+            title: "Error en Fecha de Examen",
+            description: "La fecha del examen no es válida.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+
+    let allSavedSuccessfully = true;
+    try {
+      for (const solicitud of solicitudes) {
+        if (!solicitud.id) {
+          console.error("Solicitud sin ID encontrada, omitiendo:", solicitud);
+          allSavedSuccessfully = false; // Mark as not all saved if one is missing ID
+          continue; // Skip this solicitud
+        }
+
+        const montoAsNumber = typeof solicitud.monto === 'string'
+          ? parseFloat(solicitud.monto.replace(/,/g, ''))
+          : solicitud.monto;
+
+        if (montoAsNumber === undefined || isNaN(montoAsNumber)) {
+            console.error("Monto inválido o no definido para solicitud:", solicitud.id);
+            // Decide if you want to skip or save with monto as undefined/null
+            // For now, let's skip if critical, or save with it undefined
+        }
+
+        const docData: SolicitudRecord = {
+          // ExamData fields (prefixed to avoid conflicts if SolicitudData had same names)
+          examNe: examData.ne,
+          examReference: examData.reference,
+          examManager: examData.manager,
+          examDate: Timestamp.fromDate(examData.date), // examData.date should be a Date object
+          examRecipient: examData.recipient,
+
+          // SolicitudData fields
+          solicitudId: solicitud.id, // This is the Firestore document ID
+          monto: montoAsNumber, // Ensure it's a number
+          montoMoneda: solicitud.montoMoneda,
+          cantidadEnLetras: solicitud.cantidadEnLetras,
+          consignatario: solicitud.consignatario,
+          declaracionNumero: solicitud.declaracionNumero,
+          unidadRecaudadora: solicitud.unidadRecaudadora,
+          codigo1: solicitud.codigo1,
+          codigo2: solicitud.codigo2,
+          banco: solicitud.banco,
+          bancoOtros: solicitud.bancoOtros,
+          numeroCuenta: solicitud.numeroCuenta,
+          monedaCuenta: solicitud.monedaCuenta,
+          monedaCuentaOtros: solicitud.monedaCuentaOtros,
+          elaborarChequeA: solicitud.elaborarChequeA,
+          elaborarTransferenciaA: solicitud.elaborarTransferenciaA,
+          impuestosPagadosCliente: solicitud.impuestosPagadosCliente,
+          impuestosPagadosRC: solicitud.impuestosPagadosRC,
+          impuestosPagadosTB: solicitud.impuestosPagadosTB,
+          impuestosPagadosCheque: solicitud.impuestosPagadosCheque,
+          impuestosPendientesCliente: solicitud.impuestosPendientesCliente,
+          documentosAdjuntos: solicitud.documentosAdjuntos,
+          constanciasNoRetencion: solicitud.constanciasNoRetencion,
+          constanciasNoRetencion1: solicitud.constanciasNoRetencion1,
+          constanciasNoRetencion2: solicitud.constanciasNoRetencion2,
+          correo: solicitud.correo,
+          observation: solicitud.observation,
+
+          // Metadata
+          savedAt: Timestamp.fromDate(new Date()),
+          savedBy: user.email,
+        };
+
+        const solicitudDocRef = doc(db, "Solicitudes de Cheque", solicitud.id);
+        await setDoc(solicitudDocRef, docData);
+      }
+
+      if (allSavedSuccessfully) {
+        toast({
+          title: "Solicitudes Guardadas",
+          description: `Todas las solicitudes (${solicitudes.length}) han sido guardadas en la base de datos.`,
+        });
+      } else {
+        toast({
+          title: "Guardado Parcial",
+          description: "Algunas solicitudes no pudieron ser guardadas (ej. faltaba ID). Revise la consola.",
+          variant: "default" // Or "warning" if you have such variant
+        });
+      }
+
     } catch (error) {
-      console.error("Error saving document to Firestore: ", error);
+      console.error("Error saving solicituds to Firestore: ", error);
+      allSavedSuccessfully = false;
       toast({
-        title: "Error al Guardar en BD",
-        description: "No se pudo guardar el examen en la base de datos.",
+        title: "Error al Guardar",
+        description: "No se pudieron guardar una o más solicitudes en la base de datos.",
         variant: "destructive",
       });
     }
@@ -74,15 +150,15 @@ export function SuccessModal() {
               {examData?.manager && <div>Gracias por tu desempeño, {examData.manager}.</div>}
               
               {/* Commented out SharePoint Link 
-              <div className="text-sm"> 
-                Puedes añadir imágenes/soportes del predio/solicitud (enlace a configurar).
+              <div className="text-sm mt-4 mb-2"> 
+                 Puedes añadir imágenes/soportes del predio/solicitud (enlace a configurar).
                  {/* <Link
-                  href="https://aconisani-my.sharepoint.com/:f:/g/personal/asuntos_juridicos_aconic_com_ni/Emrpj4Ss8bhDifpuYc8U_bwBj9r29FGcXxzfxu4PSh2tEQ?e=FhIPTt"
+                  href="YOUR_SHAREPOINT_LINK_HERE" // Replace with actual link
                   target="_blank"
                   className="text-primary underline hover:text-primary/80"
                 >
                   aquí
-                </Link>  
+                </Link>  * /}
               </div>
               */}
            </div>
@@ -97,10 +173,10 @@ export function SuccessModal() {
           >
             <Save className="h-5 w-5 text-destructive-foreground" />
           </Button>
-          <Button onClick={() => setCurrentStep(ExamStep.PREVIEW)} variant="outline" className="w-full sm:w-auto">
+          <Button onClick={() => setCurrentStep(ExamStep.PREVIEW)} variant="outline" size="default" className="w-full sm:w-auto">
              <RotateCcw className="mr-2 h-4 w-4" /> Revisar Solicitud      
           </Button>
-          <Button onClick={() => resetApp()} className="btn-primary w-full sm:w-auto">
+          <Button onClick={() => resetApp()} size="default" className="btn-primary w-full sm:w-auto">
             <FilePlus className="mr-2 h-4 w-4" /> Empezar Nuevo
           </Button>
         </div>
