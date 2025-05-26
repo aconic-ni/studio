@@ -1,7 +1,7 @@
 
 "use client";
 import { useEffect, useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,9 +16,8 @@ import type { SolicitudFormData } from './FormParts/zodSchemas';
 import { solicitudSchema } from './FormParts/zodSchemas';
 import type { SolicitudData } from '@/types';
 import { useAuth } from '@/context/AuthContext';
-import { X, Hash, FileText, Tag, Landmark, Mail, FilePlus, DollarSign, Euro, ListFilter, Building, Code, MessageSquare, Banknote, User } from 'lucide-react'; // Added User icon
-// Placeholder for numberToWords, actual implementation would be more complex
-// import { numberToWords } from '@/lib/numberToWords';
+import { X, Hash, FileText, Tag, Landmark, Mail, FilePlus, DollarSign, Euro, ListFilter, Building, Code, MessageSquare, Banknote, User } from 'lucide-react';
+import { numeroALetras } from '@/lib/numeroALetras';
 
 
 export function AddProductModal() {
@@ -69,6 +68,22 @@ export function AddProductModal() {
   const watchedMonedaCuenta = form.watch("monedaCuenta");
   const watchedImpuestosPagados = form.watch("impuestosPagadosCliente");
   const watchedConstanciasNoRetencion = form.watch("constanciasNoRetencion");
+  const watchedMonto = form.watch("monto");
+  const watchedMontoMoneda = form.watch("montoMoneda");
+
+  useEffect(() => {
+    if (watchedMonto !== undefined && watchedMontoMoneda) {
+      const montoNumero = Number(watchedMonto);
+      if (!isNaN(montoNumero) && montoNumero > 0) {
+        const letras = numeroALetras(montoNumero, watchedMontoMoneda);
+        form.setValue('cantidadEnLetras', letras, { shouldValidate: false }); // Avoid re-validating on auto-fill
+      } else {
+        form.setValue('cantidadEnLetras', '', { shouldValidate: false });
+      }
+    } else {
+       form.setValue('cantidadEnLetras', '', { shouldValidate: false });
+    }
+  }, [watchedMonto, watchedMontoMoneda, form]);
 
   useEffect(() => {
     setShowBancoOtros(watchedBanco === 'Otros');
@@ -87,44 +102,59 @@ export function AddProductModal() {
   useEffect(() => {
     if (isAddProductModalOpen) {
       const defaultCorreo = user?.email || '';
+      const initialValues: SolicitudFormData = {
+        monto: undefined,
+        montoMoneda: 'cordoba',
+        cantidadEnLetras: '',
+        consignatario: '',
+        declaracionNumero: '',
+        unidadRecaudadora: '',
+        codigo1: '',
+        codigo2: '',
+        banco: undefined,
+        bancoOtros: '',
+        numeroCuenta: '',
+        monedaCuenta: undefined,
+        monedaCuentaOtros: '',
+        elaborarChequeA: '',
+        elaborarTransferenciaA: '',
+        impuestosPagadosCliente: false,
+        impuestosPagadosRC: '',
+        impuestosPagadosTB: '',
+        impuestosPagadosCheque: '',
+        impuestosPendientesCliente: false,
+        documentosAdjuntos: false,
+        constanciasNoRetencion: false,
+        constanciasNoRetencion1: false,
+        constanciasNoRetencion2: false,
+        correo: defaultCorreo,
+        observation: '',
+      };
+
       if (editingSolicitud) {
-        form.reset({
+        const montoAsNumber = editingSolicitud.monto !== undefined ? Number(editingSolicitud.monto) : undefined;
+        const populatedEditingSolicitud = {
+          ...initialValues, // Start with defaults to ensure all fields are present
           ...editingSolicitud,
-          monto: editingSolicitud.monto !== undefined ? Number(editingSolicitud.monto) : undefined,
+          monto: montoAsNumber,
           correo: editingSolicitud.correo || defaultCorreo,
-          consignatario: editingSolicitud.consignatario || '', 
-        } as SolicitudFormData);
+        };
+        form.reset(populatedEditingSolicitud);
         setShowBancoOtros(editingSolicitud.banco === 'Otros');
         setShowMonedaCuentaOtros(editingSolicitud.monedaCuenta === 'Otros');
+
+        // Manually trigger conversion for existing data on edit
+        if (montoAsNumber !== undefined && populatedEditingSolicitud.montoMoneda) {
+           if (!isNaN(montoAsNumber) && montoAsNumber > 0) {
+            const letras = numeroALetras(montoAsNumber, populatedEditingSolicitud.montoMoneda);
+            form.setValue('cantidadEnLetras', letras, { shouldValidate: false });
+          } else {
+            form.setValue('cantidadEnLetras', '', { shouldValidate: false });
+          }
+        }
+
       } else {
-        form.reset({
-          monto: undefined,
-          montoMoneda: 'cordoba',
-          cantidadEnLetras: '',
-          consignatario: '', 
-          declaracionNumero: '',
-          unidadRecaudadora: '',
-          codigo1: '',
-          codigo2: '',
-          banco: undefined,
-          bancoOtros: '',
-          numeroCuenta: '',
-          monedaCuenta: undefined,
-          monedaCuentaOtros: '',
-          elaborarChequeA: '',
-          elaborarTransferenciaA: '',
-          impuestosPagadosCliente: false,
-          impuestosPagadosRC: '',
-          impuestosPagadosTB: '',
-          impuestosPagadosCheque: '',
-          impuestosPendientesCliente: false,
-          documentosAdjuntos: false,
-          constanciasNoRetencion: false,
-          constanciasNoRetencion1: false,
-          constanciasNoRetencion2: false,
-          correo: defaultCorreo,
-          observation: '',
-        });
+        form.reset(initialValues);
         setShowBancoOtros(false);
         setShowMonedaCuentaOtros(false);
       }
@@ -168,15 +198,13 @@ export function AddProductModal() {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Error Summary Block */}
             {Object.keys(form.formState.errors).length > 0 && (
               <div className="p-3 mb-4 text-sm text-destructive bg-destructive/10 rounded-md border border-destructive/30" role="alert">
                 <p className="font-bold">Por favor, corrija los siguientes errores:</p>
                 <ul className="list-disc list-inside mt-1">
                   {Object.entries(form.formState.errors).map(([fieldName, errorObject]) => {
-                    const fieldError = errorObject as any; // Type assertion
+                    const fieldError = errorObject as any; 
                     if (fieldError && fieldError.message) {
-                        // Attempt to map field names to more readable labels
                         let readableFieldName = fieldName;
                         const fieldNameMap: { [key: string]: string } = {
                             bancoOtros: "Otro Banco",
@@ -185,11 +213,10 @@ export function AddProductModal() {
                             elaborarTransferenciaA: "Beneficiario (Transferencia)",
                             monto: "Monto Solicitado",
                             consignatario: "Consignatario",
+                            cantidadEnLetras: "Cantidad en Letras",
                             // Add other field name mappings as needed
                         };
                         readableFieldName = fieldNameMap[fieldName] || fieldName.replace(/([A-Z])/g, ' $1').toLowerCase();
-
-
                         return (
                             <li key={fieldName}>
                                 <span className="capitalize">{readableFieldName}</span>: {fieldError.message}
@@ -202,7 +229,6 @@ export function AddProductModal() {
               </div>
             )}
 
-            {/* Section 1: Monto y Cantidad */}
             <div className="space-y-4 p-4 border rounded-md">
               <h4 className="text-md font-medium text-primary mb-2">Detalles del Monto</h4>
               <FormField control={form.control} name="monto" render={({ field }) => (
@@ -214,7 +240,7 @@ export function AddProductModal() {
                   <div className="flex gap-2">
                     <FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} value={field.value ?? ''} className="w-2/3" /></FormControl>
                     <FormField control={form.control} name="montoMoneda" render={({ field: selectField }) => (
-                      <Select onValueChange={selectField.onChange} defaultValue={selectField.value}>
+                      <Select onValueChange={selectField.onChange} value={selectField.value || 'cordoba'}>
                         <FormControl><SelectTrigger className="w-1/3"><SelectValue placeholder="Moneda" /></SelectTrigger></FormControl>
                         <SelectContent>
                           <SelectItem value="cordoba">C$ (Córdobas)</SelectItem>
@@ -230,13 +256,12 @@ export function AddProductModal() {
               <FormField control={form.control} name="cantidadEnLetras" render={({ field }) => (
                 <FormItem>
                   <FormLabel className="flex items-center"><FileText className="mr-2 h-4 w-4 text-primary" />Cantidad en letras</FormLabel>
-                  <FormControl><Textarea rows={2} placeholder="Ej: UN MIL CÓRDOBAS NETOS CON 00/100" {...field} value={field.value ?? ''} /></FormControl>
+                  <FormControl><Textarea rows={2} placeholder="Generado automáticamente..." {...field} value={field.value ?? ''} readOnly className="bg-muted/50 cursor-not-allowed" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}/>
             </div>
 
-            {/* Section 2: Detalles de la Solicitud */}
             <div className="space-y-4 p-4 border rounded-md">
               <h4 className="text-md font-medium text-primary mb-2">Información Adicional de Solicitud</h4>
               <FormField control={form.control} name="consignatario" render={({ field }) => (
@@ -273,14 +298,13 @@ export function AddProductModal() {
               </div>
             </div>
 
-            {/* Section 3: Cuenta Bancaria */}
             <div className="space-y-4 p-4 border rounded-md">
                <h4 className="text-md font-medium text-primary mb-3">Cuenta</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="banco" render={({ field }) => (
                         <FormItem>
                         <FormLabel className="flex items-center"><Landmark className="mr-2 h-4 w-4 text-primary" />Banco</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Seleccione un banco" /></SelectTrigger></FormControl>
                             <SelectContent>
                             {["BAC", "BANPRO", "BANCENTRO", "FICOSHA", "AVANZ", "ATLANTIDA", "ACCION POR CHEQUE/NO APLICA BANCO", "Otros"].map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
@@ -308,7 +332,7 @@ export function AddProductModal() {
                     <FormField control={form.control} name="monedaCuenta" render={({ field }) => (
                         <FormItem>
                         <FormLabel className="flex items-center"><Banknote className="mr-2 h-4 w-4 text-primary" />Moneda de la cuenta</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isBancoNoAplica}>
+                        <Select onValueChange={field.onChange} value={field.value} disabled={isBancoNoAplica}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Seleccione moneda" /></SelectTrigger></FormControl>
                             <SelectContent>
                                 <SelectItem value="cordoba">C$ (Córdobas)</SelectItem>
@@ -332,7 +356,6 @@ export function AddProductModal() {
                 </div>
             </div>
 
-            {/* Section 4: Beneficiarios */}
              <div className="space-y-4 p-4 border rounded-md">
                 <h4 className="text-md font-medium text-primary mb-2">Beneficiario del Pago</h4>
                 <FormField control={form.control} name="elaborarChequeA" render={({ field }) => (
@@ -351,7 +374,6 @@ export function AddProductModal() {
                 )}/>
             </div>
             
-            {/* Section 5: Checkboxes y sub-campos */}
             <div className="space-y-4 p-4 border rounded-md">
               <h4 className="text-md font-medium text-primary mb-3">Detalles Adicionales y Documentación</h4>
               <FormField control={form.control} name="impuestosPagadosCliente" render={({ field }) => (
@@ -410,7 +432,6 @@ export function AddProductModal() {
               )}
             </div>
 
-            {/* Section 6: Otros */}
             <div className="space-y-4 p-4 border rounded-md">
                 <h4 className="text-md font-medium text-primary mb-2">Comunicación y Observaciones</h4>
                 <FormField control={form.control} name="correo" render={({ field }) => (
@@ -441,5 +462,3 @@ export function AddProductModal() {
     </Dialog>
   );
 }
-
-    
