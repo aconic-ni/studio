@@ -7,10 +7,10 @@ import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Search, Download, Banknote, User, FileText, Landmark, Hash, Building, Code, MessageSquare, Mail, CalendarDays, Info, Send } from 'lucide-react';
+import { Loader2, Search, Download, Banknote, User, FileText, Landmark, Hash, Building, Code, MessageSquare, Mail, CalendarDays, Info, Send, Users } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, Timestamp as FirestoreTimestamp } from 'firebase/firestore';
-import type { SolicitudRecord } from '@/types'; // Use SolicitudRecord
+import type { SolicitudRecord } from '@/types';
 import { downloadExcelFile } from '@/lib/fileExporter';
 import { CheckSquare, Square } from 'lucide-react';
 import { format } from 'date-fns';
@@ -61,7 +61,7 @@ const getBancoDisplayFetched = (solicitud: SolicitudRecord) => {
     if (solicitud.banco === 'Otros') return solicitud.bancoOtros || 'Otros (No especificado)';
     return solicitud.banco;
 };
-  
+
 const getMonedaCuentaDisplayFetched = (solicitud: SolicitudRecord) => {
     if (solicitud.monedaCuenta === 'Otros') return solicitud.monedaCuentaOtros || 'Otros (No especificado)';
     return solicitud.monedaCuenta;
@@ -79,7 +79,7 @@ const FetchedExamDisplay: React.FC<{ solicitudes: SolicitudRecord[] }> = ({ soli
       <CardHeader>
         <CardTitle className="text-xl md:text-2xl font-semibold text-foreground">Detalles del Examen: {firstSolicitud.examNe}</CardTitle>
         <CardDescription className="text-muted-foreground">
-          Información recuperada de la base de datos "Solicitudes de Cheque".
+          Información recuperada de la base de datos "SolicitudCheques".
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -119,7 +119,7 @@ const FetchedExamDisplay: React.FC<{ solicitudes: SolicitudRecord[] }> = ({ soli
                     <div className="pt-2">
                         <h6 className="text-sm font-medium text-accent mb-1">Información Adicional</h6>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
-                        <FetchedDetailItem label="Consignatario" value={solicitud.consignatario} icon={User} />
+                        <FetchedDetailItem label="Consignatario" value={solicitud.consignatario} icon={Users} />
                         <FetchedDetailItem label="Declaración Número" value={solicitud.declaracionNumero} icon={Hash} />
                         <FetchedDetailItem label="Unidad Recaudadora" value={solicitud.unidadRecaudadora} icon={Building} />
                         <FetchedDetailItem label="Código 1" value={solicitud.codigo1} icon={Code} />
@@ -215,14 +215,13 @@ export default function DatabasePage() {
     setFetchedSolicitudes(null);
 
     try {
-      const solicitudsCollectionRef = collection(db, "Solicitudes de Cheque");
+      const solicitudsCollectionRef = collection(db, "SolicitudCheques"); // Updated collection name
       const q = query(solicitudsCollectionRef, where("examNe", "==", searchTermNE.trim()));
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
         const data = querySnapshot.docs.map(doc => {
           const docData = doc.data() as SolicitudRecord;
-          // Convert Firestore Timestamps to Date objects
           return {
             ...docData,
             examDate: docData.examDate instanceof FirestoreTimestamp ? docData.examDate.toDate() : docData.examDate,
@@ -239,7 +238,7 @@ export default function DatabasePage() {
       if (err.code === 'permission-denied') {
         userFriendlyError = "No tiene permisos para acceder a esta información.";
       } else if (err.code === 'failed-precondition') {
-         userFriendlyError = "Error de consulta: asegúrese de tener índices creados en Firestore para 'examNe' en la colección 'Solicitudes de Cheque'.";
+         userFriendlyError = "Error de consulta: asegúrese de tener índices creados en Firestore para 'examNe' en la colección 'SolicitudCheques'.";
       }
       setError(userFriendlyError);
     } finally {
@@ -255,19 +254,18 @@ export default function DatabasePage() {
         reference: firstSolicitud.examReference,
         manager: firstSolicitud.examManager,
         recipient: firstSolicitud.examRecipient,
-        date: firstSolicitud.examDate instanceof FirestoreTimestamp 
-              ? firstSolicitud.examDate.toDate() 
-              : firstSolicitud.examDate, // Already a Date if converted on fetch
+        date: firstSolicitud.examDate instanceof FirestoreTimestamp
+              ? firstSolicitud.examDate.toDate()
+              : firstSolicitud.examDate,
         savedBy: firstSolicitud.savedBy,
-        savedAt: firstSolicitud.savedAt instanceof FirestoreTimestamp 
-              ? firstSolicitud.savedAt.toDate() 
-              : firstSolicitud.savedAt, // Already a Date
+        savedAt: firstSolicitud.savedAt instanceof FirestoreTimestamp
+              ? firstSolicitud.savedAt.toDate()
+              : firstSolicitud.savedAt,
         products: fetchedSolicitudes.map(s => ({
           ...s,
-          // Ensure any Timestamps within individual solicituds are also converted if not done at fetch
-          // For SolicitudRecord, examDate and savedAt are top-level.
-          // If SolicitudData had its own Timestamps, they'd need conversion here or on fetch.
-        })) 
+          // Convert SolicitudRecord to SolicitudData-like structure for exporter
+          // This might involve picking specific fields if SolicitudRecord has more than SolicitudData expects
+        }))
       };
       downloadExcelFile(examDataForExport);
     } else {
@@ -342,5 +340,3 @@ export default function DatabasePage() {
     </AppShell>
   );
 }
-
-    

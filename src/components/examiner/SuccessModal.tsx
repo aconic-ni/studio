@@ -8,7 +8,7 @@ import { db } from '@/lib/firebase';
 import { doc, setDoc, Timestamp } from "firebase/firestore";
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import type { SolicitudRecord } from '@/types'; // Import the new type
+import type { SolicitudRecord } from '@/types';
 
 export function SuccessModal() {
   const { currentStep, setCurrentStep, resetApp, examData, solicitudes } = useAppContext();
@@ -48,8 +48,8 @@ export function SuccessModal() {
       for (const solicitud of solicitudes) {
         if (!solicitud.id) {
           console.error("Solicitud sin ID encontrada, omitiendo:", solicitud);
-          allSavedSuccessfully = false; 
-          continue; 
+          allSavedSuccessfully = false;
+          continue;
         }
 
         const montoAsNumber = typeof solicitud.monto === 'string'
@@ -58,36 +58,32 @@ export function SuccessModal() {
 
         if (montoAsNumber === undefined || isNaN(montoAsNumber)) {
             console.error("Monto inválido o no definido para solicitud:", solicitud.id);
-            // Continue with montoAsNumber possibly being undefined, Firestore will handle it as null/omitted if field allows
         }
 
         const docData: SolicitudRecord = {
-          // ExamData fields
           examNe: examData.ne,
           examReference: examData.reference || null,
           examManager: examData.manager,
           examDate: Timestamp.fromDate(examData.date),
           examRecipient: examData.recipient,
 
-          // SolicitudData fields - ensure undefined optionals become null
           solicitudId: solicitud.id,
-          monto: montoAsNumber ?? null, // Use ?? to default undefined or null monto to null
+          monto: montoAsNumber ?? null,
           montoMoneda: solicitud.montoMoneda || null,
           cantidadEnLetras: solicitud.cantidadEnLetras || null,
           consignatario: solicitud.consignatario || null,
           declaracionNumero: solicitud.declaracionNumero || null,
           unidadRecaudadora: solicitud.unidadRecaudadora || null,
           codigo1: solicitud.codigo1 || null,
-          codigo2: solicitud.codigo2 || null, // Codigo MUR
-          banco: solicitud.banco || null, // Key fix: undefined -> null
+          codigo2: solicitud.codigo2 || null,
+          banco: solicitud.banco || null,
           bancoOtros: solicitud.bancoOtros || null,
           numeroCuenta: solicitud.numeroCuenta || null,
           monedaCuenta: solicitud.monedaCuenta || null,
           monedaCuentaOtros: solicitud.monedaCuentaOtros || null,
           elaborarChequeA: solicitud.elaborarChequeA || null,
           elaborarTransferenciaA: solicitud.elaborarTransferenciaA || null,
-          
-          // Booleans should default to false from Zod, but ensure they are not undefined
+
           impuestosPagadosCliente: solicitud.impuestosPagadosCliente ?? false,
           impuestosPagadosRC: solicitud.impuestosPagadosRC || null,
           impuestosPagadosTB: solicitud.impuestosPagadosTB || null,
@@ -97,16 +93,15 @@ export function SuccessModal() {
           constanciasNoRetencion: solicitud.constanciasNoRetencion ?? false,
           constanciasNoRetencion1: solicitud.constanciasNoRetencion1 ?? false,
           constanciasNoRetencion2: solicitud.constanciasNoRetencion2 ?? false,
-          
+
           correo: solicitud.correo || null,
           observation: solicitud.observation || null,
 
-          // Metadata
           savedAt: Timestamp.fromDate(new Date()),
           savedBy: user.email,
         };
 
-        const solicitudDocRef = doc(db, "Solicitudes de Cheque", solicitud.id);
+        const solicitudDocRef = doc(db, "SolicitudCheques", solicitud.id); // Updated collection name
         await setDoc(solicitudDocRef, docData);
       }
 
@@ -150,9 +145,8 @@ export function SuccessModal() {
            <div className="text-center text-muted-foreground space-y-3">
               <div>La solicitud de cheque ha sido registrada correctamente.</div>
               {examData?.manager && <div>Gracias por tu desempeño, {examData.manager}.</div>}
-              
-              {/* Commented out SharePoint Link - You can uncomment and configure this link later
-              <div className="text-sm mt-4 mb-2"> 
+              {/*
+              <div className="text-sm mt-4 mb-2">
                  Puedes añadir imágenes/soportes del predio/solicitud (enlace a configurar).
                  <Link
                   href="YOUR_SHAREPOINT_LINK_HERE" // Replace with actual link
@@ -165,20 +159,20 @@ export function SuccessModal() {
               */}
            </div>
         </DialogDescription>
-        
+
         <div className="mt-6 flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:gap-3 sm:justify-center items-center">
           <Button
             onClick={handleSaveToDatabase}
             variant="destructive"
-            size="icon" // Ensures a small, square button for the icon
+            size="icon" // Makes it h-10 w-10
             aria-label="Guardar en Base de Datos"
           >
             <Save className="h-5 w-5 text-destructive-foreground" />
           </Button>
-          <Button onClick={() => setCurrentStep(ExamStep.PREVIEW)} variant="outline" size="default" className="w-full sm:w-auto">
-             <RotateCcw className="mr-2 h-4 w-4" /> Revisar Solicitud      
+          <Button onClick={() => setCurrentStep(ExamStep.PREVIEW)} variant="outline" size="default" className="w-full sm:w-auto"> {/* default is h-10 */}
+             <RotateCcw className="mr-2 h-4 w-4" /> Revisar Solicitud
           </Button>
-          <Button onClick={() => resetApp()} size="default" className="btn-primary w-full sm:w-auto">
+          <Button onClick={() => resetApp()} size="default" className="btn-primary w-full sm:w-auto"> {/* default is h-10 */}
             <FilePlus className="mr-2 h-4 w-4" /> Empezar Nuevo
           </Button>
         </div>
@@ -186,4 +180,3 @@ export function SuccessModal() {
     </Dialog>
   );
 }
-
