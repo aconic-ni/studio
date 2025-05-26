@@ -94,16 +94,15 @@ export function SuccessModal() {
           <Button
             onClick={handleSaveToDatabase}
             variant="destructive"
-            size="sm" 
+            size="icon" 
             aria-label="Guardar en Base de Datos"
-            className="px-3" // Add padding to make icon button same height as other sm buttons if needed
           >
             <Save className="h-4 w-4" />
           </Button>
-          <Button onClick={() => setCurrentStep(ExamStep.PREVIEW)} variant="outline" className="w-full sm:w-auto" size="sm">
+          <Button onClick={() => setCurrentStep(ExamStep.PREVIEW)} variant="outline" className="w-full sm:w-auto" size="default">
              <RotateCcw className="mr-2 h-4 w-4" /> Revisar Solicitud
           </Button>
-          <Button onClick={() => resetApp()} className="btn-primary w-full sm:w-auto" size="sm">
+          <Button onClick={() => resetApp()} className="btn-primary w-full sm:w-auto" size="default">
             <FilePlus className="mr-2 h-4 w-4" /> Empezar Nuevo
           </Button>
         </div>
