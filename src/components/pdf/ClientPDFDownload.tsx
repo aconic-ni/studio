@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -22,45 +21,44 @@ export const ClientPDFDownload: React.FC<ClientPDFDownloadProps> = ({ examData, 
     setIsMounted(true);
   }, []);
 
-  if (!isMounted || !examData || !examData.ne || !solicitudes || solicitudes.length === 0) {
-    const loadingMessage = isMounted && examData && typeof examData.ne === 'string' && solicitudes && solicitudes.length > 0 
-      ? 'Generando PDF...' 
-      : 'Cargando PDF...';
+  // Simplified condition for testing: only check if mounted.
+  // Later, we will re-add !examData || !solicitudes || solicitudes.length === 0 checks
+  if (!isMounted) {
     return (
       <Button variant="outline" className={cn("hover:bg-accent/50 w-full sm:w-auto", className)} disabled>
-        <FileType className="mr-2 h-4 w-4" /> {loadingMessage}
+        <FileType className="mr-2 h-4 w-4" /> Cargando PDF...
       </Button>
     );
   }
+  
+  // For testing, ensure examData and solicitudes are not strictly required IF the SolicitudDocument is also simplified
+  // We'll use placeholder data if they are null, but for the current test, SolicitudDocument doesn't use them.
+  const safeExamData = examData || { ne: 'TEST_NE', reference: '', manager: '', date: new Date(), recipient: '' };
+  const safeSolicitudes = solicitudes && solicitudes.length > 0 ? solicitudes : [{id: 'test-sol', monto: 0}];
 
-  // If we reach here, isMounted is true, and examData & solicitudes are valid and examData.ne is present
-  const fileName = `SolicitudCheque_${examData.ne}_${new Date().toISOString().split('T')[0]}.pdf`;
+
+  const fileName = `SolicitudCheque_${safeExamData.ne || 'TEST_NE'}_${new Date().toISOString().split('T')[0]}.pdf`;
 
   return (
     <PDFDownloadLink
-      document={<SolicitudDocument examData={examData} solicitudes={solicitudes} />}
+      // Pass safe data, though the simplified SolicitudDocument won't use it
+      document={<SolicitudDocument /*examData={safeExamData} solicitudes={safeSolicitudes}*/ />}
       fileName={fileName}
-      className={className} // Apply className to the link itself
+      className={className}
     >
-      {({ loading, error }) => {
+      {({ loading, error, url, blob }) => {
         if (error) {
           console.error("Error generating PDF link (raw):", error);
-          // Attempt to log more specific error details
           if (error instanceof Error) {
             console.error("Error message:", error.message);
             if (error.stack) {
               console.error("Error stack:", error.stack);
             }
           } else if (typeof error === 'object' && error !== null) {
-            // Log properties of the error object if it's not an Error instance
-            for (const key in error) {
-              if (Object.prototype.hasOwnProperty.call(error, key)) {
-                console.error(`Error object property - ${key}:`, (error as any)[key]);
-              }
-            }
+            Object.keys(error).forEach(key => {
+              console.error(`Error object property - ${key}:`, (error as any)[key]);
+            });
           }
-
-
           return (
             <Button variant="outline" className={cn("hover:bg-destructive/50 w-full sm:w-auto text-destructive", className)} disabled>
               <FileType className="mr-2 h-4 w-4" /> Error PDF
