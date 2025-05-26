@@ -121,17 +121,18 @@ body {
     @apply shadow-lg; /* Using Tailwind's shadow-lg, can be customized further */
      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   }
-  
+
   .table-container {
     -webkit-overflow-scrolling: touch;
   }
 
   .grid-bg {
-    background-color: #1a365d; /* Dark blue as per user's HTML example */
-    background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-color: hsl(var(--primary) / 0.9); /* Darker blue using theme primary */
+    background-image: linear-gradient(hsl(var(--primary-foreground) / 0.05) 1px, transparent 1px),
+                      linear-gradient(90deg, hsl(var(--primary-foreground) / 0.05) 1px, transparent 1px);
     background-size: 20px 20px;
   }
+
 
   .glass-effect {
     background: hsl(var(--card) / 0.15);
@@ -139,7 +140,7 @@ body {
     -webkit-backdrop-filter: blur(10px);
     border: 1px solid hsl(var(--border) / 0.2);
   }
-  
+
   .dark .glass-effect {
      background: hsl(var(--card) / 0.15); /* Adjust opacity or color for dark mode */
      border: 1px solid hsl(var(--border) / 0.2);
@@ -188,7 +189,7 @@ body {
   @apply block;
 }
 
-
+/* Print styles for dedicated Solicitud Detail Page */
 @media print {
   body, html {
     visibility: hidden !important;
@@ -197,71 +198,68 @@ body {
     overflow: visible !important;
     margin: 0 !important;
     padding: 0 !important;
+    font-size: 10pt !important; /* Base font size for print */
   }
 
-  .printable-solicitud-detail-modal-area, .printable-solicitud-detail-modal-area * {
+  /* This targets the main content area of the solicitud detail page */
+  .solicitud-detail-print-area, .solicitud-detail-print-area * {
     visibility: visible !important;
     background-color: transparent !important;
     color: black !important;
     box-shadow: none !important;
     text-shadow: none !important;
+    border: none !important;
   }
 
-  .printable-solicitud-detail-modal-area {
-    position: static !important; 
+  .solicitud-detail-print-area {
+    position: static !important;
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;
     height: auto !important;
     max-height: none !important;
     overflow: visible !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 20px !important; 
+    padding: 20px !important; /* Add some padding for print */
     margin: 0 !important;
     z-index: 99999 !important;
-    font-size: 10pt !important;
+    box-shadow: none !important; /* Ensure no shadow */
   }
 
-  .printable-solicitud-detail-modal-area [data-no-print="true"] {
+  .solicitud-detail-print-area .no-print {
     display: none !important;
     visibility: hidden !important;
   }
   
-  .printable-solicitud-detail-modal-area > button[aria-label="Cerrar"],
-  .printable-solicitud-detail-modal-area > header > button[aria-label="Cerrar"] { /* More specific for header close button */
+  .solicitud-detail-print-area .card-print-styles { /* Target the Card within the print area */
+     border: 1px solid #ccc !important; /* Optional: light border for the card */
+     padding: 15px !important;
+     margin-bottom: 15px !important;
+  }
+
+  /* Hide AppHeader, AppFooter, and any other global non-printable elements */
+  header.sticky, footer.py-4, .app-shell-footer {
     display: none !important;
+    visibility: hidden !important;
   }
 
-  .printable-solicitud-detail-modal-area [data-radix-scroll-area-viewport] {
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-  }
-
-  .printable-solicitud-detail-modal-area ::-webkit-scrollbar,
-  .printable-solicitud-detail-modal-area [data-orientation="vertical"],
-  .printable-solicitud-detail-modal-area [data-orientation="horizontal"] {
-    display: none !important;
-  }
-
-  .printable-solicitud-detail-modal-area h1, .printable-solicitud-detail-modal-area h2, .printable-solicitud-detail-modal-area h3, .printable-solicitud-detail-modal-area h4, .printable-solicitud-detail-modal-area h5, .printable-solicitud-detail-modal-area h6 {
+  /* General print typography improvements */
+  .solicitud-detail-print-area h1, .solicitud-detail-print-area h2, .solicitud-detail-print-area h3, .solicitud-detail-print-area h4, .solicitud-detail-print-area h5, .solicitud-detail-print-area h6 {
     color: black !important;
     page-break-after: avoid;
   }
 
-  .printable-solicitud-detail-modal-area p {
+  .solicitud-detail-print-area p {
     orphans: 3;
     widows: 3;
+    color: black !important;
   }
-  
-  .printable-solicitud-detail-modal-area a {
+
+  .solicitud-detail-print-area a {
     color: #000 !important;
     text-decoration: underline !important;
   }
   
-  .printable-solicitud-detail-modal-area table, .printable-solicitud-detail-modal-area th, .printable-solicitud-detail-modal-area td {
-    border-color: #ccc !important; 
+  .solicitud-detail-print-area table, .solicitud-detail-print-area th, .solicitud-detail-print-area td {
+    border-color: #ccc !important;
   }
 }
-

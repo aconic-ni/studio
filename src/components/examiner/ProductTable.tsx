@@ -7,9 +7,11 @@ import { useAppContext } from '@/context/AppContext';
 import type { SolicitudData } from '@/types';
 import { Eye, Edit3, Trash2, MoreHorizontal, FileText, AlertTriangle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 export function ProductTable() {
-  const { solicitudes, openAddProductModal, deleteSolicitud, openProductDetailModal } = useAppContext();
+  const { solicitudes, openAddProductModal, deleteSolicitud } = useAppContext();
+  const router = useRouter(); // Initialize useRouter
 
   const formatCurrency = (amount?: number | string, currency?: string) => {
     if (amount === undefined || amount === null || amount === '') return 'N/A';
@@ -20,7 +22,7 @@ export function ProductTable() {
     if (currency === 'cordoba') prefix = 'C$';
     else if (currency === 'dolar') prefix = 'US$';
     else if (currency === 'euro') prefix = '€';
-    
+
     return `${prefix}${num.toLocaleString('es-NI', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
@@ -32,7 +34,7 @@ export function ProductTable() {
     if (solicitud.elaborarTransferenciaA) return `Transf: ${solicitud.elaborarTransferenciaA}`;
     return 'N/A';
   };
-  
+
   const renderStatusBadges = (solicitud: SolicitudData) => {
     const badges = [];
     if (solicitud.documentosAdjuntos) badges.push(<Badge key="docs" variant="outline" className="bg-blue-100 text-blue-800 whitespace-nowrap flex items-center"><FileText className="h-3 w-3 mr-1" /> Docs</Badge>);
@@ -82,7 +84,7 @@ export function ProductTable() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => openProductDetailModal(solicitud)}>
+                    <DropdownMenuItem onClick={() => router.push(`/examiner/solicitud/${solicitud.id}`)}>
                       <Eye className="mr-2 h-4 w-4" /> Ver
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => openAddProductModal(solicitud)}>

@@ -19,8 +19,6 @@ interface AppContextType {
   currentStep: ExamStep;
   editingSolicitud: SolicitudData | null;
   isAddProductModalOpen: boolean;
-  isProductDetailModalOpen: boolean; // Restored
-  solicitudToView: SolicitudData | null; // Restored
   setExamData: (data: ExamData) => void;
   addSolicitud: (solicitud: Omit<SolicitudData, 'id'>) => void;
   updateSolicitud: (updatedSolicitud: SolicitudData) => void;
@@ -29,8 +27,6 @@ interface AppContextType {
   setEditingSolicitud: (solicitud: SolicitudData | null) => void;
   openAddProductModal: (solicitudToEdit?: SolicitudData | null) => void;
   closeAddProductModal: () => void;
-  openProductDetailModal: (solicitud: SolicitudData) => void; // Restored
-  closeProductDetailModal: () => void; // Restored
   resetApp: () => void;
 }
 
@@ -42,10 +38,8 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   const [currentStep, setCurrentStepState] = useState<ExamStep>(ExamStep.INITIAL_INFO);
   const [editingSolicitud, setEditingSolicitudState] = useState<SolicitudData | null>(null);
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
-  const [isProductDetailModalOpen, setIsProductDetailModalOpen] = useState(false); // Restored
-  const [solicitudToView, setSolicitudToView] = useState<SolicitudData | null>(null); // Restored
 
-  const { user: authUser } = useAuth(); 
+  const { user: authUser } = useAuth();
   const [internalUser, setInternalUser] = useState<AuthAppUser | null>(authUser);
 
   const resetApp = useCallback(() => {
@@ -54,19 +48,17 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     setCurrentStepState(ExamStep.INITIAL_INFO);
     setEditingSolicitudState(null);
     setIsAddProductModalOpen(false);
-    setIsProductDetailModalOpen(false); // Reset restored state
-    setSolicitudToView(null); // Reset restored state
   }, []);
 
 
   useEffect(() => {
-    const authUserChanged = authUser?.uid !== internalUser?.uid || 
-                           (authUser && !internalUser) || 
+    const authUserChanged = authUser?.uid !== internalUser?.uid ||
+                           (authUser && !internalUser) ||
                            (!authUser && internalUser);
 
     if (authUserChanged) {
       resetApp();
-      setInternalUser(authUser); 
+      setInternalUser(authUser);
     }
   }, [authUser, internalUser, resetApp]);
 
@@ -84,7 +76,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     setSolicitudes((prevSolicitudes) =>
       prevSolicitudes.map((s) => (s.id === updatedSolicitud.id ? updatedSolicitud : s))
     );
-    setEditingSolicitudState(null); 
+    setEditingSolicitudState(null);
   }, []);
 
   const deleteSolicitud = useCallback((solicitudId: string) => {
@@ -94,7 +86,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   const setCurrentStep = useCallback((step: ExamStep) => {
     setCurrentStepState(step);
   }, []);
-  
+
   const setEditingSolicitud = useCallback((solicitud: SolicitudData | null) => {
     setEditingSolicitudState(solicitud);
   }, []);
@@ -106,20 +98,9 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
 
   const closeAddProductModal = useCallback(() => {
     setIsAddProductModalOpen(false);
-    setTimeout(() => setEditingSolicitudState(null), 100); 
+    setTimeout(() => setEditingSolicitudState(null), 100);
   }, []);
 
-  // Restored functions for ProductDetailModal
-  const openProductDetailModal = useCallback((solicitud: SolicitudData) => {
-    setSolicitudToView(solicitud);
-    setIsProductDetailModalOpen(true);
-  }, []);
-
-  const closeProductDetailModal = useCallback(() => {
-    setIsProductDetailModalOpen(false);
-    // It's good practice to clear solicitudToView after a delay to avoid content flicker during closing animation
-    setTimeout(() => setSolicitudToView(null), 300);
-  }, []);
 
   return (
     <AppContext.Provider
@@ -129,8 +110,6 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
         currentStep,
         editingSolicitud,
         isAddProductModalOpen,
-        isProductDetailModalOpen, // Restored
-        solicitudToView, // Restored
         setExamData,
         addSolicitud,
         updateSolicitud,
@@ -139,8 +118,6 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
         setEditingSolicitud,
         openAddProductModal,
         closeAddProductModal,
-        openProductDetailModal, // Restored
-        closeProductDetailModal, // Restored
         resetApp,
       }}
     >

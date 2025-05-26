@@ -6,7 +6,7 @@ import { useAppContext, ExamStep } from '@/context/AppContext';
 import { ProductTable } from './ProductTable';
 import { AddProductModal } from './AddProductModal';
 import { PlusCircle, CheckCircle, ArrowLeft } from 'lucide-react';
-import { ProductDetailsModal } from './ProductDetailsModal';
+// Removed ProductDetailsModal import
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +24,7 @@ export function ProductListScreen() {
       </div>
     );
   }
-  
+
   const handleFinish = () => {
      if (solicitudes.length === 0) {
         toast({
@@ -67,11 +67,11 @@ export function ProductListScreen() {
                 </Button>
             </div>
         </div>
-        
-        <ProductTable /> 
+
+        <ProductTable />
       </CardContent>
       <AddProductModal />
-      <ProductDetailsModal /> 
+      {/* Removed ProductDetailsModal instance */}
     </Card>
   );
 }
