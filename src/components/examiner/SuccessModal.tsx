@@ -94,8 +94,8 @@ export function SuccessModal() {
           <Button
             onClick={handleSaveToDatabase}
             variant="destructive"
-            size="icon"
-            className="w-full sm:w-auto"
+            size="icon" // Keeps it h-10 w-10, which is standard for icon buttons
+            // Removed className="w-full sm:w-auto" to make it compact
             aria-label="Guardar en Base de Datos"
           >
             <Save className="h-4 w-4" />
