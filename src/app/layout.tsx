@@ -13,7 +13,7 @@ const inter = Inter({ // Changed from Geist to Inter
 });
 
 export const metadata: Metadata = {
-  title: 'ACONIC Examiner', // Updated title
+  title: 'ACONIC FAL', // Updated title
   description: 'Sistema de Examenes Previos by Jordy Stvaer', // Updated description
 };
 
