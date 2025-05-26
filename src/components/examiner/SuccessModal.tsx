@@ -48,8 +48,8 @@ export function SuccessModal() {
       for (const solicitud of solicitudes) {
         if (!solicitud.id) {
           console.error("Solicitud sin ID encontrada, omitiendo:", solicitud);
-          allSavedSuccessfully = false; // Mark as not all saved if one is missing ID
-          continue; // Skip this solicitud
+          allSavedSuccessfully = false; 
+          continue; 
         }
 
         const montoAsNumber = typeof solicitud.monto === 'string'
@@ -58,46 +58,48 @@ export function SuccessModal() {
 
         if (montoAsNumber === undefined || isNaN(montoAsNumber)) {
             console.error("Monto inválido o no definido para solicitud:", solicitud.id);
-            // Decide if you want to skip or save with monto as undefined/null
-            // For now, let's skip if critical, or save with it undefined
+            // Continue with montoAsNumber possibly being undefined, Firestore will handle it as null/omitted if field allows
         }
 
         const docData: SolicitudRecord = {
-          // ExamData fields (prefixed to avoid conflicts if SolicitudData had same names)
+          // ExamData fields
           examNe: examData.ne,
-          examReference: examData.reference,
+          examReference: examData.reference || null,
           examManager: examData.manager,
-          examDate: Timestamp.fromDate(examData.date), // examData.date should be a Date object
+          examDate: Timestamp.fromDate(examData.date),
           examRecipient: examData.recipient,
 
-          // SolicitudData fields
-          solicitudId: solicitud.id, // This is the Firestore document ID
-          monto: montoAsNumber, // Ensure it's a number
-          montoMoneda: solicitud.montoMoneda,
-          cantidadEnLetras: solicitud.cantidadEnLetras,
-          consignatario: solicitud.consignatario,
-          declaracionNumero: solicitud.declaracionNumero,
-          unidadRecaudadora: solicitud.unidadRecaudadora,
-          codigo1: solicitud.codigo1,
-          codigo2: solicitud.codigo2,
-          banco: solicitud.banco,
-          bancoOtros: solicitud.bancoOtros,
-          numeroCuenta: solicitud.numeroCuenta,
-          monedaCuenta: solicitud.monedaCuenta,
-          monedaCuentaOtros: solicitud.monedaCuentaOtros,
-          elaborarChequeA: solicitud.elaborarChequeA,
-          elaborarTransferenciaA: solicitud.elaborarTransferenciaA,
-          impuestosPagadosCliente: solicitud.impuestosPagadosCliente,
-          impuestosPagadosRC: solicitud.impuestosPagadosRC,
-          impuestosPagadosTB: solicitud.impuestosPagadosTB,
-          impuestosPagadosCheque: solicitud.impuestosPagadosCheque,
-          impuestosPendientesCliente: solicitud.impuestosPendientesCliente,
-          documentosAdjuntos: solicitud.documentosAdjuntos,
-          constanciasNoRetencion: solicitud.constanciasNoRetencion,
-          constanciasNoRetencion1: solicitud.constanciasNoRetencion1,
-          constanciasNoRetencion2: solicitud.constanciasNoRetencion2,
-          correo: solicitud.correo,
-          observation: solicitud.observation,
+          // SolicitudData fields - ensure undefined optionals become null
+          solicitudId: solicitud.id,
+          monto: montoAsNumber ?? null, // Use ?? to default undefined or null monto to null
+          montoMoneda: solicitud.montoMoneda || null,
+          cantidadEnLetras: solicitud.cantidadEnLetras || null,
+          consignatario: solicitud.consignatario || null,
+          declaracionNumero: solicitud.declaracionNumero || null,
+          unidadRecaudadora: solicitud.unidadRecaudadora || null,
+          codigo1: solicitud.codigo1 || null,
+          codigo2: solicitud.codigo2 || null, // Codigo MUR
+          banco: solicitud.banco || null, // Key fix: undefined -> null
+          bancoOtros: solicitud.bancoOtros || null,
+          numeroCuenta: solicitud.numeroCuenta || null,
+          monedaCuenta: solicitud.monedaCuenta || null,
+          monedaCuentaOtros: solicitud.monedaCuentaOtros || null,
+          elaborarChequeA: solicitud.elaborarChequeA || null,
+          elaborarTransferenciaA: solicitud.elaborarTransferenciaA || null,
+          
+          // Booleans should default to false from Zod, but ensure they are not undefined
+          impuestosPagadosCliente: solicitud.impuestosPagadosCliente ?? false,
+          impuestosPagadosRC: solicitud.impuestosPagadosRC || null,
+          impuestosPagadosTB: solicitud.impuestosPagadosTB || null,
+          impuestosPagadosCheque: solicitud.impuestosPagadosCheque || null,
+          impuestosPendientesCliente: solicitud.impuestosPendientesCliente ?? false,
+          documentosAdjuntos: solicitud.documentosAdjuntos ?? false,
+          constanciasNoRetencion: solicitud.constanciasNoRetencion ?? false,
+          constanciasNoRetencion1: solicitud.constanciasNoRetencion1 ?? false,
+          constanciasNoRetencion2: solicitud.constanciasNoRetencion2 ?? false,
+          
+          correo: solicitud.correo || null,
+          observation: solicitud.observation || null,
 
           // Metadata
           savedAt: Timestamp.fromDate(new Date()),
@@ -117,16 +119,16 @@ export function SuccessModal() {
         toast({
           title: "Guardado Parcial",
           description: "Algunas solicitudes no pudieron ser guardadas (ej. faltaba ID). Revise la consola.",
-          variant: "default" // Or "warning" if you have such variant
+          variant: "default"
         });
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving solicituds to Firestore: ", error);
       allSavedSuccessfully = false;
       toast({
         title: "Error al Guardar",
-        description: "No se pudieron guardar una o más solicitudes en la base de datos.",
+        description: `No se pudieron guardar una o más solicitudes. Error: ${error.message}`,
         variant: "destructive",
       });
     }
@@ -149,16 +151,16 @@ export function SuccessModal() {
               <div>La solicitud de cheque ha sido registrada correctamente.</div>
               {examData?.manager && <div>Gracias por tu desempeño, {examData.manager}.</div>}
               
-              {/* Commented out SharePoint Link 
+              {/* Commented out SharePoint Link - You can uncomment and configure this link later
               <div className="text-sm mt-4 mb-2"> 
                  Puedes añadir imágenes/soportes del predio/solicitud (enlace a configurar).
-                 {/* <Link
+                 <Link
                   href="YOUR_SHAREPOINT_LINK_HERE" // Replace with actual link
                   target="_blank"
                   className="text-primary underline hover:text-primary/80"
                 >
                   aquí
-                </Link>  * /}
+                </Link>
               </div>
               */}
            </div>
@@ -168,7 +170,7 @@ export function SuccessModal() {
           <Button
             onClick={handleSaveToDatabase}
             variant="destructive"
-            size="icon"
+            size="icon" // Ensures a small, square button for the icon
             aria-label="Guardar en Base de Datos"
           >
             <Save className="h-5 w-5 text-destructive-foreground" />
@@ -184,3 +186,4 @@ export function SuccessModal() {
     </Dialog>
   );
 }
+
