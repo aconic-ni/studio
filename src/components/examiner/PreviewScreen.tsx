@@ -5,16 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useAppContext, ExamStep } from '@/context/AppContext';
 import { downloadTxtFile, downloadExcelFile } from '@/lib/fileExporter';
 import type { SolicitudData } from '@/types';
-import { Download, Check, ArrowLeft, FileType, User, Landmark, FileText } from 'lucide-react'; 
+import { Download, Check, ArrowLeft, FileType, User, Landmark, FileText, Banknote, Hash, Users, Mail, MessageSquare, Building, Code, CalendarDays, Info, Send, CheckSquare, Square } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
-
-import { useState, useEffect } from 'react';
-
+import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
 
 // Helper component for displaying detail items in Preview
-const PreviewDetailItem: React.FC<{ label: string; value?: string | number | null | boolean, icon?: React.ElementType }> = ({ label, value, icon: Icon }) => {
+const PreviewDetailItem: React.FC<{ label: string; value?: string | number | null | boolean, icon?: React.ElementType, className?: string }> = ({ label, value, icon: Icon, className }) => {
   let displayValue: string;
   if (typeof value === 'boolean') {
     displayValue = value ? 'Sí' : 'No';
@@ -23,14 +21,44 @@ const PreviewDetailItem: React.FC<{ label: string; value?: string | number | nul
   }
 
   return (
-    <div className="py-1">
+    <div className={cn("py-1", className)}>
       <p className="text-xs font-medium text-muted-foreground flex items-center">
          {Icon && <Icon className="h-3.5 w-3.5 mr-1.5 text-primary/70" />}
          {label}
       </p>
-      <p className="text-sm text-foreground">{displayValue}</p>
+      <p className="text-sm text-foreground break-words">{displayValue}</p>
     </div>
   );
+};
+
+const CheckboxPreviewItem: React.FC<{ label: string; checked?: boolean; subLabel?: string }> = ({ label, checked, subLabel }) => (
+  <div className="flex items-center py-1">
+    {checked ? <CheckSquare className="h-4 w-4 text-green-600 mr-2" /> : <Square className="h-4 w-4 text-muted-foreground mr-2" />}
+    <span className="text-sm text-foreground">{label}</span>
+    {subLabel && <span className="text-xs text-muted-foreground ml-1">{subLabel}</span>}
+  </div>
+);
+
+const formatCurrencyPreview = (amount?: number | string, currency?: string) => {
+    if (amount === undefined || amount === null || amount === '') return 'N/A';
+    const num = Number(amount);
+    if (isNaN(num)) return String(amount); // Return as string if not a valid number
+    let prefix = '';
+    if (currency === 'cordoba') prefix = 'C$';
+    else if (currency === 'dolar') prefix = 'US$';
+    else if (currency === 'euro') prefix = '€';
+    return `${prefix}${num.toLocaleString('es-NI', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+const getBancoDisplayPreview = (solicitud: SolicitudData) => {
+    if (solicitud.banco === 'ACCION POR CHEQUE/NO APLICA BANCO') return 'Acción por Cheque / No Aplica Banco';
+    if (solicitud.banco === 'Otros') return solicitud.bancoOtros || 'Otros (No especificado)';
+    return solicitud.banco;
+};
+  
+const getMonedaCuentaDisplayPreview = (solicitud: SolicitudData) => {
+    if (solicitud.monedaCuenta === 'Otros') return solicitud.monedaCuentaOtros || 'Otros (No especificado)';
+    return solicitud.monedaCuenta;
 };
 
 
@@ -72,39 +100,6 @@ export function PreviewScreen() {
     }
   }
 
-  const formatCurrency = (amount?: number | string, currency?: string) => {
-    if (amount === undefined || amount === null || amount === '') return 'N/A';
-    const num = Number(amount);
-    if (isNaN(num)) return 'Inválido';
-    let prefix = '';
-    if (currency === 'cordoba') prefix = 'C$';
-    else if (currency === 'dolar') prefix = 'US$';
-    else if (currency === 'euro') prefix = '€';
-    return `${prefix}${num.toLocaleString('es-NI', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
-
-  const getBeneficiarioText = (solicitud: SolicitudData) => {
-    if (solicitud.elaborarChequeA && solicitud.elaborarTransferenciaA) {
-      return `Cheque: ${solicitud.elaborarChequeA}, Transf: ${solicitud.elaborarTransferenciaA}`;
-    }
-    if (solicitud.elaborarChequeA) return `Cheque: ${solicitud.elaborarChequeA}`;
-    if (solicitud.elaborarTransferenciaA) return `Transf: ${solicitud.elaborarTransferenciaA}`;
-    return 'N/A';
-  };
-
-  const renderSolicitudStatusBadges = (solicitud: SolicitudData) => {
-    const badges = [];
-    if (solicitud.documentosAdjuntos) badges.push(<Badge key="docs" variant="outline" size="sm" className="bg-blue-100 text-blue-800 whitespace-nowrap"><FileType className="h-3 w-3 mr-1" /> Docs</Badge>);
-    if (solicitud.impuestosPendientesCliente) badges.push(<Badge key="impuestos" variant="outline" size="sm" className="bg-orange-100 text-orange-800 whitespace-nowrap"><Download className="h-3 w-3 mr-1"/> Imp. Pend.</Badge>); // Icon changed to Download for example
-    if (solicitud.constanciasNoRetencion) badges.push(<Badge key="retencion" variant="outline" size="sm" className="bg-purple-100 text-purple-800 whitespace-nowrap"><FileType className="h-3 w-3 mr-1" /> No Ret.</Badge>);
-    
-    if (badges.length === 0) {
-      return <Badge variant="outline" size="sm">Sin Observaciones</Badge>;
-    }
-    return <div className="flex flex-wrap gap-1">{badges}</div>;
-  };
-
-
   return (
     <Card className="w-full max-w-5xl mx-auto custom-shadow">
       <CardHeader>
@@ -115,41 +110,104 @@ export function PreviewScreen() {
         <div>
           <h4 className="text-lg font-medium mb-2 text-foreground">Informacion General</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 bg-secondary/30 p-4 rounded-md shadow-sm text-sm">
-            <div><span className="font-semibold text-foreground/80">NE:</span> {examData.ne}</div>
-            <div><span className="font-semibold text-foreground/80">Referencia:</span> {examData.reference || 'N/A'}</div>
-            <div><span className="font-semibold text-foreground/80">De:</span> {examData.manager}</div>
-            <div><span className="font-semibold text-foreground/80">A:</span> {examData.recipient}</div>
-            <div><span className="font-semibold text-foreground/80">Fecha:</span> {examData.date ? format(new Date(examData.date), "PPP", { locale: es }) : 'N/A'}</div>
+            <PreviewDetailItem label="A (Destinatario)" value={examData.recipient} icon={Send} />
+            <PreviewDetailItem label="De (Colaborador)" value={examData.manager} icon={User} />
+            <PreviewDetailItem label="Fecha de Examen" value={examData.date ? format(new Date(examData.date), "PPP", { locale: es }) : 'N/A'} icon={CalendarDays} />
+            <PreviewDetailItem label="NE (Tracking NX1)" value={examData.ne} icon={Info} />
+            <PreviewDetailItem label="Referencia" value={examData.reference || 'N/A'} icon={FileText} />
           </div>
         </div>
 
         <div>
           <h4 className="text-lg font-medium mb-3 text-foreground">Solicitudes ({solicitudes.length})</h4>
           {solicitudes.length > 0 ? (
-            <div className="space-y-6">
-              {solicitudes.map((solicitud, index) => (
-                <div key={solicitud.id} className="p-4 border border-border bg-card rounded-lg shadow">
-                  <h5 className="text-md font-semibold mb-3 text-primary">
-                    Solicitud {index + 1}
-                  </h5>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3">
-                    <PreviewDetailItem label="Monto" value={formatCurrency(solicitud.monto, solicitud.montoMoneda)} icon={Download}/> {/* Icon changed for example */}
-                    <PreviewDetailItem label="Beneficiario" value={getBeneficiarioText(solicitud)} icon={User}/>
-                    <PreviewDetailItem label="Banco" value={solicitud.banco === 'ACCION POR CHEQUE/NO APLICA BANCO' ? 'No Aplica Banco' : (solicitud.banco === 'Otros' ? solicitud.bancoOtros : solicitud.banco)} icon={Landmark}/>
-                     <div className="md:col-span-2 lg:col-span-3">
-                        <PreviewDetailItem label="Cantidad en Letras" value={solicitud.cantidadEnLetras} icon={FileText}/>
-                     </div>
-                     <div className="md:col-span-full pt-2 mt-2 border-t border-border">
-                        <p className="text-xs font-medium text-muted-foreground">Estado General Solicitud</p>
-                        <div>{renderSolicitudStatusBadges(solicitud)}</div>
-                    </div>
-                    <div className="md:col-span-full pt-2 mt-2 border-t border-border">
-                        <PreviewDetailItem label="Observación" value={solicitud.observation} />
+            <ScrollArea className="h-[400px] w-full"> {/* Adjust height as needed */}
+              <div className="space-y-6 pr-4">
+                {solicitudes.map((solicitud, index) => (
+                  <div key={solicitud.id} className="p-4 border border-border bg-card rounded-lg shadow">
+                    <h5 className="text-md font-semibold mb-3 text-primary">
+                      Solicitud {index + 1}
+                    </h5>
+                    <div className="space-y-3 divide-y divide-border/50">
+                      {/* Monto y Cantidad */}
+                      <div className="pt-2">
+                        <h6 className="text-sm font-medium text-accent mb-1">Detalles del Monto</h6>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                          <PreviewDetailItem label="Monto Solicitado" value={formatCurrencyPreview(solicitud.monto, solicitud.montoMoneda)} icon={Banknote} />
+                          <PreviewDetailItem label="Cantidad en Letras" value={solicitud.cantidadEnLetras} icon={FileText} className="md:col-span-2"/>
+                        </div>
+                      </div>
+
+                      {/* Información Adicional de Solicitud */}
+                      <div className="pt-3">
+                        <h6 className="text-sm font-medium text-accent mb-1">Información Adicional</h6>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+                          <PreviewDetailItem label="Consignatario" value={solicitud.consignatario} icon={Users} />
+                          <PreviewDetailItem label="Declaración Número" value={solicitud.declaracionNumero} icon={Hash} />
+                          <PreviewDetailItem label="Unidad Recaudadora" value={solicitud.unidadRecaudadora} icon={Building} />
+                          <PreviewDetailItem label="Código 1" value={solicitud.codigo1} icon={Code} />
+                          <PreviewDetailItem label="Codigo MUR" value={solicitud.codigo2} icon={Code} />
+                        </div>
+                      </div>
+
+                      {/* Cuenta Bancaria */}
+                      <div className="pt-3">
+                        <h6 className="text-sm font-medium text-accent mb-1">Cuenta Bancaria</h6>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 items-start">
+                          <PreviewDetailItem label="Banco" value={getBancoDisplayPreview(solicitud)} icon={Landmark} />
+                          {solicitud.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO' && (
+                            <>
+                              <PreviewDetailItem label="Número de Cuenta" value={solicitud.numeroCuenta} icon={Hash} />
+                              <PreviewDetailItem label="Moneda de la Cuenta" value={getMonedaCuentaDisplayPreview(solicitud)} icon={Banknote} />
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Beneficiario del Pago */}
+                      <div className="pt-3">
+                        <h6 className="text-sm font-medium text-accent mb-1">Beneficiario del Pago</h6>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+                          <PreviewDetailItem label="Elaborar Cheque A" value={solicitud.elaborarChequeA} icon={User} />
+                          <PreviewDetailItem label="Elaborar Transferencia A" value={solicitud.elaborarTransferenciaA} icon={User} />
+                        </div>
+                      </div>
+
+                      {/* Documentación y Estados */}
+                      <div className="pt-3">
+                        <h6 className="text-sm font-medium text-accent mb-1">Documentación y Estados</h6>
+                        <div className="space-y-1">
+                            <CheckboxPreviewItem label="Impuestos pagados por el cliente" checked={solicitud.impuestosPagadosCliente} />
+                            {solicitud.impuestosPagadosCliente && (
+                            <div className="ml-6 pl-2 border-l border-dashed text-xs">
+                                <PreviewDetailItem label="R/C No." value={solicitud.impuestosPagadosRC} />
+                                <PreviewDetailItem label="T/B No." value={solicitud.impuestosPagadosTB} />
+                                <PreviewDetailItem label="Cheque No." value={solicitud.impuestosPagadosCheque} />
+                            </div>
+                            )}
+                            <CheckboxPreviewItem label="Impuestos pendientes de pago por el cliente" checked={solicitud.impuestosPendientesCliente} />
+                            <CheckboxPreviewItem label="Se añaden documentos adjuntos" checked={solicitud.documentosAdjuntos} />
+                            <CheckboxPreviewItem label="Constancias de no retención" checked={solicitud.constanciasNoRetencion} />
+                            {solicitud.constanciasNoRetencion && (
+                            <div className="ml-6 pl-2 border-l border-dashed text-xs">
+                                <CheckboxPreviewItem label="1%" checked={solicitud.constanciasNoRetencion1} />
+                                <CheckboxPreviewItem label="2%" checked={solicitud.constanciasNoRetencion2} />
+                            </div>
+                            )}
+                        </div>
+                      </div>
+                      
+                      {/* Comunicación */}
+                      <div className="pt-3">
+                        <h6 className="text-sm font-medium text-accent mb-1">Comunicación</h6>
+                        <PreviewDetailItem label="Correos de Notificación" value={solicitud.correo} icon={Mail} />
+                        <PreviewDetailItem label="Observación" value={solicitud.observation} icon={MessageSquare} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </ScrollArea>
           ) : (
             <p className="text-muted-foreground">No hay solicitudes para mostrar.</p>
           )}
@@ -166,8 +224,7 @@ export function PreviewScreen() {
                 <Button variant="outline" onClick={handleDownloadExcel} className="hover:bg-accent/50 w-full sm:w-auto">
                     <Download className="mr-2 h-4 w-4" /> Descargar Excel
                 </Button>
-                {/* PDF Download functionality is temporarily disabled to prevent client-side exceptions.
-                    When re-enabling, ensure all client-side rendering issues are resolved.
+                {/* PDF Download functionality is temporarily disabled.
                 <DynamicClientPDFDownload examData={examData} solicitudes={solicitudes} />
                 */}
                 <Button onClick={handleConfirm} className="btn-primary w-full sm:w-auto">
@@ -179,5 +236,3 @@ export function PreviewScreen() {
     </Card>
   );
 }
-
-    
