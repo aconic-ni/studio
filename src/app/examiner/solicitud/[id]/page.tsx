@@ -64,10 +64,8 @@ export default function SolicitudDetailPage() {
       }
       setLoading(false);
     } else if (solicitudes.length === 0 && !loading && solicitudId) {
-      // This case might occur if the page is loaded directly and context isn't populated yet
-      // For now, it will show loading, a better UX might fetch data if context is empty
       toast({ title: "Información no disponible", description: "Los datos de la solicitud no están cargados. Intente volver a la lista.", variant: "default" });
-      setLoading(false); // Ensure loading stops
+      setLoading(false); 
     }
   }, [solicitudId, solicitudes, router, toast, loading]);
 
@@ -125,6 +123,13 @@ export default function SolicitudDetailPage() {
   return (
     <AppShell>
       <div className="solicitud-detail-print-area py-2 md:py-5">
+        {solicitud && (
+          <div className="flex justify-end mb-2">
+            <p className="text-sm text-muted-foreground font-mono">
+              ID Solicitud: {solicitud.id}
+            </p>
+          </div>
+        )}
         <Card className="w-full max-w-4xl mx-auto custom-shadow card-print-styles">
           <CardHeader className="no-print">
             <div className="flex justify-between items-center">
@@ -182,7 +187,6 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-                {/* No more "Información Adicional de Solicitud" title here */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
                   <DetailItem label="Consignatario" value={solicitud.consignatario} icon={Users} />
                   <DetailItem label="Declaración Número" value={solicitud.declaracionNumero} icon={Hash} />
@@ -193,7 +197,6 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-                 {/* No more "Cuenta Bancaria" title here */}
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 items-start">
                     <DetailItem label="Banco" value={getBancoDisplay(solicitud)} icon={Landmark} />
                     {solicitud.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO' && (
@@ -206,7 +209,6 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-                {/* No more "Beneficiario del Pago" title here */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
                   <DetailItem label="Elaborar Cheque A" value={solicitud.elaborarChequeA} icon={User} />
                   <DetailItem label="Elaborar Transferencia A" value={solicitud.elaborarTransferenciaA} icon={User} />
@@ -214,7 +216,6 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-                {/* No more "Documentación y Estados" title here */}
                 <div className="space-y-1">
                     <CheckboxDetailItem label="Impuestos pagados por el cliente" checked={solicitud.impuestosPagadosCliente} />
                     {solicitud.impuestosPagadosCliente && (
@@ -237,7 +238,6 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-                {/* No more "Comunicación y Observaciones" title here */}
                 <DetailItem label="Correos de Notificación" value={solicitud.correo} icon={Mail} />
                 <DetailItem label="Observación" value={solicitud.observation} icon={MessageSquare} />
               </div>
@@ -268,4 +268,3 @@ export default function SolicitudDetailPage() {
     </AppShell>
   );
 }
-

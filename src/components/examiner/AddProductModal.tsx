@@ -18,7 +18,7 @@ import type { SolicitudData } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { X, Hash, FileText, Tag, Landmark, Mail, FilePlus, DollarSign, Euro, ListFilter, Building, Code, MessageSquare, Banknote, User, Info } from 'lucide-react';
 import { numeroALetras } from '@/lib/numeroALetras';
-import { Label } from '@/components/ui/label'; // Import Label for ID display
+import { Label } from '@/components/ui/label';
 
 
 export function AddProductModal() {
@@ -28,7 +28,7 @@ export function AddProductModal() {
     addSolicitud,
     updateSolicitud,
     editingSolicitud,
-    examData // Get examData from context to display NE in ID placeholder
+    examData
   } = useAppContext();
   const { user } = useAuth();
   const [showBancoOtros, setShowBancoOtros] = useState(false);
@@ -36,7 +36,6 @@ export function AddProductModal() {
 
   const form = useForm<SolicitudFormData>({
     resolver: zodResolver(solicitudSchema),
-    // Default values are set in useEffect based on editingSolicitud or new form
   });
 
   const watchedBanco = form.watch("banco");
@@ -49,7 +48,7 @@ export function AddProductModal() {
   useEffect(() => {
     let montoForConversion: number | undefined = undefined;
     if (typeof watchedMonto === 'string') {
-        const parsed = parseFloat(watchedMonto.replace(/,/g, '')); // Also remove commas for parsing
+        const parsed = parseFloat(watchedMonto.replace(/,/g, ''));
         if (!isNaN(parsed)) {
             montoForConversion = parsed;
         }
@@ -75,12 +74,9 @@ export function AddProductModal() {
     if (watchedBanco === 'ACCION POR CHEQUE/NO APLICA BANCO') {
       form.setValue('bancoOtros', '');
       form.setValue('numeroCuenta', '');
-      form.setValue('monedaCuenta', undefined); // Or a default non-Otro value
+      form.setValue('monedaCuenta', undefined);
       form.setValue('monedaCuentaOtros', '');
       setShowMonedaCuentaOtros(false);
-      // Clearing beneficiaries might be too aggressive, user might want to specify one anyway.
-      // form.setValue('elaborarChequeA', '');
-      // form.setValue('elaborarTransferenciaA', '');
     }
   }, [watchedBanco, form]);
 
@@ -126,10 +122,10 @@ export function AddProductModal() {
                               : '';
         
         const populatedEditingSolicitud: SolicitudFormData = {
-          ...initialValues, // Start with a clean slate of all defined fields
-          ...editingSolicitud, // Spread the existing solicitud data
-          monto: montoAsString, // Override monto with string version for form
-          correo: editingSolicitud.correo || defaultCorreo, // Ensure correo has a default
+          ...initialValues,
+          ...editingSolicitud,
+          monto: montoAsString,
+          correo: editingSolicitud.correo || defaultCorreo,
         };
         form.reset(populatedEditingSolicitud as any); 
         setShowBancoOtros(editingSolicitud.banco === 'Otros');
@@ -154,6 +150,7 @@ export function AddProductModal() {
   function onSubmit(data: SolicitudFormData) {
     const solicitudDataToSave = {
         ...data,
+        monto: data.monto !== undefined ? parseFloat(String(data.monto).replace(/,/g, '')) : undefined,
     };
 
     if (editingSolicitud && editingSolicitud.id) {
@@ -190,9 +187,7 @@ export function AddProductModal() {
   
   const idPlaceholder = editingSolicitud 
     ? editingSolicitud.id 
-    : examData?.ne 
-      ? `${examData.ne}-AAAAmmdd-HHmmss (Al guardar)` 
-      : "ID (Se generará al guardar)";
+    : "ID (Se generará al guardar)";
 
   return (
     <Dialog open={isAddProductModalOpen} onOpenChange={(open) => !open && closeAddProductModal()}>
