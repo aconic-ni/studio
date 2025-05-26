@@ -66,7 +66,7 @@ export default function HomePage() {
         </header>
         <Button 
           onClick={() => setIsLoginModalOpen(true)} 
-          className="text-white bg-foreground hover:bg-foreground/90 text-lg px-8 py-4"
+          className="text-white bg-[#4d7599] hover:bg-[#3a5670] text-lg px-8 py-4"
           size="lg"
         >
           Iniciar Sesión

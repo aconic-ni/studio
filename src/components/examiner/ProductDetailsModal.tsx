@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useAppContext } from '@/context/AppContext';
-import type { SolicitudData } from '@/types'; 
+import type { SolicitudData } from '@/types';
 import { X, CheckSquare, Square, Banknote, Landmark, Hash, User, FileText, Mail, MessageSquare, Building, Code, Printer } from 'lucide-react';
 
 // Helper component for displaying detail items
@@ -37,7 +37,7 @@ const CheckboxDetailItem: React.FC<{ label: string; checked?: boolean; subLabel?
 );
 
 
-export function ProductDetailsModal() { 
+export function ProductDetailsModal() {
   const { solicitudToView, isProductDetailModalOpen, closeProductDetailModal } = useAppContext();
 
   if (!isProductDetailModalOpen || !solicitudToView) {
@@ -56,7 +56,7 @@ export function ProductDetailsModal() {
     else if (currency === 'euro') prefix = '€';
     return `${prefix}${num.toLocaleString('es-NI', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
-  
+
   const getBancoDisplay = () => {
     if (s.banco === 'ACCION POR CHEQUE/NO APLICA BANCO') return 'Acción por Cheque / No Aplica Banco';
     if (s.banco === 'Otros') return s.bancoOtros || 'Otros (No especificado)';
@@ -69,6 +69,7 @@ export function ProductDetailsModal() {
   };
 
   const handlePrint = () => {
+    console.log("Imprimir button clicked. Attempting to call window.print().");
     window.print();
   };
 
@@ -83,7 +84,7 @@ export function ProductDetailsModal() {
                 onClick={closeProductDetailModal}
                 className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
                 aria-label="Cerrar"
-                data-no-print="true" 
+                data-no-print="true"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -124,7 +125,7 @@ export function ProductDetailsModal() {
                     )}
                  </div>
               </div>
-              
+
               {/* Section 4: Beneficiarios */}
               <div className="pt-3">
                 <h4 className="text-md font-medium text-primary mb-1">Beneficiario del Pago</h4>
@@ -178,3 +179,5 @@ export function ProductDetailsModal() {
     </Dialog>
   );
 }
+
+    
