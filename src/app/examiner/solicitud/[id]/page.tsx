@@ -66,11 +66,9 @@ export default function SolicitudDetailPage() {
       }
       setLoading(false);
     } else if (solicitudes.length === 0 && !loading && solicitudId) {
-      // This condition might be hit if user directly navigates here and context isn't populated yet.
-      // A more robust solution might involve fetching data if context is empty.
       toast({ title: "Información no disponible", description: "Los datos de la solicitud no están cargados. Intente volver a la lista.", variant: "default" });
-      router.push('/examiner'); // Redirect if data is not available
-      setLoading(false); 
+      router.push('/examiner');
+      setLoading(false);
     }
   }, [solicitudId, solicitudes, router, toast, loading]);
 
@@ -155,8 +153,8 @@ export default function SolicitudDetailPage() {
             </div>
 
             {solicitud && (
-              <div className="mb-4 p-4 border rounded-md bg-secondary/5 card-print-styles">
-                <Label htmlFor="solicitudIdDisplay" className="flex items-center text-sm mb-1 text-muted-foreground">
+              <div className="grid grid-cols-[auto,1fr] gap-x-3 items-center mb-4 p-4 border rounded-md bg-secondary/5 card-print-styles">
+                <Label htmlFor="solicitudIdDisplay" className="flex items-center text-sm text-muted-foreground">
                   <Info className="mr-2 h-4 w-4 text-primary/70" />
                   ID de Solicitud
                 </Label>
@@ -165,7 +163,7 @@ export default function SolicitudDetailPage() {
                   value={solicitud.id}
                   readOnly
                   disabled
-                  className="mt-1 bg-muted/50 cursor-not-allowed text-sm text-foreground"
+                  className="bg-muted/50 cursor-not-allowed text-sm text-foreground"
                 />
               </div>
             )}
@@ -282,4 +280,5 @@ export default function SolicitudDetailPage() {
     </AppShell>
   );
 }
+
 
