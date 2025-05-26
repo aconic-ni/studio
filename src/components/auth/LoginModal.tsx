@@ -27,14 +27,14 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Local loading state for the modal button
   const { toast } = useToast();
-  const { setStaticUser } = useAuth();
+  const { setStaticUser } = useAuth(); // AuthContext's function to set a static user
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
+    setLoading(true); // Start local loading
 
     if (!email || !password) {
       setError("Por favor, ingrese correo y contraseña.");
@@ -50,20 +50,23 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
         displayName: 'Usuario Ejecutivo',
         isStaticUser: true,
       };
-      setStaticUser(staticUser);
+      setStaticUser(staticUser); // This will set user in AuthContext and set AuthContext.loading to false
       toast({ title: 'Inicio de sesión de ejecutivo exitoso', description: 'Bienvenido.' });
       onLoginSuccess(true);
-      // REMOVED: onClose(); // Parent will handle modal visibility based on auth state
-      setLoading(false);
+      // Parent page's useEffect (listening to AuthContext.user) will handle redirection/modal closure.
+      setLoading(false); // End local loading
       return;
     }
     
+    // Try Firebase login
     try {
       await signInWithEmailAndPassword(auth as Auth, email, password);
-      setStaticUser(null); // Ensure no static user is set if Firebase login succeeds
+      // DO NOT call setStaticUser(null) here.
+      // onAuthStateChanged in AuthContext is responsible for setting the Firebase user
+      // and updating AuthContext.loading state.
       toast({ title: 'Inicio de sesión exitoso', description: 'Bienvenido a CustomsFA-L.' });
-      onLoginSuccess(false); // Pass false for Firebase user
-      // REMOVED: onClose(); // Parent will handle modal visibility or redirection
+      onLoginSuccess(false); // Signal success to parent
+      // Parent page's useEffect (listening to AuthContext.user) will handle redirection/modal closure.
     } catch (err: any) {     
       let userFriendlyError = 'Error al iniciar sesión. Inténtelo de nuevo.';
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
@@ -77,7 +80,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
       setError(userFriendlyError);
       toast({ title: 'Error de inicio de sesión', description: userFriendlyError, variant: 'destructive' });
     } finally {
-      setLoading(false);
+      setLoading(false); // End local loading
     }
   };
 
@@ -86,14 +89,14 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) {
-        onClose(); // Call onClose if dialog is closed by user action (e.g., Esc key or overlay click)
+        onClose(); 
       }
     }}>
       <DialogContent className="sm:max-w-md glass-effect text-foreground border-border/30">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-foreground">CustomsFA-L</DialogTitle>
           <button
-            onClick={onClose} // This button handles manual close
+            onClick={onClose} 
             className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
             aria-label="Cerrar"
           >
