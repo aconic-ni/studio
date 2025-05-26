@@ -2,11 +2,12 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image'; // Import next/image
 import { useAppContext } from '@/context/AppContext';
 import type { ExamData, SolicitudData } from '@/types';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Printer, CheckSquare, Square, Banknote, Landmark, Hash, User, FileText, Mail, MessageSquare, Building, Code, CalendarDays, Info, Send, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -135,11 +136,21 @@ export default function SolicitudDetailPage() {
                 <Button variant="outline" onClick={handlePrint}>
                   <Printer className="mr-2 h-4 w-4" /> Imprimir
                 </Button>
-                {/* PDF Download can be re-added here if PDF generation is fixed */}
               </div>
             </div>
           </CardHeader>
           <CardContent className="pt-6">
+            <div className="mb-6 w-full">
+              <Image
+                src="https://placehold.co/800x100.png"
+                alt="Header Solicitud Detail"
+                width={800}
+                height={100}
+                className="w-full h-auto object-contain"
+                data-ai-hint="company logo banner"
+              />
+            </div>
+
             {examData && (
               <div className="mb-6 p-4 border border-border rounded-md bg-secondary/30 card-print-styles">
                 <h3 className="text-lg font-semibold mb-2 text-primary">Información General del Examen</h3>
@@ -223,6 +234,18 @@ export default function SolicitudDetailPage() {
                 <DetailItem label="Observación" value={solicitud.observation} icon={MessageSquare} />
               </div>
             </div>
+
+            <div className="mt-6 w-full">
+              <Image
+                src="https://placehold.co/800x100.png"
+                alt="Footer Solicitud Detail"
+                width={800}
+                height={100}
+                className="w-full h-auto object-contain"
+                data-ai-hint="company seal official"
+              />
+            </div>
+
             <div className="mt-8 flex justify-end space-x-3 no-print">
                 <Button variant="outline" onClick={() => router.push('/examiner')}>
                   <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Lista
@@ -237,3 +260,5 @@ export default function SolicitudDetailPage() {
     </AppShell>
   );
 }
+
+    
