@@ -237,7 +237,7 @@ body {
   .solicitud-detail-print-area .card-print-styles {
      border: 1px solid #ccc !important;
      padding: 10px !important;
-     margin-bottom: 0 !important; /* Removed bottom margin */
+     /* margin-bottom: 0 !important; REMOVED to allow component margins */
      page-break-inside: avoid !important;
      overflow: hidden !important;
   }

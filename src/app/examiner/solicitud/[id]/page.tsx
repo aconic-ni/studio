@@ -152,8 +152,7 @@ export default function SolicitudDetailPage() {
                 data-ai-hint="company logo banner"
               />
             
-            {/* Block 1: ID de Solicitud */}
-            <div className="grid grid-cols-[auto,1fr] gap-x-3 items-center mb-0.5 p-4 border rounded-md bg-secondary/5 card-print-styles">
+            <div className="grid grid-cols-[auto,1fr] gap-x-3 items-center mb-3 p-4 border rounded-md bg-secondary/5 card-print-styles">
                 <Label htmlFor="solicitudIdDisplay" className="flex items-center text-sm text-muted-foreground">
                   <Info className="mr-2 h-4 w-4 text-primary/70" />
                   ID de Solicitud
@@ -167,9 +166,8 @@ export default function SolicitudDetailPage() {
                 />
             </div>
 
-            {/* Block 2: Solicitud de Cheque (examData) */}
             {examData && (
-              <div className="mb-0.5 p-4 border border-border rounded-md bg-secondary/30 card-print-styles">
+              <div className="mb-3 p-4 border border-border rounded-md bg-secondary/30 card-print-styles">
                 <h3 className="text-lg font-semibold mb-2 text-primary">Solicitud de Cheque</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-0">
                   <DetailItem label="A" value={examData.recipient} icon={Send} />
@@ -181,8 +179,7 @@ export default function SolicitudDetailPage() {
               </div>
             )}
 
-            {/* Block 3: Solicitud-specific details */}
-            <div className="mb-0.5 p-4 border border-border rounded-md bg-secondary/30 card-print-styles">
+            <div className="mb-3 p-4 border border-border rounded-md bg-secondary/30 card-print-styles">
               <p className="text-sm font-medium text-muted-foreground mb-2">
                 Por este medio me dirijo a usted para solicitarle que elabore cheque por la cantidad de:
               </p>
@@ -228,30 +225,31 @@ export default function SolicitudDetailPage() {
                 </div>
 
                 <div className="pt-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
-                    <div className="space-y-1">
-                      <CheckboxDetailItem label="Impuestos pendientes de pago por el cliente" checked={solicitud.impuestosPendientesCliente} />
-                      <CheckboxDetailItem label="Impuestos pagados por el cliente mediante:" checked={solicitud.impuestosPagadosCliente} />
-                      {solicitud.impuestosPagadosCliente && (
-                        <div className="ml-6 pl-2 border-l border-dashed">
-                          <DetailItem label="R/C No." value={solicitud.impuestosPagadosRC} />
-                          <DetailItem label="T/B No." value={solicitud.impuestosPagadosTB} />
-                          <DetailItem label="Cheque No." value={solicitud.impuestosPagadosCheque} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                        <div className="space-y-1">
+                            <CheckboxDetailItem label="Impuestos pendientes de pago por el cliente" checked={solicitud.impuestosPendientesCliente} />
+                            <CheckboxDetailItem label="Impuestos pagados por el cliente mediante:" checked={solicitud.impuestosPagadosCliente} />
+                            {solicitud.impuestosPagadosCliente && (
+                                <div className="ml-6 pl-2 border-l border-dashed">
+                                <DetailItem label="R/C No." value={solicitud.impuestosPagadosRC} />
+                                <DetailItem label="T/B No." value={solicitud.impuestosPagadosTB} />
+                                <DetailItem label="Cheque No." value={solicitud.impuestosPagadosCheque} />
+                                </div>
+                            )}
                         </div>
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <CheckboxDetailItem label="Se añaden documentos adjuntos" checked={solicitud.documentosAdjuntos} />
-                      <CheckboxDetailItem label="Constancias de no retención" checked={solicitud.constanciasNoRetencion} />
-                      {solicitud.constanciasNoRetencion && (
-                        <div className="ml-6 pl-2 border-l border-dashed">
-                          <CheckboxDetailItem label="1%" checked={solicitud.constanciasNoRetencion1} />
-                          <CheckboxDetailItem label="2%" checked={solicitud.constanciasNoRetencion2} />
+                        <div className="space-y-1">
+                            <CheckboxDetailItem label="Se añaden documentos adjuntos" checked={solicitud.documentosAdjuntos} />
+                            <CheckboxDetailItem label="Constancias de no retención" checked={solicitud.constanciasNoRetencion} />
+                            {solicitud.constanciasNoRetencion && (
+                                <div className="ml-6 pl-2 border-l border-dashed">
+                                <CheckboxDetailItem label="1%" checked={solicitud.constanciasNoRetencion1} />
+                                <CheckboxDetailItem label="2%" checked={solicitud.constanciasNoRetencion2} />
+                                </div>
+                            )}
                         </div>
-                      )}
                     </div>
-                  </div>
                 </div>
+
 
                 <div className="pt-3">
                   <DetailItem label="Correos de Notificación" value={solicitud.correo} icon={Mail} />
@@ -284,5 +282,3 @@ export default function SolicitudDetailPage() {
     </AppShell>
   );
 }
-
-    
