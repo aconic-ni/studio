@@ -14,6 +14,7 @@ import { ArrowLeft, Printer, CheckSquare, Square, Banknote, Landmark, Hash, User
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from "@/hooks/use-toast";
+import { cn } from '@/lib/utils'; // Added missing import
 
 const DetailItem: React.FC<{ label: string; value?: string | number | null | boolean; icon?: React.ElementType; className?: string }> = ({ label, value, icon: Icon, className }) => {
   let displayValue: string;
@@ -287,5 +288,3 @@ export default function SolicitudDetailPage() {
     </AppShell>
   );
 }
-
-    
