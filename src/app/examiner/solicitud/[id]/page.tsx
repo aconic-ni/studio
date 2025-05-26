@@ -151,7 +151,7 @@ export default function SolicitudDetailPage() {
 
             {examData && (
               <div className="mb-6 p-4 border border-border rounded-md bg-secondary/30 card-print-styles">
-                <h3 className="text-lg font-semibold mb-2 text-primary">Información General del Examen</h3>
+                <h3 className="text-lg font-semibold mb-2 text-primary">Solicitud de Cheque</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
                   <DetailItem label="A (Destinatario)" value={examData.recipient} icon={Send} />
                   <DetailItem label="De (Colaborador)" value={examData.manager} icon={User} />
