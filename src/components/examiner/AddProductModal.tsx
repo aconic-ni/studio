@@ -16,8 +16,9 @@ import type { SolicitudFormData } from './FormParts/zodSchemas';
 import { solicitudSchema } from './FormParts/zodSchemas';
 import type { SolicitudData } from '@/types';
 import { useAuth } from '@/context/AuthContext';
-import { X, Hash, FileText, Tag, Landmark, Mail, FilePlus, DollarSign, Euro, ListFilter, Building, Code, MessageSquare, Banknote, User } from 'lucide-react';
+import { X, Hash, FileText, Tag, Landmark, Mail, FilePlus, DollarSign, Euro, ListFilter, Building, Code, MessageSquare, Banknote, User, Info } from 'lucide-react';
 import { numeroALetras } from '@/lib/numeroALetras';
+import { Label } from '@/components/ui/label'; // Import Label for ID display
 
 
 export function AddProductModal() {
@@ -26,7 +27,8 @@ export function AddProductModal() {
     closeAddProductModal,
     addSolicitud,
     updateSolicitud,
-    editingSolicitud
+    editingSolicitud,
+    examData // Get examData from context to display NE in ID placeholder
   } = useAppContext();
   const { user } = useAuth();
   const [showBancoOtros, setShowBancoOtros] = useState(false);
@@ -34,34 +36,7 @@ export function AddProductModal() {
 
   const form = useForm<SolicitudFormData>({
     resolver: zodResolver(solicitudSchema),
-    defaultValues: {
-      monto: undefined,
-      montoMoneda: 'cordoba',
-      cantidadEnLetras: '',
-      consignatario: '',
-      declaracionNumero: '',
-      unidadRecaudadora: '',
-      codigo1: '',
-      codigo2: '',
-      banco: undefined,
-      bancoOtros: '',
-      numeroCuenta: '',
-      monedaCuenta: undefined,
-      monedaCuentaOtros: '',
-      elaborarChequeA: '',
-      elaborarTransferenciaA: '',
-      impuestosPagadosCliente: false,
-      impuestosPagadosRC: '',
-      impuestosPagadosTB: '',
-      impuestosPagadosCheque: '',
-      impuestosPendientesCliente: false,
-      documentosAdjuntos: false,
-      constanciasNoRetencion: false,
-      constanciasNoRetencion1: false,
-      constanciasNoRetencion2: false,
-      correo: user?.email || '',
-      observation: '',
-    },
+    // Default values are set in useEffect based on editingSolicitud or new form
   });
 
   const watchedBanco = form.watch("banco");
@@ -72,11 +47,9 @@ export function AddProductModal() {
   const watchedMontoMoneda = form.watch("montoMoneda");
 
   useEffect(() => {
-    // watchedMonto here will be the string from field.onChange or number after Zod runs
-    // For numeroALetras, we need a clean number.
     let montoForConversion: number | undefined = undefined;
     if (typeof watchedMonto === 'string') {
-        const parsed = parseFloat(watchedMonto);
+        const parsed = parseFloat(watchedMonto.replace(/,/g, '')); // Also remove commas for parsing
         if (!isNaN(parsed)) {
             montoForConversion = parsed;
         }
@@ -102,11 +75,12 @@ export function AddProductModal() {
     if (watchedBanco === 'ACCION POR CHEQUE/NO APLICA BANCO') {
       form.setValue('bancoOtros', '');
       form.setValue('numeroCuenta', '');
-      form.setValue('monedaCuenta', undefined);
+      form.setValue('monedaCuenta', undefined); // Or a default non-Otro value
       form.setValue('monedaCuentaOtros', '');
-      // Also clear beneficiaries if "NO APLICA BANCO"
-      form.setValue('elaborarChequeA', '');
-      form.setValue('elaborarTransferenciaA', '');
+      setShowMonedaCuentaOtros(false);
+      // Clearing beneficiaries might be too aggressive, user might want to specify one anyway.
+      // form.setValue('elaborarChequeA', '');
+      // form.setValue('elaborarTransferenciaA', '');
     }
   }, [watchedBanco, form]);
 
@@ -118,7 +92,7 @@ export function AddProductModal() {
     if (isAddProductModalOpen) {
       const defaultCorreo = user?.email || '';
       const initialValues: SolicitudFormData = {
-        monto: undefined, // Will be string internally due to input, Zod handles parsing
+        monto: undefined, 
         montoMoneda: 'cordoba',
         cantidadEnLetras: '',
         consignatario: '',
@@ -147,22 +121,20 @@ export function AddProductModal() {
       };
 
       if (editingSolicitud) {
-        // Ensure `monto` from editingSolicitud is treated as string for form's initial value
         const montoAsString = editingSolicitud.monto !== undefined && editingSolicitud.monto !== null 
                               ? String(editingSolicitud.monto) 
                               : '';
         
-        const populatedEditingSolicitud = {
-          ...initialValues,
-          ...editingSolicitud,
-          monto: montoAsString, // Use string for form input
-          correo: editingSolicitud.correo || defaultCorreo,
+        const populatedEditingSolicitud: SolicitudFormData = {
+          ...initialValues, // Start with a clean slate of all defined fields
+          ...editingSolicitud, // Spread the existing solicitud data
+          monto: montoAsString, // Override monto with string version for form
+          correo: editingSolicitud.correo || defaultCorreo, // Ensure correo has a default
         };
-        form.reset(populatedEditingSolicitud as any); // RHF expects string for controlled text input
+        form.reset(populatedEditingSolicitud as any); 
         setShowBancoOtros(editingSolicitud.banco === 'Otros');
         setShowMonedaCuentaOtros(editingSolicitud.monedaCuenta === 'Otros');
 
-        // Manually trigger conversion for existing data on edit
         const montoNumeroForEdit = Number(editingSolicitud.monto);
         if (!isNaN(montoNumeroForEdit) && montoNumeroForEdit > 0 && populatedEditingSolicitud.montoMoneda) {
           const letras = numeroALetras(montoNumeroForEdit, populatedEditingSolicitud.montoMoneda);
@@ -172,7 +144,7 @@ export function AddProductModal() {
         }
 
       } else {
-        form.reset(initialValues as any); // RHF expects string for controlled text input
+        form.reset(initialValues as any);
         setShowBancoOtros(false);
         setShowMonedaCuentaOtros(false);
       }
@@ -180,10 +152,8 @@ export function AddProductModal() {
   }, [editingSolicitud, form, isAddProductModalOpen, user]);
 
   function onSubmit(data: SolicitudFormData) {
-    // Zod already parsed `monto` to a number or undefined if valid
     const solicitudDataToSave = {
         ...data,
-        // `data.monto` here is already processed by Zod schema's preprocess and is a number or undefined
     };
 
     if (editingSolicitud && editingSolicitud.id) {
@@ -200,18 +170,15 @@ export function AddProductModal() {
 
   const sanitizeMontoInput = (inputValue: string): string => {
     let value = inputValue;
-    // Remove any character that is not a digit or a decimal point.
     value = value.replace(/[^\d.]/g, "");
 
-    // Ensure only one decimal point.
     const dotIndex = value.indexOf('.');
     if (dotIndex !== -1) {
       const beforeDot = value.substring(0, dotIndex + 1);
-      const afterDot = value.substring(dotIndex + 1).replace(/\./g, ''); // Remove all dots after the first
+      const afterDot = value.substring(dotIndex + 1).replace(/\./g, '');
       value = beforeDot + afterDot;
     }
   
-    // Limit to two decimal places if a decimal point exists.
     if (dotIndex !== -1) {
       const parts = value.split('.');
       if (parts[1] && parts[1].length > 2) {
@@ -220,6 +187,12 @@ export function AddProductModal() {
     }
     return value;
   };
+  
+  const idPlaceholder = editingSolicitud 
+    ? editingSolicitud.id 
+    : examData?.ne 
+      ? `${examData.ne}-AAAAmmdd-HHmmss (Al guardar)` 
+      : "ID (Se generará al guardar)";
 
   return (
     <Dialog open={isAddProductModalOpen} onOpenChange={(open) => !open && closeAddProductModal()}>
@@ -256,6 +229,7 @@ export function AddProductModal() {
                             monto: "Monto Solicitado",
                             consignatario: "Consignatario",
                             cantidadEnLetras: "Cantidad en Letras",
+                            codigo2: "Codigo MUR",
                         };
                         readableFieldName = fieldNameMap[fieldName] || fieldName.replace(/([A-Z])/g, ' $1').toLowerCase();
                         return (
@@ -270,6 +244,20 @@ export function AddProductModal() {
               </div>
             )}
 
+            <div className="mb-4 p-4 border rounded-md bg-secondary/5">
+              <Label htmlFor="solicitudIdDisplay" className="flex items-center text-sm mb-1">
+                <Info className="mr-2 h-4 w-4 text-primary" />
+                ID de Solicitud
+              </Label>
+              <Input
+                id="solicitudIdDisplay"
+                value={idPlaceholder}
+                readOnly
+                disabled
+                className="mt-1 bg-muted/50 cursor-not-allowed text-sm"
+              />
+            </div>
+
             <div className="space-y-4 p-4 border rounded-md">
               <h4 className="text-md font-medium text-primary mb-2">Detalles del Monto</h4>
               <FormField control={form.control} name="monto" render={({ field }) => (
@@ -281,14 +269,14 @@ export function AddProductModal() {
                   <div className="flex gap-2">
                     <FormControl>
                       <Input 
-                        type="text" // Changed from "number"
-                        inputMode="decimal" // Hint for mobile keyboards
+                        type="text" 
+                        inputMode="decimal" 
                         placeholder="0.00" 
                         {...field}
-                        value={field.value ?? ''} // field.value will be string from RHF
+                        value={field.value ?? ''} 
                         onChange={(e) => {
                           const sanitized = sanitizeMontoInput(e.target.value);
-                          field.onChange(sanitized); // Pass sanitized string to RHF
+                          field.onChange(sanitized); 
                         }}
                         className="w-2/3" 
                       />
@@ -516,6 +504,3 @@ export function AddProductModal() {
     </Dialog>
   );
 }
-
-
-    

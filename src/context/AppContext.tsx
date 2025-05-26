@@ -3,8 +3,9 @@
 import type React from 'react';
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { ExamData, SolicitudData, AppUser as AuthAppUser } from '@/types';
-import { v4 as uuidv4 } from 'uuid';
+// Removed uuidv4 import as ID is now custom generated
 import { useAuth } from './AuthContext';
+import { format } from 'date-fns'; // For formatting date in ID
 
 export enum ExamStep {
   INITIAL_INFO = 1,
@@ -18,9 +19,10 @@ interface AppContextType {
   solicitudes: SolicitudData[];
   currentStep: ExamStep;
   editingSolicitud: SolicitudData | null;
+  // Removed product detail modal states as per previous change
   isAddProductModalOpen: boolean;
   setExamData: (data: ExamData) => void;
-  addSolicitud: (solicitud: Omit<SolicitudData, 'id'>) => void;
+  addSolicitud: (solicitudData: Omit<SolicitudData, 'id'>) => void; // ID will be generated internally
   updateSolicitud: (updatedSolicitud: SolicitudData) => void;
   deleteSolicitud: (solicitudId: string) => void;
   setCurrentStep: (step: ExamStep) => void;
@@ -64,19 +66,29 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
 
 
   const setExamData = useCallback((data: ExamData) => {
-    setExamDataState(data);
+    setExamDataState(prevExamData => ({ ...prevExamData, ...data }));
   }, []);
 
   const addSolicitud = useCallback((solicitudData: Omit<SolicitudData, 'id'>) => {
-    const newSolicitud: SolicitudData = { ...solicitudData, id: uuidv4() };
+    if (!examData || !examData.ne) {
+      console.error("NE from examData is missing. Cannot generate Solicitud ID.");
+      // Consider showing a user-facing error toast here
+      return;
+    }
+    const now = new Date();
+    const datePart = format(now, 'yyyyMMdd');
+    const timePart = format(now, 'HHmmss');
+    const newId = `${examData.ne}-${datePart}-${timePart}`;
+
+    const newSolicitud: SolicitudData = { ...solicitudData, id: newId };
     setSolicitudes((prevSolicitudes) => [...prevSolicitudes, newSolicitud]);
-  }, []);
+  }, [examData]); // examData is a dependency
 
   const updateSolicitud = useCallback((updatedSolicitud: SolicitudData) => {
     setSolicitudes((prevSolicitudes) =>
       prevSolicitudes.map((s) => (s.id === updatedSolicitud.id ? updatedSolicitud : s))
     );
-    setEditingSolicitudState(null);
+    setEditingSolicitudState(null); // Clear editing state after update
   }, []);
 
   const deleteSolicitud = useCallback((solicitudId: string) => {
@@ -98,7 +110,8 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
 
   const closeAddProductModal = useCallback(() => {
     setIsAddProductModalOpen(false);
-    setTimeout(() => setEditingSolicitudState(null), 100);
+    // Delay clearing editingSolicitud to allow modal to close gracefully if needed for animations
+    setTimeout(() => setEditingSolicitudState(null), 150);
   }, []);
 
 

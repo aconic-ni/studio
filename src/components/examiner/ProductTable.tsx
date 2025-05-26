@@ -5,13 +5,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useAppContext } from '@/context/AppContext';
 import type { SolicitudData } from '@/types';
-import { Eye, Edit3, Trash2, MoreHorizontal, FileText, AlertTriangle } from 'lucide-react';
+import { Eye, Edit3, Trash2, MoreHorizontal, FileText, AlertTriangle, Info } from 'lucide-react'; // Added Info icon
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useRouter } from 'next/navigation';
 
 export function ProductTable() {
   const { solicitudes, openAddProductModal, deleteSolicitud } = useAppContext();
-  const router = useRouter(); // Initialize useRouter
+  const router = useRouter(); 
 
   const formatCurrency = (amount?: number | string, currency?: string) => {
     if (amount === undefined || amount === null || amount === '') return 'N/A';
@@ -42,7 +42,7 @@ export function ProductTable() {
     if (solicitud.constanciasNoRetencion) badges.push(<Badge key="retencion" variant="outline" className="bg-purple-100 text-purple-800 whitespace-nowrap flex items-center"><FileText className="h-3 w-3 mr-1" /> No Ret.</Badge>);
 
     if (badges.length === 0) {
-      return <Badge variant="outline">Sin Observaciones</Badge>;
+      return <Badge variant="outline">Sin Estados</Badge>;
     }
     return <div className="flex flex-wrap gap-1">{badges}</div>;
   };
@@ -50,7 +50,7 @@ export function ProductTable() {
 
   if (solicitudes.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-8 text-muted-foreground">
         No hay solicitudes añadidas. Haga clic en "Añadir Nueva Solicitud" para comenzar.
       </div>
     );
@@ -59,22 +59,27 @@ export function ProductTable() {
   return (
     <div className="overflow-x-auto table-container rounded-lg border">
       <Table>
-        <TableHeader className="bg-gray-50">
+        <TableHeader className="bg-secondary/50">
           <TableRow>
-            <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Monto</TableHead>
-            <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Beneficiario</TableHead>
-            <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Banco</TableHead>
-            <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">Estado</TableHead>
-            <TableHead className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</TableHead>
+            <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+              <Info className="inline-block h-3.5 w-3.5 mr-1 align-middle" />
+              ID Solicitud
+            </TableHead>
+            <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Monto</TableHead>
+            <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Beneficiario</TableHead>
+            <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Banco</TableHead>
+            <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider min-w-[150px]">Estado</TableHead>
+            <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Acciones</TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody className="bg-white divide-y divide-gray-200">
+        <TableBody className="bg-card divide-y divide-border">
           {solicitudes.map((solicitud) => (
             <TableRow key={solicitud.id} className="hover:bg-muted/50">
-              <TableCell className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{formatCurrency(solicitud.monto, solicitud.montoMoneda)}</TableCell>
-              <TableCell className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">{getBeneficiarioText(solicitud)}</TableCell>
-              <TableCell className="px-4 py-3 text-sm text-gray-500">{solicitud.banco === 'ACCION POR CHEQUE/NO APLICA BANCO' ? 'No Aplica' : (solicitud.banco === 'Otros' ? solicitud.bancoOtros : solicitud.banco) || 'N/A'}</TableCell>
-              <TableCell className="px-4 py-3 text-sm text-gray-500">{renderStatusBadges(solicitud)}</TableCell>
+              <TableCell className="px-4 py-3 whitespace-nowrap text-sm font-medium text-foreground">{solicitud.id}</TableCell>
+              <TableCell className="px-4 py-3 whitespace-nowrap text-sm font-medium text-foreground">{formatCurrency(solicitud.monto, solicitud.montoMoneda)}</TableCell>
+              <TableCell className="px-4 py-3 text-sm text-muted-foreground max-w-xs truncate">{getBeneficiarioText(solicitud)}</TableCell>
+              <TableCell className="px-4 py-3 text-sm text-muted-foreground">{solicitud.banco === 'ACCION POR CHEQUE/NO APLICA BANCO' ? 'No Aplica Banco' : (solicitud.banco === 'Otros' ? solicitud.bancoOtros : solicitud.banco) || 'N/A'}</TableCell>
+              <TableCell className="px-4 py-3 text-sm text-muted-foreground">{renderStatusBadges(solicitud)}</TableCell>
               <TableCell className="px-4 py-3 whitespace-nowrap text-sm font-medium">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
