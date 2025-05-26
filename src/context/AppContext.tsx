@@ -8,29 +8,29 @@ import { useAuth } from './AuthContext';
 
 export enum ExamStep {
   INITIAL_INFO = 1,
-  PRODUCT_LIST = 2, // This step now manages a list of SolicitudData
+  PRODUCT_LIST = 2,
   PREVIEW = 3,
   SUCCESS = 4,
 }
 
 interface AppContextType {
   examData: ExamData | null;
-  solicitudes: SolicitudData[]; // Renamed from products
+  solicitudes: SolicitudData[];
   currentStep: ExamStep;
-  editingSolicitud: SolicitudData | null; // Renamed from editingProduct
-  isAddProductModalOpen: boolean; // Modal name kept generic, as it's for adding items
-  isProductDetailModalOpen: boolean; // Modal name kept generic
-  solicitudToView: SolicitudData | null; // Renamed from productToView
+  editingSolicitud: SolicitudData | null;
+  isAddProductModalOpen: boolean;
+  isProductDetailModalOpen: boolean; // Restored
+  solicitudToView: SolicitudData | null; // Restored
   setExamData: (data: ExamData) => void;
-  addSolicitud: (solicitud: Omit<SolicitudData, 'id'>) => void; // Renamed from addProduct
-  updateSolicitud: (updatedSolicitud: SolicitudData) => void; // Renamed from updateProduct
-  deleteSolicitud: (solicitudId: string) => void; // Renamed from deleteProduct
+  addSolicitud: (solicitud: Omit<SolicitudData, 'id'>) => void;
+  updateSolicitud: (updatedSolicitud: SolicitudData) => void;
+  deleteSolicitud: (solicitudId: string) => void;
   setCurrentStep: (step: ExamStep) => void;
-  setEditingSolicitud: (solicitud: SolicitudData | null) => void; // Renamed from setEditingProduct
-  openAddProductModal: (solicitudToEdit?: SolicitudData | null) => void; // Parameter renamed
+  setEditingSolicitud: (solicitud: SolicitudData | null) => void;
+  openAddProductModal: (solicitudToEdit?: SolicitudData | null) => void;
   closeAddProductModal: () => void;
-  openProductDetailModal: (solicitud: SolicitudData) => void; // Parameter renamed
-  closeProductDetailModal: () => void;
+  openProductDetailModal: (solicitud: SolicitudData) => void; // Restored
+  closeProductDetailModal: () => void; // Restored
   resetApp: () => void;
 }
 
@@ -38,26 +38,24 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const [examData, setExamDataState] = useState<ExamData | null>(null);
-  const [solicitudes, setSolicitudes] = useState<SolicitudData[]>([]); // Renamed from products
+  const [solicitudes, setSolicitudes] = useState<SolicitudData[]>([]);
   const [currentStep, setCurrentStepState] = useState<ExamStep>(ExamStep.INITIAL_INFO);
-  const [editingSolicitud, setEditingSolicitudState] = useState<SolicitudData | null>(null); // Renamed
+  const [editingSolicitud, setEditingSolicitudState] = useState<SolicitudData | null>(null);
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
-  const [isProductDetailModalOpen, setIsProductDetailModalOpen] = useState(false);
-  const [solicitudToView, setSolicitudToView] = useState<SolicitudData | null>(null); // Renamed
+  const [isProductDetailModalOpen, setIsProductDetailModalOpen] = useState(false); // Restored
+  const [solicitudToView, setSolicitudToView] = useState<SolicitudData | null>(null); // Restored
 
   const { user: authUser } = useAuth(); 
   const [internalUser, setInternalUser] = useState<AuthAppUser | null>(authUser);
 
-  const { user } = useAuth(); // For pre-filling email
-
   const resetApp = useCallback(() => {
     setExamDataState(null);
-    setSolicitudes([]); // Use renamed state setter
+    setSolicitudes([]);
     setCurrentStepState(ExamStep.INITIAL_INFO);
-    setEditingSolicitudState(null); // Use renamed state setter
+    setEditingSolicitudState(null);
     setIsAddProductModalOpen(false);
-    setIsProductDetailModalOpen(false);
-    setSolicitudToView(null); // Use renamed state setter
+    setIsProductDetailModalOpen(false); // Reset restored state
+    setSolicitudToView(null); // Reset restored state
   }, []);
 
 
@@ -102,45 +100,47 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   }, []);
 
   const openAddProductModal = useCallback((solicitudToEdit: SolicitudData | null = null) => {
-    setEditingSolicitudState(solicitudToEdit); // Use renamed state setter
+    setEditingSolicitudState(solicitudToEdit);
     setIsAddProductModalOpen(true);
   }, []);
 
   const closeAddProductModal = useCallback(() => {
     setIsAddProductModalOpen(false);
-    setTimeout(() => setEditingSolicitudState(null), 100); // Use renamed state setter
+    setTimeout(() => setEditingSolicitudState(null), 100); 
   }, []);
 
+  // Restored functions for ProductDetailModal
   const openProductDetailModal = useCallback((solicitud: SolicitudData) => {
-    setSolicitudToView(solicitud); // Use renamed state setter
+    setSolicitudToView(solicitud);
     setIsProductDetailModalOpen(true);
   }, []);
 
   const closeProductDetailModal = useCallback(() => {
     setIsProductDetailModalOpen(false);
-    setSolicitudToView(null); // Use renamed state setter
+    // It's good practice to clear solicitudToView after a delay to avoid content flicker during closing animation
+    setTimeout(() => setSolicitudToView(null), 300);
   }, []);
 
   return (
     <AppContext.Provider
       value={{
         examData,
-        solicitudes, // Use renamed state
+        solicitudes,
         currentStep,
-        editingSolicitud, // Use renamed state
+        editingSolicitud,
         isAddProductModalOpen,
-        isProductDetailModalOpen,
-        solicitudToView, // Use renamed state
+        isProductDetailModalOpen, // Restored
+        solicitudToView, // Restored
         setExamData,
-        addSolicitud, // Use renamed function
-        updateSolicitud, // Use renamed function
-        deleteSolicitud, // Use renamed function
+        addSolicitud,
+        updateSolicitud,
+        deleteSolicitud,
         setCurrentStep,
-        setEditingSolicitud, // Use renamed function
+        setEditingSolicitud,
         openAddProductModal,
         closeAddProductModal,
-        openProductDetailModal,
-        closeProductDetailModal,
+        openProductDetailModal, // Restored
+        closeProductDetailModal, // Restored
         resetApp,
       }}
     >

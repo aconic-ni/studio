@@ -3,17 +3,17 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppContext, ExamStep } from '@/context/AppContext';
-import { ProductTable } from './ProductTable'; // Will display SolicitudData
-import { AddProductModal } from './AddProductModal'; // Handles SolicitudData
+import { ProductTable } from './ProductTable';
+import { AddProductModal } from './AddProductModal';
 import { PlusCircle, CheckCircle, ArrowLeft } from 'lucide-react';
-import { ProductDetailsModal } from './ProductDetailsModal'; // Will display SolicitudData
+import { ProductDetailsModal } from './ProductDetailsModal';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from "@/hooks/use-toast";
 
 
 export function ProductListScreen() {
-  const { examData, setCurrentStep, openAddProductModal, solicitudes } = useAppContext(); // Use solicitudes
+  const { examData, setCurrentStep, openAddProductModal, solicitudes } = useAppContext();
   const { toast } = useToast();
 
   if (!examData) {
@@ -26,7 +26,7 @@ export function ProductListScreen() {
   }
   
   const handleFinish = () => {
-     if (solicitudes.length === 0) { // Check solicitudes length
+     if (solicitudes.length === 0) {
         toast({
             title: "Atención",
             description: "Debe agregar al menos una solicitud antes de finalizar.",
@@ -55,11 +55,11 @@ export function ProductListScreen() {
       <CardContent>
         <div className="mb-6 p-4 bg-secondary/30 border border-border rounded-md shadow">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                <div><span className="font-semibold">A:</span> {examData.recipient}</div>
+                <div><span className="font-semibold">De:</span> {examData.manager}</div>
+                <div><span className="font-semibold">Fecha:</span> {examData.date ? format(new Date(examData.date), "PPP", { locale: es }) : 'N/A'}</div>
                 <div><span className="font-semibold">NE:</span> {examData.ne}</div>
                 <div><span className="font-semibold">Referencia:</span> {examData.reference || 'N/A'}</div>
-                <div><span className="font-semibold">De:</span> {examData.manager}</div>
-                <div><span className="font-semibold">A:</span> {examData.recipient}</div>
-                <div><span className="font-semibold">Fecha:</span> {examData.date ? format(examData.date, "PPP", { locale: es }) : 'N/A'}</div>
             </div>
             <div className="mt-3">
                 <Button variant="link" onClick={() => setCurrentStep(ExamStep.INITIAL_INFO)} className="text-primary p-0 h-auto hover:underline">

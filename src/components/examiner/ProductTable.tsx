@@ -4,11 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useAppContext } from '@/context/AppContext';
-import type { SolicitudData } from '@/types'; // Changed Product to SolicitudData
-import { Eye, Edit3, Trash2, MoreHorizontal, FileText, Landmark, User, AlertTriangle } from 'lucide-react';
+import type { SolicitudData } from '@/types';
+import { Eye, Edit3, Trash2, MoreHorizontal, FileText, AlertTriangle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-export function ProductTable() { // Filename kept, but logic changes for SolicitudData
+export function ProductTable() {
   const { solicitudes, openAddProductModal, deleteSolicitud, openProductDetailModal } = useAppContext();
 
   const formatCurrency = (amount?: number | string, currency?: string) => {
@@ -67,7 +67,7 @@ export function ProductTable() { // Filename kept, but logic changes for Solicit
           </TableRow>
         </TableHeader>
         <TableBody className="bg-white divide-y divide-gray-200">
-          {solicitudes.map((solicitud) => ( // Iterate over solicitudes
+          {solicitudes.map((solicitud) => (
             <TableRow key={solicitud.id} className="hover:bg-muted/50">
               <TableCell className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{formatCurrency(solicitud.monto, solicitud.montoMoneda)}</TableCell>
               <TableCell className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">{getBeneficiarioText(solicitud)}</TableCell>
@@ -90,7 +90,7 @@ export function ProductTable() { // Filename kept, but logic changes for Solicit
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => {
                       if (confirm('¿Está seguro de que desea eliminar esta solicitud?')) {
-                        deleteSolicitud(solicitud.id); // Use deleteSolicitud
+                        deleteSolicitud(solicitud.id);
                       }
                     }} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                       <Trash2 className="mr-2 h-4 w-4" /> Eliminar
