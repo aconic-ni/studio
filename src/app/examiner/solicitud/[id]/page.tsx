@@ -60,12 +60,12 @@ export default function SolicitudDetailPage() {
         setSolicitud(foundSolicitud);
       } else {
         toast({ title: "Error", description: "Solicitud no encontrada.", variant: "destructive" });
-        router.push('/examiner'); 
+        router.push('/examiner');
       }
       setLoading(false);
-    } else if (solicitudes.length === 0 && !loading && solicitudId) { 
+    } else if (solicitudes.length === 0 && !loading && solicitudId) {
       toast({ title: "Información no disponible", description: "Los datos de la solicitud no están cargados. Intente volver a la lista.", variant: "default" });
-      setLoading(false); 
+      setLoading(false);
     }
   }, [solicitudId, solicitudes, router, toast, loading]);
 
@@ -97,7 +97,7 @@ export default function SolicitudDetailPage() {
   };
 
 
-  if (loading && !solicitud) { 
+  if (loading && !solicitud) {
     return (
       <AppShell>
         <div className="flex justify-center items-center h-screen">
@@ -140,7 +140,7 @@ export default function SolicitudDetailPage() {
           <CardContent className="pt-6">
             <div className="mb-6 w-full">
               <Image
-                src="/imagenes/HEADERSOLICITUDDETAIL.png"
+                src="/imagenes/HEADERSOLICITUDDETAIL.svg"
                 alt="Header Solicitud Detail"
                 width={800}
                 height={100}
@@ -172,6 +172,7 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
                   <DetailItem label="Consignatario" value={solicitud.consignatario} icon={Users} />
                   <DetailItem label="Declaración Número" value={solicitud.declaracionNumero} icon={Hash} />
@@ -182,7 +183,8 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 items-start"> 
+
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 items-start">
                     <DetailItem label="Banco" value={getBancoDisplay(solicitud)} icon={Landmark} />
                     {solicitud.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO' && (
                         <>
@@ -194,6 +196,7 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
                   <DetailItem label="Elaborar Cheque A" value={solicitud.elaborarChequeA} icon={User} />
                   <DetailItem label="Elaborar Transferencia A" value={solicitud.elaborarTransferenciaA} icon={User} />
@@ -201,6 +204,7 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
+
                 <div className="space-y-1">
                     <CheckboxDetailItem label="Impuestos pagados por el cliente" checked={solicitud.impuestosPagadosCliente} />
                     {solicitud.impuestosPagadosCliente && (
@@ -223,6 +227,7 @@ export default function SolicitudDetailPage() {
               </div>
 
               <div className="pt-3">
+
                 <DetailItem label="Correos de Notificación" value={solicitud.correo} icon={Mail} />
                 <DetailItem label="Observación" value={solicitud.observation} icon={MessageSquare} />
               </div>
@@ -230,7 +235,7 @@ export default function SolicitudDetailPage() {
 
             <div className="mt-6 w-full">
               <Image
-                src="/imagenes/FOOTERSOLICITUDETAIL.png"
+                src="/imagenes/FOOTERSOLICITUDETAIL.svg"
                 alt="Footer Solicitud Detail"
                 width={800}
                 height={100}
@@ -253,3 +258,4 @@ export default function SolicitudDetailPage() {
     </AppShell>
   );
 }
+
