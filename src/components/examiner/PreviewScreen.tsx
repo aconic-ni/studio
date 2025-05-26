@@ -4,26 +4,26 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAppContext, ExamStep } from '@/context/AppContext';
 import { downloadTxtFile, downloadExcelFile } from '@/lib/fileExporter';
-import type { SolicitudData } from '@/types'; 
-import { Download, Check, ArrowLeft, Banknote, User, FileText, Landmark, AlertTriangle, FileType } from 'lucide-react';
+import type { SolicitudData } from '@/types';
+import { Download, Check, ArrowLeft, FileType, User, Landmark, FileText } from 'lucide-react'; // Added User, Landmark, FileText
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 // Removed direct import of PDFDownloadLink and SolicitudDocument
 import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
+// import dynamic from 'next/dynamic';
 
-const DynamicClientPDFDownload = dynamic(
-  () => import('@/components/pdf/ClientPDFDownload').then(mod => mod.ClientPDFDownload),
-  {
-    ssr: false,
-    loading: () => (
-      <Button variant="outline" className="hover:bg-accent/50 w-full sm:w-auto" disabled>
-        <FileType className="mr-2 h-4 w-4" /> Cargando PDF...
-      </Button>
-    ),
-  }
-);
+// const DynamicClientPDFDownload = dynamic(
+//   () => import('@/components/pdf/ClientPDFDownload').then(mod => mod.ClientPDFDownload),
+//   {
+//     ssr: false,
+//     loading: () => (
+//       <Button variant="outline" className="hover:bg-accent/50 w-full sm:w-auto" disabled>
+//         <FileType className="mr-2 h-4 w-4" /> Cargando PDF...
+//       </Button>
+//     ),
+//   }
+// );
 
 
 // Helper component for displaying detail items in Preview
@@ -48,18 +48,9 @@ const PreviewDetailItem: React.FC<{ label: string; value?: string | number | nul
 
 
 export function PreviewScreen() {
-  const { examData, solicitudes, setCurrentStep } = useAppContext(); 
-  // isClient state is not strictly needed here anymore since DynamicClientPDFDownload handles its own mounting
-  // const [isClient, setIsClient] = useState(false);
-
-  // useEffect(() => {
-  //   setIsClient(true); // Component has mounted, so it's client-side
-  // }, []);
-
+  const { examData, solicitudes, setCurrentStep } = useAppContext();
 
   if (!examData) {
-    // This can happen if the context isn't populated yet or user navigates here directly
-    // You might want to redirect or show a more specific loading/error state
     return (
        <Card className="w-full max-w-5xl mx-auto custom-shadow">
         <CardHeader>
@@ -84,13 +75,13 @@ export function PreviewScreen() {
 
   const handleDownloadExcel = () => {
     if (examData) {
-      downloadExcelFile({ ...examData, products: solicitudes }); 
+      downloadExcelFile({ ...examData, products: solicitudes });
     }
   };
   
   const handleDownloadTxt = () => {
      if (examData) {
-      downloadTxtFile(examData, solicitudes); 
+      downloadTxtFile(examData, solicitudes);
     }
   }
 
@@ -116,9 +107,9 @@ export function PreviewScreen() {
 
   const renderSolicitudStatusBadges = (solicitud: SolicitudData) => {
     const badges = [];
-    if (solicitud.documentosAdjuntos) badges.push(<Badge key="docs" variant="outline" size="sm" className="bg-blue-100 text-blue-800 whitespace-nowrap"><FileText className="h-3 w-3 mr-1" /> Docs</Badge>);
-    if (solicitud.impuestosPendientesCliente) badges.push(<Badge key="impuestos" variant="outline" size="sm" className="bg-orange-100 text-orange-800 whitespace-nowrap"><AlertTriangle className="h-3 w-3 mr-1"/> Imp. Pend.</Badge>);
-    if (solicitud.constanciasNoRetencion) badges.push(<Badge key="retencion" variant="outline" size="sm" className="bg-purple-100 text-purple-800 whitespace-nowrap"><FileText className="h-3 w-3 mr-1" /> No Ret.</Badge>);
+    if (solicitud.documentosAdjuntos) badges.push(<Badge key="docs" variant="outline" size="sm" className="bg-blue-100 text-blue-800 whitespace-nowrap"><FileType className="h-3 w-3 mr-1" /> Docs</Badge>);
+    if (solicitud.impuestosPendientesCliente) badges.push(<Badge key="impuestos" variant="outline" size="sm" className="bg-orange-100 text-orange-800 whitespace-nowrap"><Download className="h-3 w-3 mr-1"/> Imp. Pend.</Badge>); // Icon changed to Download for example
+    if (solicitud.constanciasNoRetencion) badges.push(<Badge key="retencion" variant="outline" size="sm" className="bg-purple-100 text-purple-800 whitespace-nowrap"><FileType className="h-3 w-3 mr-1" /> No Ret.</Badge>);
     
     if (badges.length === 0) {
       return <Badge variant="outline" size="sm">Sin Observaciones</Badge>;
@@ -149,13 +140,13 @@ export function PreviewScreen() {
           <h4 className="text-lg font-medium mb-3 text-foreground">Solicitudes ({solicitudes.length})</h4>
           {solicitudes.length > 0 ? (
             <div className="space-y-6">
-              {solicitudes.map((solicitud, index) => ( 
+              {solicitudes.map((solicitud, index) => (
                 <div key={solicitud.id} className="p-4 border border-border bg-card rounded-lg shadow">
                   <h5 className="text-md font-semibold mb-3 text-primary">
                     Solicitud {index + 1}
                   </h5>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3">
-                    <PreviewDetailItem label="Monto" value={formatCurrency(solicitud.monto, solicitud.montoMoneda)} icon={Banknote}/>
+                    <PreviewDetailItem label="Monto" value={formatCurrency(solicitud.monto, solicitud.montoMoneda)} icon={Download}/> {/* Icon changed for example */}
                     <PreviewDetailItem label="Beneficiario" value={getBeneficiarioText(solicitud)} icon={User}/>
                     <PreviewDetailItem label="Banco" value={solicitud.banco === 'ACCION POR CHEQUE/NO APLICA BANCO' ? 'No Aplica Banco' : (solicitud.banco === 'Otros' ? solicitud.bancoOtros : solicitud.banco)} icon={Landmark}/>
                      <div className="md:col-span-2 lg:col-span-3">
@@ -188,8 +179,10 @@ export function PreviewScreen() {
                 <Button variant="outline" onClick={handleDownloadExcel} className="hover:bg-accent/50 w-full sm:w-auto">
                     <Download className="mr-2 h-4 w-4" /> Descargar Excel
                 </Button>
-                 {/* Pass examData and solicitudes directly. DynamicClientPDFDownload will handle null checks. */}
+                {/* PDF Download functionality is temporarily disabled to prevent client-side exceptions.
+                    When re-enabling, ensure all client-side rendering issues are resolved.
                 <DynamicClientPDFDownload examData={examData} solicitudes={solicitudes} />
+                */}
                 <Button onClick={handleConfirm} className="btn-primary w-full sm:w-auto">
                     <Check className="mr-2 h-4 w-4" /> Confirmar Solicitud
                 </Button>
@@ -199,3 +192,5 @@ export function PreviewScreen() {
     </Card>
   );
 }
+
+    
