@@ -99,7 +99,7 @@ body {
     transition: all 0.3s ease;
   }
   .btn-primary:hover {
-    /* transform: translateY(-2px); */ /* Can be added if smooth animations are desired */
+    /* transform: translateY(-2px); */ 
     /* box-shadow: 0 4px 12px hsl(var(--primary) / 0.3); */
   }
   .btn-primary:active {
@@ -118,7 +118,7 @@ body {
   }
 
   .custom-shadow {
-    @apply shadow-lg; /* Using Tailwind's shadow-lg, can be customized further */
+    @apply shadow-lg; 
      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   }
 
@@ -127,7 +127,7 @@ body {
   }
 
   .grid-bg {
-    background-color: #1a365d; /* Restored hardcoded dark blue */
+    background-color: #1a365d; 
     background-image: linear-gradient(hsl(var(--primary-foreground) / 0.05) 1px, transparent 1px),
                       linear-gradient(90deg, hsl(var(--primary-foreground) / 0.05) 1px, transparent 1px);
     background-size: 20px 20px;
@@ -142,7 +142,7 @@ body {
   }
 
   .dark .glass-effect {
-     background: hsl(var(--card) / 0.15); /* Adjust opacity or color for dark mode */
+     background: hsl(var(--card) / 0.15); 
      border: 1px solid hsl(var(--border) / 0.2);
   }
 
@@ -167,7 +167,7 @@ body {
     }
 }
 
-/* Custom checkbox styling from HTML adapted for Tailwind */
+
 .custom-checkbox-label {
   @apply flex items-center cursor-pointer select-none;
 }
@@ -192,20 +192,19 @@ body {
 /* Print styles for dedicated Solicitud Detail Page */
 @media print {
   body, html {
-    visibility: hidden !important; /* Hide everything initially */
+    visibility: hidden !important;
     background: white !important;
     height: auto !important;
-    width: 100% !important; /* Ensure full width for print context */
+    width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     font-size: 9pt !important;
     color: black !important;
-    overflow: hidden !important; /* Prevent scrollbars which can cause extra pages */
-    -webkit-print-color-adjust: exact !important; /* Ensure colors print */
+    overflow: hidden !important;
+    -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Make only the print area visible */
   .solicitud-detail-print-area, .solicitud-detail-print-area * {
     visibility: visible !important;
     background-color: transparent !important;
@@ -213,21 +212,20 @@ body {
     box-shadow: none !important;
     text-shadow: none !important;
     border-color: #ccc !important;
-    page-break-inside: avoid !important;
   }
 
   .solicitud-detail-print-area {
-    position: static !important; /* Was absolute or fixed */
+    position: static !important;
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;
     height: auto !important;
     max-height: none !important;
-    overflow: hidden !important; /* Changed from visible to hidden */
-    padding: 15px !important;
+    overflow: hidden !important;
+    padding: 10px !important; /* Reduced padding */
     margin: 0 !important;
     box-shadow: none !important;
-    border: none !important; /* Remove any border on the print area itself */
+    border: none !important;
     page-break-after: avoid !important;
   }
 
@@ -239,21 +237,20 @@ body {
   .solicitud-detail-print-area .card-print-styles {
      border: 1px solid #ccc !important;
      padding: 10px !important;
-     margin-bottom: 10px !important;
-     page-break-inside: avoid !important; /* Prevent card from splitting */
-     overflow: hidden !important; /* Prevent content within card from overflowing */
+     margin-bottom: 0 !important; /* Removed bottom margin */
+     page-break-inside: avoid !important;
+     overflow: hidden !important;
   }
   
-  /* Ensure images within the print area scale down if needed and don't cause overflow */
   .solicitud-detail-print-area img {
     max-width: 100% !important;
     height: auto !important;
-    display: block; /* Prevents extra space below inline images */
-    margin-bottom: 5px !important; /* Reduced margin */
+    display: block;
+    margin-bottom: 5px !important;
     page-break-inside: avoid !important;
   }
 
-
+  /* Hide AppShell header and footer */
   header.sticky, footer.py-4, .app-shell-footer {
     display: none !important;
     visibility: hidden !important;
@@ -270,13 +267,12 @@ body {
     margin-bottom: 0.3rem !important;
     font-size: 11pt !important;
   }
-  .solicitud-detail-print-area h3.text-lg {
+  .solicitud-detail-print-area h3.text-lg { /* Matches CardTitle for "Solicitud de Cheque" */
     font-size: 10pt !important;
   }
   .solicitud-detail-print-area h4.text-md {
     font-size: 9pt !important;
   }
-
 
   .solicitud-detail-print-area p {
     orphans: 3;
@@ -290,7 +286,6 @@ body {
   .solicitud-detail-print-area .text-sm {
     font-size: 8pt !important;
   }
-
 
   .solicitud-detail-print-area a {
     color: #000 !important;
@@ -320,10 +315,10 @@ body {
     padding-bottom: 0.05rem !important;
   }
 
-  .solicitud-detail-print-area .card-print-styles .lucide-icon {
-    display: none !important;
+  .solicitud-detail-print-area .lucide-icon { /* Class for lucide icons if they need specific print styling */
+    display: none !important; /* Example: hide icons to save space */
   }
-  .solicitud-detail-print-area .card-print-styles .text-muted-foreground {
+  .solicitud-detail-print-area .text-muted-foreground {
     color: #444 !important;
   }
   .solicitud-detail-print-area .divide-y > :not([hidden]) ~ :not([hidden]) {
@@ -338,4 +333,3 @@ body {
     padding-top: 0.3rem !important;
   }
 }
-
