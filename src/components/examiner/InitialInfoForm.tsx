@@ -1,5 +1,6 @@
 
 "use client";
+import * as React from 'react'; // Import React
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ function extractNameFromEmail(email?: string | null): string {
 export function InitialInfoForm() {
   const { setExamData, setCurrentStep, examData: existingExamData } = useAppContext();
   const { user } = useAuth();
+  const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false); // State for Popover
 
   const defaultManagerName =
     existingExamData?.manager ||
@@ -131,7 +133,7 @@ function onSubmit(data: InitialInfoFormData) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Fecha *</FormLabel>
-                    <Popover>
+                    <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                       <PopoverTrigger asChild>
                         <FormControl>
                           <Button
@@ -154,7 +156,10 @@ function onSubmit(data: InitialInfoFormData) {
                         <Calendar
                           mode="single"
                           selected={field.value}
-                          onSelect={field.onChange}
+                          onSelect={(date) => {
+                            field.onChange(date);
+                            setIsDatePickerOpen(false); // Close popover on select
+                          }}
                           disabled={(date) =>
                             date > new Date() || date < new Date("1900-01-01")
                           }
