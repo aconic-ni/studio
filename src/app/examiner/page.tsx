@@ -1,3 +1,4 @@
+
 "use client";
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -17,7 +18,7 @@ export default function ExaminerPage() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/'); // Redirect to login if not authenticated
+      router.push('/login'); // Changed from '/' to '/login'
     }
   }, [user, authLoading, router]);
   
@@ -49,7 +50,8 @@ export default function ExaminerPage() {
      // This typically won't be seen due to redirect, but good for robustness
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-lg">Redirigiendo a inicio de sesión...</p>
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="text-lg ml-3">Verificando sesión...</p>
       </div>
     );
   }
