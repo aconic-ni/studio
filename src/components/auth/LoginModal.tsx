@@ -9,8 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { X, Mail, Lock } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext'; // Import useAuth
+import { X, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import type { AppUser } from '@/types';
 
 interface LoginModalProps {
@@ -27,14 +27,15 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false); // Local loading state for the modal button
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // State for password visibility
   const { toast } = useToast();
-  const { setStaticUser } = useAuth(); // AuthContext's function to set a static user
+  const { setStaticUser } = useAuth();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true); // Start local loading
+    setLoading(true);
 
     if (!email || !password) {
       setError("Por favor, ingrese correo y contraseña.");
@@ -42,7 +43,6 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
       return;
     }
 
-    // Check for static user credentials
     if (email === STATIC_USER_EMAIL && password === STATIC_USER_PASS) {
       const staticUser: AppUser = {
         uid: 'static_user_uid',
@@ -50,24 +50,18 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
         displayName: 'Usuario Ejecutivo',
         isStaticUser: true,
       };
-      setStaticUser(staticUser); // This will set user in AuthContext and set AuthContext.loading to false
+      setStaticUser(staticUser);
       toast({ title: 'Inicio de sesión de ejecutivo exitoso', description: 'Bienvenido.' });
       onLoginSuccess(true);
-      // Parent page's useEffect (listening to AuthContext.user) will handle redirection/modal closure.
-      setLoading(false); // End local loading
+      setLoading(false);
       return;
     }
     
-    // Try Firebase login
     try {
-      await signInWithEmailAndPassword(auth as Auth, email, password);
-      // DO NOT call setStaticUser(null) here.
-      // onAuthStateChanged in AuthContext is responsible for setting the Firebase user
-      // and updating AuthContext.loading state.
+      await signInWithEmailAndPassword(auth, email, password);
       toast({ title: 'Inicio de sesión exitoso', description: 'Bienvenido a CustomsFA-L.' });
-      onLoginSuccess(false); // Signal success to parent
-      // Parent page's useEffect (listening to AuthContext.user) will handle redirection/modal closure.
-    } catch (err: any) {     
+      onLoginSuccess(false);
+    } catch (err: any) {
       let userFriendlyError = 'Error al iniciar sesión. Inténtelo de nuevo.';
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         userFriendlyError = 'Correo o contraseña incorrectos.';
@@ -80,7 +74,7 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
       setError(userFriendlyError);
       toast({ title: 'Error de inicio de sesión', description: userFriendlyError, variant: 'destructive' });
     } finally {
-      setLoading(false); // End local loading
+      setLoading(false);
     }
   };
 
@@ -127,15 +121,27 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
               <Lock className="mr-2 h-4 w-4 text-primary" />
               Contraseña
             </Label>
-            <Input
-              id="password-login"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-4 py-3 text-foreground placeholder:text-muted-foreground border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="********"
-            />
+            <div className="relative">
+              <Input
+                id="password-login"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full px-4 py-3 pr-10 text-foreground placeholder:text-muted-foreground border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="********"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-primary"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </Button>
+            </div>
           </div>
            {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="text-xs text-muted-foreground">
