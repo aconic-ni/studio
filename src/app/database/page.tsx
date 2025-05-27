@@ -7,43 +7,21 @@ import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Search, Download, Banknote, User, FileText, Landmark, Hash, Building, Code, MessageSquare, Mail, CalendarDays, Info, Send, Users } from 'lucide-react';
+import { Loader2, Search, Download, Eye } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, Timestamp as FirestoreTimestamp } from 'firebase/firestore';
-import type { SolicitudRecord } from '@/types';
+import type { SolicitudRecord, ExportableExamData } from '@/types';
 import { downloadExcelFile } from '@/lib/fileExporter';
-import { CheckSquare, Square } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-
-const FetchedDetailItem: React.FC<{ label: string; value?: string | number | null | boolean | Date; icon?: React.ElementType }> = ({ label, value, icon: Icon }) => {
-  let displayValue: string;
-  if (typeof value === 'boolean') {
-    displayValue = value ? 'Sí' : 'No';
-  } else if (value instanceof Date) {
-    displayValue = format(value, "PPP 'a las' HH:mm", { locale: es });
-  } else {
-    displayValue = String(value ?? 'N/A');
-  }
-
-  return (
-    <div className="py-1">
-      <p className="text-xs font-medium text-muted-foreground flex items-center">
-        {Icon && <Icon className="h-3.5 w-3.5 mr-1.5 text-primary/70" />}
-        {label}
-      </p>
-      <p className="text-sm text-foreground">{displayValue}</p>
-    </div>
-  );
-};
-
-const CheckboxDetailItemFetched: React.FC<{ label: string; checked?: boolean; subLabel?: string }> = ({ label, checked, subLabel }) => (
-  <div className="flex items-center py-1">
-    {checked ? <CheckSquare className="h-4 w-4 text-green-600 mr-2" /> : <Square className="h-4 w-4 text-muted-foreground mr-2" />}
-    <span className="text-sm text-foreground">{label}</span>
-    {subLabel && <span className="text-xs text-muted-foreground ml-1">{subLabel}</span>}
-  </div>
-);
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const formatCurrencyFetched = (amount?: number | string, currency?: string) => {
     if (amount === undefined || amount === null || amount === '') return 'N/A';
@@ -56,126 +34,57 @@ const formatCurrencyFetched = (amount?: number | string, currency?: string) => {
     return `${prefix}${num.toLocaleString('es-NI', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
-const getBancoDisplayFetched = (solicitud: SolicitudRecord) => {
-    if (solicitud.banco === 'ACCION POR CHEQUE/NO APLICA BANCO') return 'Acción por Cheque / No Aplica Banco';
-    if (solicitud.banco === 'Otros') return solicitud.bancoOtros || 'Otros (No especificado)';
-    return solicitud.banco;
-};
+const SearchResultsTable: React.FC<{ solicitudes: SolicitudRecord[] }> = ({ solicitudes }) => {
+  const router = useRouter();
 
-const getMonedaCuentaDisplayFetched = (solicitud: SolicitudRecord) => {
-    if (solicitud.monedaCuenta === 'Otros') return solicitud.monedaCuentaOtros || 'Otros (No especificado)';
-    return solicitud.monedaCuenta;
-};
-
-const FetchedExamDisplay: React.FC<{ solicitudes: SolicitudRecord[] }> = ({ solicitudes }) => {
   if (!solicitudes || solicitudes.length === 0) {
     return <p className="text-muted-foreground text-center py-4">No se encontraron solicitudes para este NE.</p>;
   }
 
-  const firstSolicitud = solicitudes[0]; 
-
   return (
     <Card className="mt-6 w-full custom-shadow">
       <CardHeader>
-        <CardTitle className="text-xl md:text-2xl font-semibold text-foreground">Detalles del Examen: {firstSolicitud.examNe}</CardTitle>
+        <CardTitle className="text-xl md:text-2xl font-semibold text-foreground">
+          Solicitudes Encontradas para NE: {solicitudes[0]?.examNe || 'Desconocido'}
+        </CardTitle>
         <CardDescription className="text-muted-foreground">
-          Información recuperada de la base de datos "SolicitudCheques".
+          Se encontraron {solicitudes.length} solicitud(es) asociadas.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div>
-          <h4 className="text-lg font-medium mb-2 text-foreground">Información General del Examen</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 bg-secondary/30 p-4 rounded-md shadow-sm text-sm">
-            <FetchedDetailItem label="NE (Tracking NX1)" value={firstSolicitud.examNe} icon={Info}/>
-            <FetchedDetailItem label="Referencia" value={firstSolicitud.examReference} icon={FileText}/>
-            <FetchedDetailItem label="De (Colaborador)" value={firstSolicitud.examManager} icon={User}/>
-            <FetchedDetailItem label="A (Destinatario)" value={firstSolicitud.examRecipient} icon={Send}/>
-            <FetchedDetailItem label="Fecha de Examen" value={firstSolicitud.examDate instanceof FirestoreTimestamp ? firstSolicitud.examDate.toDate() : firstSolicitud.examDate} icon={CalendarDays}/>
-          </div>
-        </div>
-
-        <div>
-          <h4 className="text-lg font-medium mb-2 text-foreground">Detalles de Guardado (Primer Solicitud)</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 bg-secondary/30 p-4 rounded-md shadow-sm text-sm">
-             <FetchedDetailItem label="Guardado por (correo)" value={firstSolicitud.savedBy} icon={Mail}/>
-             <FetchedDetailItem label="Fecha y Hora de Guardado" value={firstSolicitud.savedAt instanceof FirestoreTimestamp ? firstSolicitud.savedAt.toDate() : firstSolicitud.savedAt} icon={CalendarDays}/>
-          </div>
-        </div>
-
-        <div>
-          <h4 className="text-lg font-medium mb-3 text-foreground">Solicitudes ({solicitudes.length})</h4>
-            <div className="space-y-6">
-              {solicitudes.map((solicitud, index) => (
-                <div key={solicitud.solicitudId || index} className="p-4 border border-border bg-card rounded-lg shadow">
-                  <h5 className="text-md font-semibold mb-3 text-primary">Solicitud ID: {solicitud.solicitudId}</h5>
-                  <div className="space-y-3 divide-y divide-border/50">
-                    <div className="pt-2">
-                        <h6 className="text-sm font-medium text-accent mb-1">Detalles del Monto</h6>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                        <FetchedDetailItem label="Monto Solicitado" value={formatCurrencyFetched(solicitud.monto, solicitud.montoMoneda)} icon={Banknote} />
-                        <FetchedDetailItem label="Cantidad en Letras" value={solicitud.cantidadEnLetras} icon={FileText} />
-                        </div>
-                    </div>
-                    <div className="pt-2">
-                        <h6 className="text-sm font-medium text-accent mb-1">Información Adicional</h6>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
-                        <FetchedDetailItem label="Consignatario" value={solicitud.consignatario} icon={Users} />
-                        <FetchedDetailItem label="Declaración Número" value={solicitud.declaracionNumero} icon={Hash} />
-                        <FetchedDetailItem label="Unidad Recaudadora" value={solicitud.unidadRecaudadora} icon={Building} />
-                        <FetchedDetailItem label="Código 1" value={solicitud.codigo1} icon={Code} />
-                        <FetchedDetailItem label="Codigo MUR" value={solicitud.codigo2} icon={Code} />
-                        </div>
-                    </div>
-                    <div className="pt-2">
-                        <h6 className="text-sm font-medium text-accent mb-1">Cuenta Bancaria</h6>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                        <FetchedDetailItem label="Banco" value={getBancoDisplayFetched(solicitud)} icon={Landmark} />
-                        {solicitud.banco !== 'ACCION POR CHEQUE/NO APLICA BANCO' && (
-                            <>
-                            <FetchedDetailItem label="Número de Cuenta" value={solicitud.numeroCuenta} icon={Hash} />
-                            <FetchedDetailItem label="Moneda de la Cuenta" value={getMonedaCuentaDisplayFetched(solicitud)} icon={Banknote} />
-                            </>
-                        )}
-                        </div>
-                    </div>
-                    <div className="pt-2">
-                        <h6 className="text-sm font-medium text-accent mb-1">Beneficiario del Pago</h6>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
-                        <FetchedDetailItem label="Elaborar Cheque A" value={solicitud.elaborarChequeA} icon={User} />
-                        <FetchedDetailItem label="Elaborar Transferencia A" value={solicitud.elaborarTransferenciaA} icon={User} />
-                        </div>
-                    </div>
-                    <div className="pt-2">
-                        <h6 className="text-sm font-medium text-accent mb-1">Documentación y Estados</h6>
-                        <div className="space-y-1">
-                            <CheckboxDetailItemFetched label="Impuestos pagados por el cliente" checked={solicitud.impuestosPagadosCliente} />
-                            {solicitud.impuestosPagadosCliente && (
-                            <div className="ml-6 pl-2 border-l border-dashed text-xs">
-                                <FetchedDetailItem label="R/C No." value={solicitud.impuestosPagadosRC} />
-                                <FetchedDetailItem label="T/B No." value={solicitud.impuestosPagadosTB} />
-                                <FetchedDetailItem label="Cheque No." value={solicitud.impuestosPagadosCheque} />
-                            </div>
-                            )}
-                            <CheckboxDetailItemFetched label="Impuestos pendientes de pago por el cliente" checked={solicitud.impuestosPendientesCliente} />
-                            <CheckboxDetailItemFetched label="Se añaden documentos adjuntos" checked={solicitud.documentosAdjuntos} />
-                            <CheckboxDetailItemFetched label="Constancias de no retención" checked={solicitud.constanciasNoRetencion} />
-                            {solicitud.constanciasNoRetencion && (
-                            <div className="ml-6 pl-2 border-l border-dashed text-xs">
-                                <CheckboxDetailItemFetched label="1%" checked={solicitud.constanciasNoRetencion1} />
-                                <CheckboxDetailItemFetched label="2%" checked={solicitud.constanciasNoRetencion2} />
-                            </div>
-                            )}
-                        </div>
-                    </div>
-                    <div className="pt-2">
-                        <h6 className="text-sm font-medium text-accent mb-1">Comunicación</h6>
-                        <FetchedDetailItem label="Correos de Notificación" value={solicitud.correo} icon={Mail} />
-                        <FetchedDetailItem label="Observación" value={solicitud.observation} icon={MessageSquare} />
-                    </div>
-                  </div>
-                </div>
+      <CardContent>
+        <div className="overflow-x-auto table-container rounded-lg border">
+          <Table>
+            <TableHeader className="bg-secondary/50">
+              <TableRow>
+                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">ID Solicitud</TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha de Examen</TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Monto</TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="bg-card divide-y divide-border">
+              {solicitudes.map((solicitud) => (
+                <TableRow key={solicitud.solicitudId} className="hover:bg-muted/50">
+                  <TableCell className="px-4 py-3 whitespace-nowrap text-sm font-medium text-foreground">{solicitud.solicitudId}</TableCell>
+                  <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">
+                    {solicitud.examDate instanceof FirestoreTimestamp 
+                      ? format(solicitud.examDate.toDate(), "PPP", { locale: es }) 
+                      : (solicitud.examDate instanceof Date ? format(solicitud.examDate, "PPP", { locale: es }) : 'N/A')}
+                  </TableCell>
+                  <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{formatCurrencyFetched(solicitud.monto, solicitud.montoMoneda)}</TableCell>
+                  <TableCell className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => router.push(`/examiner/solicitud/${solicitud.solicitudId}`)}
+                    >
+                      <Eye className="mr-2 h-4 w-4" /> Ver
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </div>
+            </TableBody>
+          </Table>
         </div>
       </CardContent>
     </Card>
@@ -199,7 +108,7 @@ export default function DatabasePage() {
     if (!isClient || authLoading) return;
 
     if (!user || (!user.isStaticUser && user.role !== 'revisor')) {
-      router.push('/'); // Redirect if not authorized
+      router.push('/'); 
     }
   }, [user, authLoading, router, isClient]);
 
@@ -224,6 +133,7 @@ export default function DatabasePage() {
           const docData = doc.data() as Omit<SolicitudRecord, 'examDate' | 'savedAt'> & { examDate: FirestoreTimestamp | Date, savedAt: FirestoreTimestamp | Date };
           return {
             ...docData,
+            solicitudId: doc.id, // Ensure solicitudId is the document ID
             examDate: docData.examDate instanceof FirestoreTimestamp ? docData.examDate.toDate() : docData.examDate as Date,
             savedAt: docData.savedAt instanceof FirestoreTimestamp ? docData.savedAt.toDate() : docData.savedAt as Date,
           } as SolicitudRecord;
@@ -238,7 +148,7 @@ export default function DatabasePage() {
       if (err.code === 'permission-denied') {
         userFriendlyError = "No tiene permisos para acceder a esta información.";
       } else if (err.code === 'failed-precondition') {
-         userFriendlyError = "Error de consulta: asegúrese de tener índices creados en Firestore para 'examNe' en la colección 'SolicitudCheques'.";
+         userFriendlyError = "Error de consulta: asegúrese de tener índices creados en Firestore para 'examNe' en la colección 'SolicitudCheques'. Puede tardar unos minutos en activarse después de crearlo.";
       }
       setError(userFriendlyError);
     } finally {
@@ -256,12 +166,12 @@ export default function DatabasePage() {
         recipient: firstSolicitud.examRecipient,
         date: firstSolicitud.examDate instanceof FirestoreTimestamp 
               ? firstSolicitud.examDate.toDate() 
-              : (firstSolicitud.examDate instanceof Date ? firstSolicitud.examDate : new Date()), // Ensure Date
+              : (firstSolicitud.examDate instanceof Date ? firstSolicitud.examDate : new Date()), 
         savedBy: firstSolicitud.savedBy,
         savedAt: firstSolicitud.savedAt instanceof FirestoreTimestamp 
               ? firstSolicitud.savedAt.toDate() 
-              : (firstSolicitud.savedAt instanceof Date ? firstSolicitud.savedAt : new Date()), // Ensure Date
-        products: fetchedSolicitudes.map(s => ({ // Map SolicitudRecord to SolicitudData-like structure
+              : (firstSolicitud.savedAt instanceof Date ? firstSolicitud.savedAt : new Date()), 
+        products: fetchedSolicitudes.map(s => ({ 
           id: s.solicitudId,
           monto: s.monto,
           montoMoneda: s.montoMoneda,
@@ -270,7 +180,7 @@ export default function DatabasePage() {
           declaracionNumero: s.declaracionNumero,
           unidadRecaudadora: s.unidadRecaudadora,
           codigo1: s.codigo1,
-          codigo2: s.codigo2,
+          codigo2: s.codigo2, // Codigo MUR
           banco: s.banco,
           bancoOtros: s.bancoOtros,
           numeroCuenta: s.numeroCuenta,
@@ -328,7 +238,7 @@ export default function DatabasePage() {
               <Button type="submit" className="btn-primary w-full sm:w-auto" disabled={isLoading}>
                 <Search className="mr-2 h-4 w-4" /> {isLoading ? 'Buscando...' : 'Ejecutar Búsqueda'}
               </Button>
-              <Button type="button" onClick={handleExport} variant="outline" className="w-full sm:w-auto" disabled={!fetchedSolicitudes || isLoading}>
+              <Button type="button" onClick={handleExport} variant="outline" className="w-full sm:w-auto" disabled={!fetchedSolicitudes || isLoading || (fetchedSolicitudes && fetchedSolicitudes.length === 0) }>
                 <Download className="mr-2 h-4 w-4" /> Exportar
               </Button>
             </form>
@@ -346,8 +256,8 @@ export default function DatabasePage() {
               </div>
             )}
 
-            {fetchedSolicitudes && !isLoading && <FetchedExamDisplay solicitudes={fetchedSolicitudes} />}
-
+            {fetchedSolicitudes && !isLoading && <SearchResultsTable solicitudes={fetchedSolicitudes} />}
+            
             {!fetchedSolicitudes && !isLoading && !error && searchTermNE && (
                  <div className="mt-4 p-4 bg-yellow-500/10 text-yellow-700 border border-yellow-500/30 rounded-md text-center">
                     Inicie una búsqueda para ver resultados o verifique el NE ingresado.
