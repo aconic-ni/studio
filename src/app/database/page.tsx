@@ -2,6 +2,7 @@
 "use client";
 import { useState, useEffect, type FormEvent, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
@@ -103,10 +104,13 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
           <Table>
             <TableHeader className="bg-secondary/50">
               <TableRow>
-                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Estado de Pago</TableHead>
-                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">ID Solicitud</TableHead>
-                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha de Solicitud</TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Estado de Pago</TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">ID Solicitud</TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap">Fecha de Solicitud</TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">NE</TableHead>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Monto</TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Consignatario</TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Declaracion</TableHead>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Usuario</TableHead>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Acciones</TableHead>
               </TableRow>
@@ -123,8 +127,6 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
                             if (checked) {
                               onUpdatePaymentStatus(solicitud.solicitudId, 'Pagado');
                             } else {
-                              // Only allow unchecking if currently Pagado and no error message is being set
-                              // The message dialog flow will handle setting error status which implicitly unchecks
                               if (solicitud.paymentStatus === 'Pagado') {
                                  onUpdatePaymentStatus(solicitud.solicitudId, null);
                               }
@@ -180,7 +182,10 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
                       ? format(solicitud.examDate.toDate(), "PPP", { locale: es })
                       : (solicitud.examDate instanceof Date ? format(solicitud.examDate, "PPP", { locale: es }) : 'N/A')}
                   </TableCell>
+                  <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{solicitud.examNe}</TableCell>
                   <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{formatCurrencyFetched(solicitud.monto, solicitud.montoMoneda)}</TableCell>
+                  <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{solicitud.consignatario || 'N/A'}</TableCell>
+                  <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{solicitud.declaracionNumero || 'N/A'}</TableCell>
                   <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{solicitud.examManager}</TableCell>
                   <TableCell className="px-4 py-3 whitespace-nowrap text-sm font-medium">
                     <Button
@@ -239,10 +244,10 @@ export default function DatabasePage() {
         newStatus = `Error: ${message.trim()}`;
       } else if (message === '' && status && status.startsWith('Error:')) { 
         newStatus = null; 
-      } else if (message === '' && !status) { // if message is empty and no explicit status is provided, it might mean clearing error.
+      } else if (message === '' && !status) { 
          const currentSolicitud = fetchedSolicitudes?.find(s => s.solicitudId === solicitudId);
          if(currentSolicitud?.paymentStatus?.startsWith('Error:')) {
-            newStatus = null; // Clear error if message is empty and current status was an error
+            newStatus = null; 
          }
       }
 
@@ -420,8 +425,9 @@ export default function DatabasePage() {
   const handleExport = () => {
     if (fetchedSolicitudes && fetchedSolicitudes.length > 0) {
       const headers = [
-        "Estado de Pago", "ID Solicitud", "Fecha de Solicitud", "NE Solicitud", "Referencia Solicitud", "Destinatario Solicitud", "Usuario", "Monto", "Moneda Monto", "Cantidad en Letras", 
-        "Consignatario", "Declaración Número", "Unidad Recaudadora", "Código 1", "Codigo MUR", "Banco", "Otro Banco", "Número de Cuenta", "Moneda de la Cuenta", "Otra Moneda Cuenta",
+        "Estado de Pago", "ID Solicitud", "Fecha de Solicitud", "NE", "Monto", "Moneda Monto", "Consignatario", "Declaracion", "Usuario",
+        "Cantidad en Letras", "Referencia Solicitud", "Destinatario Solicitud",
+        "Unidad Recaudadora", "Código 1", "Codigo MUR", "Banco", "Otro Banco", "Número de Cuenta", "Moneda de la Cuenta", "Otra Moneda Cuenta",
         "Elaborar Cheque A", "Elaborar Transferencia A", 
         "Impuestos Pagados Cliente", "R/C (Imp. Pagados)", "T/B (Imp. Pagados)", "Cheque (Imp. Pagados)",
         "Impuestos Pendientes Cliente", "Documentos Adjuntos", 
@@ -433,18 +439,19 @@ export default function DatabasePage() {
         "Estado de Pago": s.paymentStatus || 'Pendiente',
         "ID Solicitud": s.solicitudId,
         "Fecha de Solicitud": s.examDate instanceof Date ? format(s.examDate, "yyyy-MM-dd HH:mm", { locale: es }) : 'N/A',
-        "NE Solicitud": s.examNe,
-        "Referencia Solicitud": s.examReference || 'N/A',
-        "Destinatario Solicitud": s.examRecipient,
-        "Usuario": s.examManager,
+        "NE": s.examNe,
         "Monto": s.monto,
         "Moneda Monto": s.montoMoneda,
-        "Cantidad en Letras": s.cantidadEnLetras || 'N/A',
         "Consignatario": s.consignatario || 'N/A',
-        "Declaración Número": s.declaracionNumero || 'N/A',
+        "Declaracion": s.declaracionNumero || 'N/A',
+        "Usuario": s.examManager,
+        
+        "Cantidad en Letras": s.cantidadEnLetras || 'N/A',
+        "Referencia Solicitud": s.examReference || 'N/A',
+        "Destinatario Solicitud": s.examRecipient,
         "Unidad Recaudadora": s.unidadRecaudadora || 'N/A',
         "Código 1": s.codigo1 || 'N/A',
-        "Codigo MUR": s.codigo2 || 'N/A', // Codigo MUR
+        "Codigo MUR": s.codigo2 || 'N/A',
         "Banco": s.banco === 'ACCION POR CHEQUE/NO APLICA BANCO' ? 'Acción por Cheque / No Aplica Banco' : s.banco || 'N/A',
         "Otro Banco": s.banco === 'Otros' ? (s.bancoOtros || 'N/A') : 'N/A',
         "Número de Cuenta": s.banco === 'ACCION POR CHEQUE/NO APLICA BANCO' ? 'N/A' : s.numeroCuenta || 'N/A',
@@ -504,7 +511,7 @@ export default function DatabasePage() {
   return (
     <AppShell>
       <div className="py-2 md:py-5">
-        <Card className="w-full max-w-4xl mx-auto custom-shadow">
+        <Card className="w-full max-w-7xl mx-auto custom-shadow">
           <CardHeader>
             <CardTitle className="text-2xl font-semibold text-foreground">Base de Datos de Solicitudes de Cheque</CardTitle>
             <CardDescription className="text-muted-foreground">Seleccione un tipo de búsqueda e ingrese los criterios.</CardDescription>
@@ -562,3 +569,4 @@ export default function DatabasePage() {
     </AppShell>
   );
 }
+
