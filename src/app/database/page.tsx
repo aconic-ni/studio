@@ -63,7 +63,7 @@ interface SearchResultsTableProps {
   currentUserRole?: string;
   onUpdatePaymentStatus: (solicitudId: string, status: string | null, message?: string) => Promise<void>;
   onOpenMessageDialog: (solicitudId: string) => void;
-  router: ReturnType<typeof useRouter>; // Pass router instance
+  router: ReturnType<typeof useRouter>;
 }
 
 const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
@@ -73,7 +73,7 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
   currentUserRole,
   onUpdatePaymentStatus,
   onOpenMessageDialog,
-  router // Use passed router instance
+  router
 }) => {
   const { toast } = useToast();
 
@@ -234,7 +234,6 @@ export default function DatabasePage() {
       if (message && message.trim() !== '') {
         newStatus = `Error: ${message.trim()}`;
       } else if (message === '' && status && status.startsWith('Error:')) { 
-        // If message is cleared and status was an error, reset status to null (Pending)
         newStatus = null; 
       }
 
@@ -276,13 +275,10 @@ export default function DatabasePage() {
     if (currentSolicitudIdForMessage) {
       const currentSolicitud = fetchedSolicitudes?.find(s => s.solicitudId === currentSolicitudIdForMessage);
       if (messageText.trim() === '' && currentSolicitud?.paymentStatus?.startsWith('Error:')) {
-        // Message cleared, and current status is an error -> reset to pending
         await handleUpdatePaymentStatus(currentSolicitudIdForMessage, null);
       } else if (messageText.trim() !== '') {
-        // New or updated error message
         await handleUpdatePaymentStatus(currentSolicitudIdForMessage, `Error: ${messageText.trim()}`, messageText.trim());
       }
-      // If message is empty and status was not an error, nothing changes.
     }
     setIsMessageDialogOpen(false);
     setMessageText('');
@@ -294,18 +290,26 @@ export default function DatabasePage() {
     setIsClient(true);
   }, []);
 
+  // Auth redirection effect
   useEffect(() => {
-    if (!isClient || authLoading) return;
-    if (!user || (!user.isStaticUser && user.role !== 'revisor' && user.role !== 'calificador')) {
-      router.push('/');
+    if (isClient && !authLoading) { // Ensure client side and auth is resolved
+      const isAuthorized = user && (user.isStaticUser || user.role === 'revisor' || user.role === 'calificador');
+      if (!isAuthorized) {
+        // If not authorized AND there are no results currently displayed (i.e., not returning to a previously valid state)
+        // This helps preserve results if auth state briefly flickers during back navigation.
+        if (!fetchedSolicitudes) {
+          router.push('/');
+        }
+      }
     }
-  }, [user, authLoading, router, isClient]);
+  }, [user, authLoading, router, isClient, fetchedSolicitudes]);
+
 
   const handleSearch = async (e?: FormEvent) => {
     e?.preventDefault();
     setIsLoading(true);
     setError(null);
-    setFetchedSolicitudes(null);
+    setFetchedSolicitudes(null); 
     setCurrentSearchTermForDisplay('');
 
     const solicitudsCollectionRef = collection(db, "SolicitudCheques");
@@ -486,7 +490,8 @@ export default function DatabasePage() {
     }
   };
 
-  if (!isClient || authLoading || (!user || (!user.isStaticUser && user.role !== 'revisor' && user.role !== 'calificador'))) {
+  // Initial loader: only for first mount or if auth is loading AND we have no prior results.
+  if (!isClient || (authLoading && !fetchedSolicitudes)) {
     return <div className="min-h-screen flex items-center justify-center grid-bg"><Loader2 className="h-12 w-12 animate-spin text-white" /></div>;
   }
 
@@ -551,6 +556,3 @@ export default function DatabasePage() {
     </AppShell>
   );
 }
-
-
-    
