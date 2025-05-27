@@ -63,7 +63,7 @@ interface SearchResultsTableProps {
   currentUserRole?: string;
   onUpdatePaymentStatus: (solicitudId: string, status: string | null, message?: string) => Promise<void>;
   onOpenMessageDialog: (solicitudId: string) => void;
-  router: ReturnType<typeof useRouter>;
+  // router prop is no longer needed here
 }
 
 const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
@@ -73,7 +73,6 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
   currentUserRole,
   onUpdatePaymentStatus,
   onOpenMessageDialog,
-  router
 }) => {
   const { toast } = useToast();
 
@@ -186,7 +185,11 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => router.push(`/examiner/solicitud/${solicitud.solicitudId}`)}
+                      onClick={() => {
+                        if (typeof window !== "undefined") {
+                           window.open(`/examiner/solicitud/${solicitud.solicitudId}`, '_blank');
+                        }
+                      }}
                     >
                       <Eye className="mr-2 h-4 w-4" /> Ver
                     </Button>
@@ -203,7 +206,7 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
 
 export default function DatabasePage() {
   const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
+  const router = useRouter(); // Keep for other potential navigation, but not for "Ver" in SearchResultsTable
   const { toast } = useToast();
 
   const [searchType, setSearchType] = useState<SearchType>("ne");
@@ -234,6 +237,7 @@ export default function DatabasePage() {
       if (message && message.trim() !== '') {
         newStatus = `Error: ${message.trim()}`;
       } else if (message === '' && status && status.startsWith('Error:')) { 
+        // Clear error if message is empty and current status is an error
         newStatus = null; 
       }
 
@@ -247,8 +251,8 @@ export default function DatabasePage() {
         prev?.map(s =>
           s.solicitudId === solicitudId
             ? { ...s,
-                paymentStatus: newStatus || undefined, 
-                paymentStatusLastUpdatedAt: new Date(), 
+                paymentStatus: newStatus || undefined, // Ensure undefined if null
+                paymentStatusLastUpdatedAt: new Date(), // Approximate client-side update for immediate UI feedback
                 paymentStatusLastUpdatedBy: user.email!
               }
             : s
@@ -274,11 +278,14 @@ export default function DatabasePage() {
   const handleSaveMessage = async () => {
     if (currentSolicitudIdForMessage) {
       const currentSolicitud = fetchedSolicitudes?.find(s => s.solicitudId === currentSolicitudIdForMessage);
+      // If message is empty and current status was an error, clear the error status
       if (messageText.trim() === '' && currentSolicitud?.paymentStatus?.startsWith('Error:')) {
-        await handleUpdatePaymentStatus(currentSolicitudIdForMessage, null);
+        await handleUpdatePaymentStatus(currentSolicitudIdForMessage, null); 
       } else if (messageText.trim() !== '') {
+        // If message is not empty, set it as an error
         await handleUpdatePaymentStatus(currentSolicitudIdForMessage, `Error: ${messageText.trim()}`, messageText.trim());
       }
+      // If message is empty and status was not an error, nothing changes by saving empty message
     }
     setIsMessageDialogOpen(false);
     setMessageText('');
@@ -295,8 +302,6 @@ export default function DatabasePage() {
     if (isClient && !authLoading) { // Ensure client side and auth is resolved
       const isAuthorized = user && (user.isStaticUser || user.role === 'revisor' || user.role === 'calificador');
       if (!isAuthorized) {
-        // If not authorized AND there are no results currently displayed (i.e., not returning to a previously valid state)
-        // This helps preserve results if auth state briefly flickers during back navigation.
         if (!fetchedSolicitudes) {
           router.push('/');
         }
@@ -332,6 +337,7 @@ export default function DatabasePage() {
             const data = {
                 ...docData,
                 solicitudId: docSnap.id,
+                // Convert Timestamps to Dates
                 examDate: (docData.examDate as FirestoreTimestamp).toDate(),
                 savedAt: (docData.savedAt as FirestoreTimestamp).toDate(),
                 paymentStatusLastUpdatedAt: docData.paymentStatusLastUpdatedAt ? (docData.paymentStatusLastUpdatedAt as FirestoreTimestamp).toDate() : undefined,
@@ -393,6 +399,7 @@ export default function DatabasePage() {
             return {
               ...docData,
               solicitudId: doc.id,
+              // Convert Timestamps to Dates
               examDate: docData.examDate instanceof FirestoreTimestamp ? docData.examDate.toDate() : docData.examDate as Date,
               savedAt: docData.savedAt instanceof FirestoreTimestamp ? docData.savedAt.toDate() : docData.savedAt as Date,
               paymentStatusLastUpdatedAt: docData.paymentStatusLastUpdatedAt instanceof FirestoreTimestamp ? docData.paymentStatusLastUpdatedAt.toDate() : (docData.paymentStatusLastUpdatedAt ? docData.paymentStatusLastUpdatedAt as Date : undefined),
@@ -527,7 +534,7 @@ export default function DatabasePage() {
 
             {isLoading && <div className="flex justify-center items-center py-6"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-3 text-muted-foreground">Cargando solicitudes...</p></div>}
             {error && <div className="mt-4 p-4 bg-destructive/10 text-destructive border border-destructive/30 rounded-md text-center">{error}</div>}
-            {fetchedSolicitudes && !isLoading && <SearchResultsTable solicitudes={fetchedSolicitudes} searchType={searchType} searchTerm={currentSearchTermForDisplay} currentUserRole={user?.role} onUpdatePaymentStatus={handleUpdatePaymentStatus} onOpenMessageDialog={openMessageDialog} router={router} />}
+            {fetchedSolicitudes && !isLoading && <SearchResultsTable solicitudes={fetchedSolicitudes} searchType={searchType} searchTerm={currentSearchTermForDisplay} currentUserRole={user?.role} onUpdatePaymentStatus={handleUpdatePaymentStatus} onOpenMessageDialog={openMessageDialog} />}
             {!fetchedSolicitudes && !isLoading && !error && !currentSearchTermForDisplay && <div className="mt-4 p-4 bg-blue-500/10 text-blue-700 border border-blue-500/30 rounded-md text-center">Seleccione un tipo de búsqueda e ingrese los criterios para ver resultados.</div>}
           </CardContent>
         </Card>
@@ -556,3 +563,5 @@ export default function DatabasePage() {
     </AppShell>
   );
 }
+
+    
