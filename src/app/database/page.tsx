@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Search, Download, Eye, Calendar as CalendarIcon, MessageSquare, Info as InfoIcon, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, Search, Download, Eye, Calendar as CalendarIcon, MessageSquare, Info as InfoIcon, AlertCircle, CheckCircle2, User, FileText as FileTextIcon } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, Timestamp as FirestoreTimestamp, doc, getDoc, orderBy, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { SolicitudRecord } from '@/types';
@@ -124,9 +124,6 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
                             if (checked) {
                               onUpdatePaymentStatus(solicitud.solicitudId, 'Pagado');
                             } else {
-                              // If turning off, and current status is "Pagado", clear it.
-                              // If current status is an error, unchecking the switch doesn't clear the error.
-                              // Error is cleared by submitting an empty message or another action.
                               if (solicitud.paymentStatus === 'Pagado') {
                                 onUpdatePaymentStatus(solicitud.solicitudId, null);
                               }
@@ -137,7 +134,6 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
                         <Button variant="ghost" size="icon" onClick={() => onOpenMessageDialog(solicitud.solicitudId)} aria-label="Añadir mensaje de error">
                           <MessageSquare className="h-5 w-5 text-muted-foreground hover:text-primary" />
                         </Button>
-                        {/* Badge for calificador to see current state clearly */}
                         {solicitud.paymentStatus === 'Pagado' && (
                             <Badge className="bg-green-100 text-green-700 hover:bg-green-200">Pagado</Badge>
                         )}
@@ -145,7 +141,7 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
                             <Badge variant="destructive">{solicitud.paymentStatus}</Badge>
                         )}
                       </div>
-                    ) : ( // For revisor and other roles
+                    ) : (
                       <div className="flex items-center space-x-1">
                         {solicitud.paymentStatus === 'Pagado' ? (
                           <Badge className="bg-green-100 text-green-700 hover:bg-green-200 flex items-center">
@@ -221,7 +217,6 @@ export default function DatabasePage() {
   const [isClient, setIsClient] = useState(false);
   const [currentSearchTermForDisplay, setCurrentSearchTermForDisplay] = useState('');
 
-  // State for message dialog
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
   const [currentSolicitudIdForMessage, setCurrentSolicitudIdForMessage] = useState<string | null>(null);
   const [messageText, setMessageText] = useState('');
@@ -237,10 +232,9 @@ export default function DatabasePage() {
       let newStatus = status;
       if (message && message.trim() !== '') {
         newStatus = `Error: ${message.trim()}`;
-      } else if (message === '' && status && status.startsWith('Error:')) { // If clearing message for an error status
-        newStatus = null; // Or some default "Pending" status
+      } else if (message === '' && status && status.startsWith('Error:')) { 
+        newStatus = null; 
       }
-
 
       await updateDoc(docRef, {
         paymentStatus: newStatus,
@@ -248,13 +242,12 @@ export default function DatabasePage() {
         paymentStatusLastUpdatedBy: user.email,
       });
       toast({ title: "Éxito", description: `Estado de pago actualizado para ${solicitudId}.` });
-      // Refresh data to show updated status
       setFetchedSolicitudes(prev =>
         prev?.map(s =>
           s.solicitudId === solicitudId
             ? { ...s,
-                paymentStatus: newStatus || undefined, // Ensure undefined if null
-                paymentStatusLastUpdatedAt: new Date(), // Approximate client-side, Firestore actualizes
+                paymentStatus: newStatus || undefined, 
+                paymentStatusLastUpdatedAt: new Date(), 
                 paymentStatusLastUpdatedBy: user.email!
               }
             : s
@@ -268,7 +261,6 @@ export default function DatabasePage() {
 
   const openMessageDialog = (solicitudId: string) => {
     setCurrentSolicitudIdForMessage(solicitudId);
-    // Pre-fill message if current status is an error message
     const currentSolicitud = fetchedSolicitudes?.find(s => s.solicitudId === solicitudId);
     if (currentSolicitud?.paymentStatus && currentSolicitud.paymentStatus.startsWith("Error: ")) {
       setMessageText(currentSolicitud.paymentStatus.substring("Error: ".length));
@@ -280,12 +272,9 @@ export default function DatabasePage() {
 
   const handleSaveMessage = async () => {
     if (currentSolicitudIdForMessage) {
-      // If messageText is empty, it means user wants to clear the error or not set one.
-      // If it's empty and current status was an error, we clear the status.
-      // If it has text, we set the error status.
       const currentSolicitud = fetchedSolicitudes?.find(s => s.solicitudId === currentSolicitudIdForMessage);
       if (messageText.trim() === '' && currentSolicitud?.paymentStatus?.startsWith('Error:')) {
-        await handleUpdatePaymentStatus(currentSolicitudIdForMessage, null); // Clears the error
+        await handleUpdatePaymentStatus(currentSolicitudIdForMessage, null);
       } else if (messageText.trim() !== '') {
         await handleUpdatePaymentStatus(currentSolicitudIdForMessage, `Error: ${messageText.trim()}`, messageText.trim());
       }
@@ -414,17 +403,52 @@ export default function DatabasePage() {
 
   const handleExport = () => {
     if (fetchedSolicitudes && fetchedSolicitudes.length > 0) {
-      const headers = ["ID Solicitud", "Fecha de Examen", "Monto", "Moneda Monto", "Gestor", "NE Examen", "Referencia Examen", "Destinatario Examen", "Estado de Pago", "Actualizado Por (Pago)", "Fecha Actualización (Pago)"];
+      const headers = [
+        "Estado de Pago", "ID Solicitud", "Fecha de Examen", "NE Examen", "Referencia Examen", "Destinatario Examen", "Gestor", "Monto", "Moneda Monto", "Cantidad en Letras", 
+        "Consignatario", "Declaración Número", "Unidad Recaudadora", "Código 1", "Codigo MUR", "Banco", "Otro Banco", "Número de Cuenta", "Moneda de la Cuenta", "Otra Moneda Cuenta",
+        "Elaborar Cheque A", "Elaborar Transferencia A", 
+        "Impuestos Pagados Cliente", "R/C (Imp. Pagados)", "T/B (Imp. Pagados)", "Cheque (Imp. Pagados)",
+        "Impuestos Pendientes Cliente", "Documentos Adjuntos", 
+        "Constancias de No Retención", "Constancia 1%", "Constancia 2%",
+        "Correo Notificación", "Observación",
+        "Guardado Por", "Fecha de Guardado", "Actualizado Por (Pago)", "Fecha Actualización (Pago)"
+      ];
       const dataToExport = fetchedSolicitudes.map(s => ({
+        "Estado de Pago": s.paymentStatus || 'Pendiente',
         "ID Solicitud": s.solicitudId,
         "Fecha de Examen": s.examDate instanceof Date ? format(s.examDate, "yyyy-MM-dd HH:mm", { locale: es }) : 'N/A',
-        "Monto": s.monto,
-        "Moneda Monto": s.montoMoneda,
-        "Gestor": s.examManager,
         "NE Examen": s.examNe,
         "Referencia Examen": s.examReference || 'N/A',
         "Destinatario Examen": s.examRecipient,
-        "Estado de Pago": s.paymentStatus || 'Pendiente',
+        "Gestor": s.examManager,
+        "Monto": s.monto,
+        "Moneda Monto": s.montoMoneda,
+        "Cantidad en Letras": s.cantidadEnLetras || 'N/A',
+        "Consignatario": s.consignatario || 'N/A',
+        "Declaración Número": s.declaracionNumero || 'N/A',
+        "Unidad Recaudadora": s.unidadRecaudadora || 'N/A',
+        "Código 1": s.codigo1 || 'N/A',
+        "Codigo MUR": s.codigo2 || 'N/A',
+        "Banco": s.banco === 'ACCION POR CHEQUE/NO APLICA BANCO' ? 'Acción por Cheque / No Aplica Banco' : s.banco || 'N/A',
+        "Otro Banco": s.banco === 'Otros' ? (s.bancoOtros || 'N/A') : 'N/A',
+        "Número de Cuenta": s.banco === 'ACCION POR CHEQUE/NO APLICA BANCO' ? 'N/A' : s.numeroCuenta || 'N/A',
+        "Moneda de la Cuenta": s.banco === 'ACCION POR CHEQUE/NO APLICA BANCO' ? 'N/A' : (s.monedaCuenta === 'Otros' ? (s.monedaCuentaOtros || 'N/A') : s.monedaCuenta || 'N/A'),
+        "Otra Moneda Cuenta": s.monedaCuenta === 'Otros' ? (s.monedaCuentaOtros || 'N/A') : 'N/A',
+        "Elaborar Cheque A": s.elaborarChequeA || 'N/A',
+        "Elaborar Transferencia A": s.elaborarTransferenciaA || 'N/A',
+        "Impuestos Pagados Cliente": s.impuestosPagadosCliente ? 'Sí' : 'No',
+        "R/C (Imp. Pagados)": s.impuestosPagadosCliente ? (s.impuestosPagadosRC || 'N/A') : 'N/A',
+        "T/B (Imp. Pagados)": s.impuestosPagadosCliente ? (s.impuestosPagadosTB || 'N/A') : 'N/A',
+        "Cheque (Imp. Pagados)": s.impuestosPagadosCliente ? (s.impuestosPagadosCheque || 'N/A') : 'N/A',
+        "Impuestos Pendientes Cliente": s.impuestosPendientesCliente ? 'Sí' : 'No',
+        "Documentos Adjuntos": s.documentosAdjuntos ? 'Sí' : 'No',
+        "Constancias de No Retención": s.constanciasNoRetencion ? 'Sí' : 'No',
+        "Constancia 1%": s.constanciasNoRetencion ? (s.constanciasNoRetencion1 ? 'Sí' : 'No') : 'N/A',
+        "Constancia 2%": s.constanciasNoRetencion ? (s.constanciasNoRetencion2 ? 'Sí' : 'No') : 'N/A',
+        "Correo Notificación": s.correo || 'N/A',
+        "Observación": s.observation || 'N/A',
+        "Guardado Por": s.savedBy || 'N/A',
+        "Fecha de Guardado": s.savedAt instanceof Date ? format(s.savedAt, "yyyy-MM-dd HH:mm", { locale: es }) : 'N/A',
         "Actualizado Por (Pago)": s.paymentStatusLastUpdatedBy || 'N/A',
         "Fecha Actualización (Pago)": s.paymentStatusLastUpdatedAt ? format(s.paymentStatusLastUpdatedAt instanceof FirestoreTimestamp ? s.paymentStatusLastUpdatedAt.toDate() : s.paymentStatusLastUpdatedAt, "yyyy-MM-dd HH:mm", { locale: es }) : 'N/A',
       }));
@@ -522,3 +546,4 @@ export default function DatabasePage() {
     </AppShell>
   );
 }
+

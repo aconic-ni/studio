@@ -3,14 +3,16 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAppContext, ExamStep } from '@/context/AppContext';
-import { downloadTxtFile, downloadExcelFile } from '@/lib/fileExporter';
+import { downloadTxtFile, downloadDetailedExcelFile } from '@/lib/fileExporter'; // Corrected import
 import type { SolicitudData } from '@/types';
 import { Download, Check, ArrowLeft, FileType, User, Landmark, FileText, Banknote, Hash, Users, Mail, MessageSquare, Building, Code, CalendarDays, Info, Send, CheckSquare, Square } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
-import { cn } from '@/lib/utils'; // Import cn utility
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+// import { ClientPDFDownload } from '@/components/pdf/ClientPDFDownload'; // PDF Temporarily disabled
+
 
 // Helper component for displaying detail items in Preview
 const PreviewDetailItem: React.FC<{ label: string; value?: string | number | null | boolean, icon?: React.ElementType, className?: string }> = ({ label, value, icon: Icon, className }) => {
@@ -43,7 +45,7 @@ const CheckboxPreviewItem: React.FC<{ label: string; checked?: boolean; subLabel
 const formatCurrencyPreview = (amount?: number | string, currency?: string) => {
     if (amount === undefined || amount === null || amount === '') return 'N/A';
     const num = Number(amount);
-    if (isNaN(num)) return String(amount); // Return as string if not a valid number
+    if (isNaN(num)) return String(amount);
     let prefix = '';
     if (currency === 'cordoba') prefix = 'C$';
     else if (currency === 'dolar') prefix = 'US$';
@@ -91,7 +93,8 @@ export function PreviewScreen() {
 
   const handleDownloadExcel = () => {
     if (examData) {
-      downloadExcelFile({ ...examData, products: solicitudes });
+      // This uses the detailed, per-solicitud sheet export
+      downloadDetailedExcelFile({ ...examData, products: solicitudes });
     }
   };
   
@@ -122,7 +125,7 @@ export function PreviewScreen() {
         <div>
           <h4 className="text-lg font-medium mb-3 text-foreground">Solicitudes ({solicitudes.length})</h4>
           {solicitudes.length > 0 ? (
-            <ScrollArea className="h-[400px] w-full"> {/* Adjust height as needed */}
+            <ScrollArea className="h-[400px] w-full">
               <div className="space-y-6 pr-4">
                 {solicitudes.map((solicitud, index) => (
                   <div key={solicitud.id} className="p-4 border border-border bg-card rounded-lg shadow">
@@ -130,7 +133,7 @@ export function PreviewScreen() {
                       Solicitud {index + 1} ({solicitud.id})
                     </h5>
                     <div className="space-y-3 divide-y divide-border/50">
-                      {/* Monto y Cantidad */}
+                      
                       <div className="pt-2">
                         <h6 className="text-sm font-medium text-accent mb-1">Detalles del Monto</h6>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
@@ -139,7 +142,7 @@ export function PreviewScreen() {
                         </div>
                       </div>
 
-                      {/* Información Adicional de Solicitud */}
+                      
                       <div className="pt-3">
                         <h6 className="text-sm font-medium text-accent mb-1">Información Adicional</h6>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
@@ -151,7 +154,7 @@ export function PreviewScreen() {
                         </div>
                       </div>
 
-                      {/* Cuenta Bancaria */}
+                      
                       <div className="pt-3">
                         <h6 className="text-sm font-medium text-accent mb-1">Cuenta Bancaria</h6>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 items-start">
@@ -165,7 +168,7 @@ export function PreviewScreen() {
                         </div>
                       </div>
 
-                      {/* Beneficiario del Pago */}
+                      
                       <div className="pt-3">
                         <h6 className="text-sm font-medium text-accent mb-1">Beneficiario del Pago</h6>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
@@ -174,7 +177,7 @@ export function PreviewScreen() {
                         </div>
                       </div>
 
-                      {/* Documentación y Estados */}
+                      
                       <div className="pt-3">
                         <h6 className="text-sm font-medium text-accent mb-1">Documentación y Estados</h6>
                         <div className="space-y-1">
@@ -198,7 +201,7 @@ export function PreviewScreen() {
                         </div>
                       </div>
                       
-                      {/* Comunicación */}
+                      
                       <div className="pt-3">
                         <h6 className="text-sm font-medium text-accent mb-1">Comunicación</h6>
                         <PreviewDetailItem label="Correos de Notificación" value={solicitud.correo} icon={Mail} />
@@ -225,9 +228,15 @@ export function PreviewScreen() {
                 <Button variant="outline" onClick={handleDownloadExcel} className="hover:bg-accent/50 w-full sm:w-auto">
                     <Download className="mr-2 h-4 w-4" /> Descargar Excel
                 </Button>
-                {/* PDF Download functionality is temporarily disabled.
-                <DynamicClientPDFDownload examData={examData} solicitudes={solicitudes} />
-                */}
+                {/* 
+                {isClient && examData && solicitudes && solicitudes.length > 0 && (
+                  <ClientPDFDownload 
+                    examData={examData} 
+                    solicitudes={solicitudes} 
+                    className="hover:bg-accent/50 w-full sm:w-auto" 
+                  />
+                )}
+                 */}
                 <Button onClick={handleConfirm} className="btn-primary w-full sm:w-auto">
                     <Check className="mr-2 h-4 w-4" /> Confirmar Solicitud
                 </Button>
