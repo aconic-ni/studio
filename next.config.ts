@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -8,7 +9,12 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Enable static export for GitHub Pages
+  output: 'export',
+  // Image optimization needs a server, so we disable it for static export.
+  // The GitHub Pages action `actions/configure-pages@v5` also attempts to set this.
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
@@ -18,12 +24,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // For GitHub Pages, if deploying to a subpath like username.github.io/repo-name:
-  // basePath: '/repo-name',
-  // assetPrefix: '/repo-name/',
-  // output: 'export', // Add this for static site generation for GitHub Pages, ensure all routes are compatible.
-  // For now, keeping it without 'export' to ensure Firebase client-side logic works smoothly.
-  // If a completely static build is required, ensure all Firebase interactions are strictly client-side.
+  // If deploying to a subpath like username.github.io/repo-name,
+  // the `actions/configure-pages@v5` GitHub Action step in your
+  // `.github/workflows/nextjs.yml` file should automatically detect
+  // and set the correct `basePath` for you during the build process.
+  // You generally do not need to set `basePath` or `assetPrefix` manually here
+  // when using that action.
 };
 
 export default nextConfig;
