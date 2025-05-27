@@ -64,6 +64,7 @@ interface SearchResultsTableProps {
   currentUserRole?: string;
   onUpdatePaymentStatus: (solicitudId: string, status: string | null, message?: string) => Promise<void>;
   onOpenMessageDialog: (solicitudId: string) => void;
+  router: ReturnType<typeof useRouter>;
 }
 
 const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
@@ -73,6 +74,7 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
   currentUserRole,
   onUpdatePaymentStatus,
   onOpenMessageDialog,
+  router,
 }) => {
   const { toast } = useToast();
 
@@ -168,7 +170,7 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
                               <TooltipContent className="text-xs">
                                 <p>Última actualización:</p>
                                 {solicitud.paymentStatusLastUpdatedBy && <p>Por: {solicitud.paymentStatusLastUpdatedBy}</p>}
-                                {solicitud.paymentStatusLastUpdatedAt && <p>Fecha: {format(solicitud.paymentStatusLastUpdatedAt instanceof FirestoreTimestamp ? solicitud.paymentStatusLastUpdatedAt.toDate() : solicitud.paymentStatusLastUpdatedAt, "Pp", { locale: es })}</p>}
+                                {solicitud.paymentStatusLastUpdatedAt && <p>Fecha: {format(solicitud.paymentStatusLastUpdatedAt instanceof FirestoreTimestamp ? solicitud.paymentStatusLastUpdatedAt.toDate() : new Date(solicitud.paymentStatusLastUpdatedAt), "Pp", { locale: es })}</p>}
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -478,7 +480,7 @@ export default function DatabasePage() {
         "Guardado Por": s.savedBy || 'N/A',
         "Fecha de Guardado": s.savedAt instanceof Date ? format(s.savedAt, "yyyy-MM-dd HH:mm", { locale: es }) : 'N/A',
         "Actualizado Por (Pago)": s.paymentStatusLastUpdatedBy || 'N/A',
-        "Fecha Actualización (Pago)": s.paymentStatusLastUpdatedAt ? format(s.paymentStatusLastUpdatedAt instanceof FirestoreTimestamp ? s.paymentStatusLastUpdatedAt.toDate() : s.paymentStatusLastUpdatedAt, "yyyy-MM-dd HH:mm", { locale: es }) : 'N/A',
+        "Fecha Actualización (Pago)": s.paymentStatusLastUpdatedAt ? format(s.paymentStatusLastUpdatedAt instanceof FirestoreTimestamp ? s.paymentStatusLastUpdatedAt.toDate() : new Date(s.paymentStatusLastUpdatedAt), "yyyy-MM-dd HH:mm", { locale: es }) : 'N/A',
       }));
       downloadExcelFileFromTable(dataToExport, headers, `Reporte_Solicitudes_${searchType}_${new Date().toISOString().split('T')[0]}.xlsx`);
     } else { setError("No hay datos para exportar. Realice una búsqueda primero."); }
@@ -545,7 +547,7 @@ export default function DatabasePage() {
 
             {isLoading && <div className="flex justify-center items-center py-6"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-3 text-muted-foreground">Cargando solicitudes...</p></div>}
             {error && <div className="mt-4 p-4 bg-destructive/10 text-destructive border border-destructive/30 rounded-md text-center">{error}</div>}
-            {fetchedSolicitudes && !isLoading && <SearchResultsTable solicitudes={fetchedSolicitudes} searchType={searchType} searchTerm={currentSearchTermForDisplay} currentUserRole={user?.role} onUpdatePaymentStatus={handleUpdatePaymentStatus} onOpenMessageDialog={openMessageDialog} />}
+            {fetchedSolicitudes && !isLoading && <SearchResultsTable solicitudes={fetchedSolicitudes} searchType={searchType} searchTerm={currentSearchTermForDisplay} currentUserRole={user?.role} onUpdatePaymentStatus={handleUpdatePaymentStatus} onOpenMessageDialog={openMessageDialog} router={router}/>}
             {!fetchedSolicitudes && !isLoading && !error && !currentSearchTermForDisplay && <div className="mt-4 p-4 bg-blue-500/10 text-blue-700 border border-blue-500/30 rounded-md text-center">Seleccione un tipo de búsqueda e ingrese los criterios para ver resultados.</div>}
           </CardContent>
         </Card>
@@ -574,4 +576,3 @@ export default function DatabasePage() {
     </AppShell>
   );
 }
-
