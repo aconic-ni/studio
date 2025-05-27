@@ -63,6 +63,7 @@ interface SearchResultsTableProps {
   currentUserRole?: string;
   onUpdatePaymentStatus: (solicitudId: string, status: string | null, message?: string) => Promise<void>;
   onOpenMessageDialog: (solicitudId: string) => void;
+  router: ReturnType<typeof useRouter>; // Pass router instance
 }
 
 const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
@@ -71,9 +72,9 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
   searchTerm,
   currentUserRole,
   onUpdatePaymentStatus,
-  onOpenMessageDialog
+  onOpenMessageDialog,
+  router // Use passed router instance
 }) => {
-  const router = useRouter();
   const { toast } = useToast();
 
   if (!solicitudes || solicitudes.length === 0) {
@@ -233,6 +234,7 @@ export default function DatabasePage() {
       if (message && message.trim() !== '') {
         newStatus = `Error: ${message.trim()}`;
       } else if (message === '' && status && status.startsWith('Error:')) { 
+        // If message is cleared and status was an error, reset status to null (Pending)
         newStatus = null; 
       }
 
@@ -274,10 +276,13 @@ export default function DatabasePage() {
     if (currentSolicitudIdForMessage) {
       const currentSolicitud = fetchedSolicitudes?.find(s => s.solicitudId === currentSolicitudIdForMessage);
       if (messageText.trim() === '' && currentSolicitud?.paymentStatus?.startsWith('Error:')) {
+        // Message cleared, and current status is an error -> reset to pending
         await handleUpdatePaymentStatus(currentSolicitudIdForMessage, null);
       } else if (messageText.trim() !== '') {
+        // New or updated error message
         await handleUpdatePaymentStatus(currentSolicitudIdForMessage, `Error: ${messageText.trim()}`, messageText.trim());
       }
+      // If message is empty and status was not an error, nothing changes.
     }
     setIsMessageDialogOpen(false);
     setMessageText('');
@@ -517,7 +522,7 @@ export default function DatabasePage() {
 
             {isLoading && <div className="flex justify-center items-center py-6"><Loader2 className="h-8 w-8 animate-spin text-primary" /><p className="ml-3 text-muted-foreground">Cargando solicitudes...</p></div>}
             {error && <div className="mt-4 p-4 bg-destructive/10 text-destructive border border-destructive/30 rounded-md text-center">{error}</div>}
-            {fetchedSolicitudes && !isLoading && <SearchResultsTable solicitudes={fetchedSolicitudes} searchType={searchType} searchTerm={currentSearchTermForDisplay} currentUserRole={user?.role} onUpdatePaymentStatus={handleUpdatePaymentStatus} onOpenMessageDialog={openMessageDialog} />}
+            {fetchedSolicitudes && !isLoading && <SearchResultsTable solicitudes={fetchedSolicitudes} searchType={searchType} searchTerm={currentSearchTermForDisplay} currentUserRole={user?.role} onUpdatePaymentStatus={handleUpdatePaymentStatus} onOpenMessageDialog={openMessageDialog} router={router} />}
             {!fetchedSolicitudes && !isLoading && !error && !currentSearchTermForDisplay && <div className="mt-4 p-4 bg-blue-500/10 text-blue-700 border border-blue-500/30 rounded-md text-center">Seleccione un tipo de búsqueda e ingrese los criterios para ver resultados.</div>}
           </CardContent>
         </Card>
@@ -547,3 +552,5 @@ export default function DatabasePage() {
   );
 }
 
+
+    
