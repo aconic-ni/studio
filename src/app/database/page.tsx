@@ -7,12 +7,12 @@ import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, Search, Download, Eye } from 'lucide-react';
+import { Loader2, Search, Download, Eye, Calendar as CalendarIcon } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, Timestamp as FirestoreTimestamp } from 'firebase/firestore';
-import type { SolicitudRecord, ExportableExamData } from '@/types';
-import { downloadExcelFile } from '@/lib/fileExporter';
-import { format } from 'date-fns';
+import { collection, query, where, getDocs, Timestamp as FirestoreTimestamp, doc, getDoc, orderBy } from 'firebase/firestore';
+import type { SolicitudRecord } from '@/types';
+import { downloadExcelFileFromTable } from '@/lib/fileExporter';
+import { format, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   Table,
@@ -22,6 +22,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from '@/lib/utils';
+
+type SearchType = "ne" | "solicitudId" | "manager" | "dateToday" | "dateSpecific" | "dateRange";
 
 const formatCurrencyFetched = (amount?: number | string, currency?: string) => {
     if (amount === undefined || amount === null || amount === '') return 'N/A';
@@ -34,18 +50,33 @@ const formatCurrencyFetched = (amount?: number | string, currency?: string) => {
     return `${prefix}${num.toLocaleString('es-NI', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
-const SearchResultsTable: React.FC<{ solicitudes: SolicitudRecord[] }> = ({ solicitudes }) => {
+const SearchResultsTable: React.FC<{ solicitudes: SolicitudRecord[], searchType: SearchType, searchTerm?: string }> = ({ solicitudes, searchType, searchTerm }) => {
   const router = useRouter();
 
   if (!solicitudes || solicitudes.length === 0) {
-    return <p className="text-muted-foreground text-center py-4">No se encontraron solicitudes para este NE.</p>;
+    let message = "No se encontraron solicitudes para los criterios ingresados.";
+    if (searchType === "ne" && searchTerm) message = `No se encontraron solicitudes para el NE: ${searchTerm}`;
+    else if (searchType === "solicitudId" && searchTerm) message = `No se encontró la solicitud con ID: ${searchTerm}`;
+    // Add more specific messages for other search types if desired
+    return <p className="text-muted-foreground text-center py-4">{message}</p>;
   }
+  
+  const getTitle = () => {
+    if (searchType === "ne" && searchTerm) return `Solicitudes para NE: ${searchTerm}`;
+    if (searchType === "solicitudId" && solicitudes.length > 0) return `Detalle Solicitud ID: ${solicitudes[0].solicitudId}`;
+    if (searchType === "manager" && searchTerm) return `Solicitudes del Gestor: ${searchTerm}`;
+    if (searchType === "dateToday") return `Solicitudes de Hoy (${format(new Date(), "PPP", { locale: es })})`;
+    if (searchType === "dateSpecific" && searchTerm) return `Solicitudes del ${searchTerm}`; // searchTerm here is the formatted date
+    if (searchType === "dateRange" && searchTerm) return `Solicitudes para el rango: ${searchTerm}`; // searchTerm here is the formatted date range
+    return "Solicitudes Encontradas";
+  };
+
 
   return (
     <Card className="mt-6 w-full custom-shadow">
       <CardHeader>
         <CardTitle className="text-xl md:text-2xl font-semibold text-foreground">
-          Solicitudes Encontradas para NE: {solicitudes[0]?.examNe || 'Desconocido'}
+          {getTitle()}
         </CardTitle>
         <CardDescription className="text-muted-foreground">
           Se encontraron {solicitudes.length} solicitud(es) asociadas.
@@ -59,6 +90,7 @@ const SearchResultsTable: React.FC<{ solicitudes: SolicitudRecord[] }> = ({ soli
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">ID Solicitud</TableHead>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha de Examen</TableHead>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Monto</TableHead>
+                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Gestor</TableHead>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -72,6 +104,7 @@ const SearchResultsTable: React.FC<{ solicitudes: SolicitudRecord[] }> = ({ soli
                       : (solicitud.examDate instanceof Date ? format(solicitud.examDate, "PPP", { locale: es }) : 'N/A')}
                   </TableCell>
                   <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{formatCurrencyFetched(solicitud.monto, solicitud.montoMoneda)}</TableCell>
+                  <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{solicitud.examManager}</TableCell>
                   <TableCell className="px-4 py-3 whitespace-nowrap text-sm font-medium">
                     <Button 
                       variant="outline" 
@@ -94,11 +127,19 @@ const SearchResultsTable: React.FC<{ solicitudes: SolicitudRecord[] }> = ({ soli
 export default function DatabasePage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [searchTermNE, setSearchTermNE] = useState('');
+  
+  const [searchType, setSearchType] = useState<SearchType>("ne");
+  const [searchTermText, setSearchTermText] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fetchedSolicitudes, setFetchedSolicitudes] = useState<SolicitudRecord[] | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [currentSearchTermForDisplay, setCurrentSearchTermForDisplay] = useState('');
+
 
   useEffect(() => {
     setIsClient(true);
@@ -112,35 +153,122 @@ export default function DatabasePage() {
     }
   }, [user, authLoading, router, isClient]);
 
-  const handleSearch = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!searchTermNE.trim()) {
-      setError("Por favor, ingrese un NE para buscar.");
-      setFetchedSolicitudes(null);
-      return;
-    }
+  const handleSearch = async (e?: FormEvent) => {
+    e?.preventDefault();
     setIsLoading(true);
     setError(null);
     setFetchedSolicitudes(null);
+    setCurrentSearchTermForDisplay(''); // Reset for new search
+
+    const solicitudsCollectionRef = collection(db, "SolicitudCheques");
+    let q;
+    let termForDisplay = searchTermText.trim(); // Default for text searches
 
     try {
-      const solicitudsCollectionRef = collection(db, "SolicitudCheques");
-      const q = query(solicitudsCollectionRef, where("examNe", "==", searchTermNE.trim()));
-      const querySnapshot = await getDocs(q);
+      switch (searchType) {
+        case "ne":
+          if (!searchTermText.trim()) {
+            setError("Por favor, ingrese un NE para buscar.");
+            setIsLoading(false); return;
+          }
+          q = query(solicitudsCollectionRef, where("examNe", "==", searchTermText.trim()), orderBy("examDate", "desc"));
+          termForDisplay = searchTermText.trim();
+          break;
+        case "solicitudId":
+          if (!searchTermText.trim()) {
+            setError("Por favor, ingrese un ID de Solicitud para buscar.");
+            setIsLoading(false); return;
+          }
+          const docRef = doc(db, "SolicitudCheques", searchTermText.trim());
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const docData = docSnap.data();
+            const data = { 
+                ...docData, 
+                solicitudId: docSnap.id,
+                examDate: (docData.examDate as FirestoreTimestamp).toDate(),
+                savedAt: (docData.savedAt as FirestoreTimestamp).toDate(),
+            } as SolicitudRecord;
+            setFetchedSolicitudes([data]);
+          } else {
+            setError("No se encontró la solicitud con ID: " + searchTermText.trim());
+          }
+          setIsLoading(false);
+          setCurrentSearchTermForDisplay(searchTermText.trim());
+          return; 
+        case "manager":
+          if (!searchTermText.trim()) {
+            setError("Por favor, ingrese un nombre de Gestor para buscar.");
+            setIsLoading(false); return;
+          }
+          q = query(solicitudsCollectionRef, where("examManager", "==", searchTermText.trim()), orderBy("examDate", "desc"));
+          termForDisplay = searchTermText.trim();
+          break;
+        case "dateToday":
+          const todayStart = startOfDay(new Date());
+          const todayEnd = endOfDay(new Date());
+          q = query(solicitudsCollectionRef, 
+            where("examDate", ">=", FirestoreTimestamp.fromDate(todayStart)),
+            where("examDate", "<=", FirestoreTimestamp.fromDate(todayEnd)),
+            orderBy("examDate", "desc")
+          );
+          termForDisplay = format(new Date(), "PPP", { locale: es });
+          break;
+        case "dateSpecific":
+          if (!selectedDate) {
+            setError("Por favor, seleccione una fecha específica.");
+            setIsLoading(false); return;
+          }
+          const specificDayStart = startOfDay(selectedDate);
+          const specificDayEnd = endOfDay(selectedDate);
+          q = query(solicitudsCollectionRef, 
+            where("examDate", ">=", FirestoreTimestamp.fromDate(specificDayStart)),
+            where("examDate", "<=", FirestoreTimestamp.fromDate(specificDayEnd)),
+            orderBy("examDate", "desc")
+          );
+          termForDisplay = format(selectedDate, "PPP", { locale: es });
+          break;
+        case "dateRange":
+          if (!startDate || !endDate) {
+            setError("Por favor, seleccione una fecha de inicio y fin para el rango.");
+            setIsLoading(false); return;
+          }
+          if (endDate < startDate) {
+            setError("La fecha de fin no puede ser anterior a la fecha de inicio.");
+            setIsLoading(false); return;
+          }
+          const rangeStart = startOfDay(startDate);
+          const rangeEnd = endOfDay(endDate);
+          q = query(solicitudsCollectionRef, 
+            where("examDate", ">=", FirestoreTimestamp.fromDate(rangeStart)),
+            where("examDate", "<=", FirestoreTimestamp.fromDate(rangeEnd)),
+            orderBy("examDate", "desc")
+          );
+          termForDisplay = `${format(startDate, "P", { locale: es })} - ${format(endDate, "P", { locale: es })}`;
+          break;
+        default:
+          setError("Tipo de búsqueda no válido.");
+          setIsLoading(false); return;
+      }
 
-      if (!querySnapshot.empty) {
-        const data = querySnapshot.docs.map(doc => {
-          const docData = doc.data() as Omit<SolicitudRecord, 'examDate' | 'savedAt'> & { examDate: FirestoreTimestamp | Date, savedAt: FirestoreTimestamp | Date };
-          return {
-            ...docData,
-            solicitudId: doc.id, // Ensure solicitudId is the document ID
-            examDate: docData.examDate instanceof FirestoreTimestamp ? docData.examDate.toDate() : docData.examDate as Date,
-            savedAt: docData.savedAt instanceof FirestoreTimestamp ? docData.savedAt.toDate() : docData.savedAt as Date,
-          } as SolicitudRecord;
-        });
-        setFetchedSolicitudes(data);
-      } else {
-        setError("No se encontraron solicitudes para el NE: " + searchTermNE);
+      setCurrentSearchTermForDisplay(termForDisplay); // Set for display before async call
+
+      if (q) {
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          const data = querySnapshot.docs.map(doc => {
+            const docData = doc.data() as Omit<SolicitudRecord, 'examDate' | 'savedAt'> & { examDate: FirestoreTimestamp | Date, savedAt: FirestoreTimestamp | Date };
+            return {
+              ...docData,
+              solicitudId: doc.id,
+              examDate: docData.examDate instanceof FirestoreTimestamp ? docData.examDate.toDate() : docData.examDate as Date,
+              savedAt: docData.savedAt instanceof FirestoreTimestamp ? docData.savedAt.toDate() : docData.savedAt as Date,
+            } as SolicitudRecord;
+          });
+          setFetchedSolicitudes(data);
+        } else {
+          setError("No se encontraron solicitudes para los criterios ingresados.");
+        }
       }
     } catch (err: any) {
       console.error("Error fetching documents from Firestore: ", err);
@@ -148,7 +276,7 @@ export default function DatabasePage() {
       if (err.code === 'permission-denied') {
         userFriendlyError = "No tiene permisos para acceder a esta información.";
       } else if (err.code === 'failed-precondition') {
-         userFriendlyError = "Error de consulta: asegúrese de tener índices creados en Firestore para 'examNe' en la colección 'SolicitudCheques'. Puede tardar unos minutos en activarse después de crearlo.";
+         userFriendlyError = "Error de consulta: asegúrese de tener los índices necesarios creados en Firestore para los campos y orden seleccionados. La creación de índices puede tardar unos minutos en activarse. Detalle del error: " + err.message;
       }
       setError(userFriendlyError);
     } finally {
@@ -158,52 +286,111 @@ export default function DatabasePage() {
 
   const handleExport = () => {
     if (fetchedSolicitudes && fetchedSolicitudes.length > 0) {
-      const firstSolicitud = fetchedSolicitudes[0];
-      const examDataForExport: ExportableExamData = {
-        ne: firstSolicitud.examNe,
-        reference: firstSolicitud.examReference || '',
-        manager: firstSolicitud.examManager,
-        recipient: firstSolicitud.examRecipient,
-        date: firstSolicitud.examDate instanceof FirestoreTimestamp 
-              ? firstSolicitud.examDate.toDate() 
-              : (firstSolicitud.examDate instanceof Date ? firstSolicitud.examDate : new Date()), 
-        savedBy: firstSolicitud.savedBy,
-        savedAt: firstSolicitud.savedAt instanceof FirestoreTimestamp 
-              ? firstSolicitud.savedAt.toDate() 
-              : (firstSolicitud.savedAt instanceof Date ? firstSolicitud.savedAt : new Date()), 
-        products: fetchedSolicitudes.map(s => ({ 
-          id: s.solicitudId,
-          monto: s.monto,
-          montoMoneda: s.montoMoneda,
-          cantidadEnLetras: s.cantidadEnLetras,
-          consignatario: s.consignatario,
-          declaracionNumero: s.declaracionNumero,
-          unidadRecaudadora: s.unidadRecaudadora,
-          codigo1: s.codigo1,
-          codigo2: s.codigo2, // Codigo MUR
-          banco: s.banco,
-          bancoOtros: s.bancoOtros,
-          numeroCuenta: s.numeroCuenta,
-          monedaCuenta: s.monedaCuenta,
-          monedaCuentaOtros: s.monedaCuentaOtros,
-          elaborarChequeA: s.elaborarChequeA,
-          elaborarTransferenciaA: s.elaborarTransferenciaA,
-          impuestosPagadosCliente: s.impuestosPagadosCliente,
-          impuestosPagadosRC: s.impuestosPagadosRC,
-          impuestosPagadosTB: s.impuestosPagadosTB,
-          impuestosPagadosCheque: s.impuestosPagadosCheque,
-          impuestosPendientesCliente: s.impuestosPendientesCliente,
-          documentosAdjuntos: s.documentosAdjuntos,
-          constanciasNoRetencion: s.constanciasNoRetencion,
-          constanciasNoRetencion1: s.constanciasNoRetencion1,
-          constanciasNoRetencion2: s.constanciasNoRetencion2,
-          correo: s.correo,
-          observation: s.observation,
-        }))
-      };
-      downloadExcelFile(examDataForExport);
+      const headers = ["ID Solicitud", "Fecha de Examen", "Monto", "Moneda Monto", "Gestor", "NE Examen", "Referencia Examen", "Destinatario Examen"];
+      const dataToExport = fetchedSolicitudes.map(s => ({
+        "ID Solicitud": s.solicitudId,
+        "Fecha de Examen": s.examDate instanceof Date ? format(s.examDate, "yyyy-MM-dd HH:mm", { locale: es }) : 'N/A',
+        "Monto": s.monto, // Export raw number
+        "Moneda Monto": s.montoMoneda,
+        "Gestor": s.examManager,
+        "NE Examen": s.examNe,
+        "Referencia Examen": s.examReference || 'N/A',
+        "Destinatario Examen": s.examRecipient,
+      }));
+      downloadExcelFileFromTable(dataToExport, headers, `Reporte_Solicitudes_${searchType}_${new Date().toISOString().split('T')[0]}.xlsx`);
     } else {
-      alert("No hay datos de examen para exportar. Realice una búsqueda primero.");
+      setError("No hay datos para exportar. Realice una búsqueda primero.");
+    }
+  };
+  
+  const renderSearchInputs = () => {
+    switch (searchType) {
+      case "ne":
+      case "solicitudId":
+      case "manager":
+        return (
+          <Input
+            type="text"
+            placeholder={
+              searchType === "ne" ? "Ingrese NE (Ej: NX1-12345)" :
+              searchType === "solicitudId" ? "Ingrese ID Solicitud Completo" :
+              "Ingrese Nombre del Gestor"
+            }
+            value={searchTermText}
+            onChange={(e) => setSearchTermText(e.target.value)}
+            className="flex-grow"
+            aria-label="Término de búsqueda"
+          />
+        );
+      case "dateToday":
+        return <p className="text-sm text-muted-foreground flex-grow items-center flex h-10">Se buscarán las solicitudes de hoy.</p>;
+      case "dateSpecific":
+        return (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-full justify-start text-left font-normal flex-grow",
+                  !selectedDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {selectedDate ? format(selectedDate, "PPP", { locale: es }) : <span>Seleccione una fecha</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                initialFocus
+                locale={es}
+              />
+            </PopoverContent>
+          </Popover>
+        );
+      case "dateRange":
+        return (
+          <div className="flex flex-col sm:flex-row gap-2 flex-grow">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full sm:w-1/2 justify-start text-left font-normal",
+                    !startDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, "PPP", { locale: es }) : <span>Fecha Inicio</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus locale={es} />
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full sm:w-1/2 justify-start text-left font-normal",
+                    !endDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDate ? format(endDate, "PPP", { locale: es }) : <span>Fecha Fin</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={endDate} onSelect={setEndDate} initialFocus locale={es} />
+              </PopoverContent>
+            </Popover>
+          </div>
+        );
+      default:
+        return null;
     }
   };
 
@@ -222,25 +409,50 @@ export default function DatabasePage() {
           <CardHeader>
             <CardTitle className="text-2xl font-semibold text-foreground">Base de Datos de Solicitudes de Cheque</CardTitle>
             <CardDescription className="text-muted-foreground">
-              Busque por NE (Seguimiento NX1) para ver todas las solicitudes asociadas.
+              Seleccione un tipo de búsqueda e ingrese los criterios.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSearch} className="flex flex-col sm:flex-row items-center gap-3 mb-6">
-              <Input
-                type="text"
-                placeholder="Ingrese NE (Ej: NX1-12345)"
-                value={searchTermNE}
-                onChange={(e) => setSearchTermNE(e.target.value)}
-                className="flex-grow"
-                aria-label="Buscar por NE"
-              />
-              <Button type="submit" className="btn-primary w-full sm:w-auto" disabled={isLoading}>
-                <Search className="mr-2 h-4 w-4" /> {isLoading ? 'Buscando...' : 'Ejecutar Búsqueda'}
-              </Button>
-              <Button type="button" onClick={handleExport} variant="outline" className="w-full sm:w-auto" disabled={!fetchedSolicitudes || isLoading || (fetchedSolicitudes && fetchedSolicitudes.length === 0) }>
-                <Download className="mr-2 h-4 w-4" /> Exportar
-              </Button>
+            <form onSubmit={handleSearch} className="space-y-4 mb-6">
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <Select value={searchType} onValueChange={(value) => {
+                  setSearchType(value as SearchType);
+                  setSearchTermText('');
+                  setSelectedDate(undefined);
+                  setStartDate(undefined);
+                  setEndDate(undefined);
+                  setFetchedSolicitudes(null);
+                  setError(null);
+                  setCurrentSearchTermForDisplay('');
+                }}>
+                  <SelectTrigger className="w-full sm:w-[200px] shrink-0">
+                    <SelectValue placeholder="Tipo de búsqueda" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ne">Por NE</SelectItem>
+                    <SelectItem value="solicitudId">Por ID Solicitud</SelectItem>
+                    <SelectItem value="manager">Por Gestor</SelectItem>
+                    <SelectItem value="dateToday">Por Fecha (Hoy)</SelectItem>
+                    <SelectItem value="dateSpecific">Por Fecha (Específica)</SelectItem>
+                    <SelectItem value="dateRange">Por Fecha (Rango)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {renderSearchInputs()}
+              </div>
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <Button type="submit" className="btn-primary w-full sm:w-auto" disabled={isLoading}>
+                  <Search className="mr-2 h-4 w-4" /> {isLoading ? 'Buscando...' : 'Ejecutar Búsqueda'}
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={handleExport} 
+                  variant="outline" 
+                  className="w-full sm:w-auto" 
+                  disabled={!fetchedSolicitudes || isLoading || (fetchedSolicitudes && fetchedSolicitudes.length === 0) }
+                >
+                  <Download className="mr-2 h-4 w-4" /> Exportar Tabla
+                </Button>
+              </div>
             </form>
 
             {isLoading && (
@@ -255,17 +467,17 @@ export default function DatabasePage() {
                 {error}
               </div>
             )}
-
-            {fetchedSolicitudes && !isLoading && <SearchResultsTable solicitudes={fetchedSolicitudes} />}
             
-            {!fetchedSolicitudes && !isLoading && !error && searchTermNE && (
-                 <div className="mt-4 p-4 bg-yellow-500/10 text-yellow-700 border border-yellow-500/30 rounded-md text-center">
-                    Inicie una búsqueda para ver resultados o verifique el NE ingresado.
+            {fetchedSolicitudes && !isLoading && <SearchResultsTable solicitudes={fetchedSolicitudes} searchType={searchType} searchTerm={currentSearchTermForDisplay}/>}
+            
+            {!fetchedSolicitudes && !isLoading && !error && !currentSearchTermForDisplay && (
+                 <div className="mt-4 p-4 bg-blue-500/10 text-blue-700 border border-blue-500/30 rounded-md text-center">
+                    Seleccione un tipo de búsqueda e ingrese los criterios para ver resultados.
                  </div>
             )}
-             {!fetchedSolicitudes && !isLoading && !error && !searchTermNE && (
-                 <div className="mt-4 p-4 bg-blue-500/10 text-blue-700 border border-blue-500/30 rounded-md text-center">
-                    Ingrese un NE para buscar solicitudes de cheque.
+             {!fetchedSolicitudes && !isLoading && !error && currentSearchTermForDisplay && ( // This case might be covered by SearchResultsTable's empty message
+                 <div className="mt-4 p-4 bg-yellow-500/10 text-yellow-700 border border-yellow-500/30 rounded-md text-center">
+                    No se encontraron resultados para "{currentSearchTermForDisplay}". Verifique los criterios.
                  </div>
             )}
           </CardContent>
