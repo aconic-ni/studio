@@ -2,41 +2,41 @@
 "use client";
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { useAppContext, ExamStep } from '@/context/AppContext';
+import { useAppContext, SolicitudStep } from '@/context/AppContext'; // Renamed SolicitudStep
 import { CheckCircle, FilePlus, RotateCcw, Save } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, Timestamp } from "firebase/firestore";
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import type { SolicitudRecord } from '@/types';
+import type { SolicitudRecord, InitialDataContext } from '@/types'; // Added InitialDataContext
 
 export function SuccessModal() {
-  const { currentStep, setCurrentStep, resetApp, examData, solicitudes } = useAppContext();
+  const { currentStep, setCurrentStep, resetApp, initialContextData, solicitudes } = useAppContext(); // Renamed examData
   const { user } = useAuth();
   const { toast } = useToast();
 
   const handleSaveToDatabase = async () => {
-    if (!examData || !user || !user.email || !solicitudes || solicitudes.length === 0) {
+    if (!initialContextData || !user || !user.email || !solicitudes || solicitudes.length === 0) { // Renamed examData
       toast({
         title: "Error al guardar",
-        description: "Faltan datos del examen, información del usuario o no hay solicitudes para guardar.",
+        description: "Faltan datos iniciales, información del usuario o no hay solicitudes para guardar.",
         variant: "destructive",
       });
       return;
     }
 
-    if (!examData.ne) {
+    if (!initialContextData.ne) { // Renamed examData
       toast({
         title: "Error al guardar",
-        description: "El número NE del examen es requerido para guardar.",
+        description: "El número NE es requerido para guardar.",
         variant: "destructive",
       });
       return;
     }
-    if (!(examData.date instanceof Date) || isNaN(examData.date.getTime())) {
+    if (!(initialContextData.date instanceof Date) || isNaN(initialContextData.date.getTime())) { // Renamed examData
         toast({
-            title: "Error en Fecha de Examen",
-            description: "La fecha del examen no es válida.",
+            title: "Error en Fecha de Solicitud",
+            description: "La fecha de la solicitud no es válida.",
             variant: "destructive",
         });
         return;
@@ -61,11 +61,11 @@ export function SuccessModal() {
         }
 
         const docData: SolicitudRecord = {
-          examNe: examData.ne,
-          examReference: examData.reference || null,
-          examManager: examData.manager,
-          examDate: Timestamp.fromDate(examData.date),
-          examRecipient: examData.recipient,
+          examNe: initialContextData.ne, // Field name in DB remains examNe
+          examReference: initialContextData.reference || null,
+          examManager: initialContextData.manager,
+          examDate: Timestamp.fromDate(initialContextData.date),
+          examRecipient: initialContextData.recipient,
 
           solicitudId: solicitud.id,
           monto: montoAsNumber ?? null,
@@ -101,7 +101,7 @@ export function SuccessModal() {
           savedBy: user.email,
         };
 
-        const solicitudDocRef = doc(db, "SolicitudCheques", solicitud.id); // Updated collection name
+        const solicitudDocRef = doc(db, "SolicitudCheques", solicitud.id);
         await setDoc(solicitudDocRef, docData);
       }
 
@@ -130,12 +130,12 @@ export function SuccessModal() {
   };
 
 
-  if (currentStep !== ExamStep.SUCCESS) {
+  if (currentStep !== SolicitudStep.SUCCESS) { // Renamed Step
     return null;
   }
 
   return (
-    <Dialog open={currentStep === ExamStep.SUCCESS} onOpenChange={() => { /* Controlled by AppContext */ }}>
+    <Dialog open={currentStep === SolicitudStep.SUCCESS} onOpenChange={() => { /* Controlled by AppContext */ }}> {/* Renamed Step */}
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="items-center text-center">
           <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
@@ -144,17 +144,10 @@ export function SuccessModal() {
         <DialogDescription asChild>
            <div className="text-center text-muted-foreground space-y-3">
               <div>La solicitud de cheque ha sido registrada correctamente.</div>
-              {examData?.manager && <div>Gracias por tu desempeño, {examData.manager}.</div>}
+              {initialContextData?.manager && <div>Gracias por tu desempeño, {initialContextData.manager}.</div>} {/* Renamed examData */}
               {/*
               <div className="text-sm mt-4 mb-2">
                  Puedes añadir imágenes/soportes del predio/solicitud (enlace a configurar).
-                 <Link
-                  href="YOUR_SHAREPOINT_LINK_HERE" // Replace with actual link
-                  target="_blank"
-                  className="text-primary underline hover:text-primary/80"
-                >
-                  aquí
-                </Link>
               </div>
               */}
            </div>
@@ -164,15 +157,15 @@ export function SuccessModal() {
           <Button
             onClick={handleSaveToDatabase}
             variant="destructive"
-            size="icon" // Makes it h-10 w-10
+            size="icon"
             aria-label="Guardar en Base de Datos"
           >
             <Save className="h-5 w-5 text-destructive-foreground" />
           </Button>
-          <Button onClick={() => setCurrentStep(ExamStep.PREVIEW)} variant="outline" size="default" className="w-full sm:w-auto"> {/* default is h-10 */}
-             <RotateCcw className="mr-2 h-4 w-4" /> Revisar Solicitud
+          <Button onClick={() => setCurrentStep(SolicitudStep.PREVIEW)} variant="outline" size="default" className="w-full sm:w-auto"> {/* Renamed Step */}
+             <RotateCcw className="mr-2 h-4 w-4" /> Revisar Solicitud        
           </Button>
-          <Button onClick={() => resetApp()} size="default" className="btn-primary w-full sm:w-auto"> {/* default is h-10 */}
+          <Button onClick={() => resetApp()} className="btn-primary w-full sm:w-auto" size="default">
             <FilePlus className="mr-2 h-4 w-4" /> Empezar Nuevo
           </Button>
         </div>

@@ -1,7 +1,8 @@
 
 import type { Timestamp } from 'firebase/firestore';
 
-export interface ExamData {
+// Represents the data collected in the initial form, held in AppContext
+export interface InitialDataContext {
   ne: string;
   reference: string;
   manager: string; // "De (Nombre colaborador)"
@@ -58,8 +59,8 @@ export interface AppUser {
 
 // Represents the structure of each document in the "SolicitudCheques" collection
 export interface SolicitudRecord {
-  // Fields from ExamData (general context)
-  examNe: string;
+  // Fields from InitialDataContext (general context for the set of solicituds)
+  examNe: string; // Remains 'examNe' as it refers to the specific "examen" tracking number
   examReference: string | null;
   examManager: string;
   examDate: Timestamp; // Firestore Timestamp
@@ -108,15 +109,15 @@ export interface SolicitudRecord {
 
   // New fields for payment status
   paymentStatus?: string; // e.g., "Pagado", "Error: (mensaje)"
-  paymentStatusLastUpdatedAt?: Timestamp; // Firestore Timestamp for when payment status was last changed
-  paymentStatusLastUpdatedBy?: string; // User's email who last changed payment status
+  paymentStatusLastUpdatedAt?: Timestamp | Date;
+  paymentStatusLastUpdatedBy?: string;
 }
 
 
-// For the "DatabasePage" when exporting, it combines ExamData-like info with SolicitudData-like info
-export interface ExportableExamData extends Omit<ExamData, 'date'> {
+// For exporting, it combines InitialDataContext-like info with SolicitudData-like info
+export interface ExportableSolicitudContextData extends Omit<InitialDataContext, 'date'> {
   date?: Date | Timestamp | null;
-  products?: SolicitudData[] | null; // 'products' is used historically, but contains SolicitudData
+  products?: SolicitudData[] | null; // 'products' is used historically, contains SolicitudData
   savedAt?: Timestamp | Date | null;
   savedBy?: string | null;
 }

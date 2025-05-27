@@ -2,30 +2,28 @@
 "use client";
 import type React from 'react';
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { ExamData, SolicitudData, AppUser as AuthAppUser } from '@/types';
-// Removed uuidv4 import as ID is now custom generated
+import type { InitialDataContext, SolicitudData, AppUser as AuthAppUser } from '@/types';
 import { useAuth } from './AuthContext';
-import { format } from 'date-fns'; // For formatting date in ID
+import { format } from 'date-fns';
 
-export enum ExamStep {
-  INITIAL_INFO = 1,
-  PRODUCT_LIST = 2,
+export enum SolicitudStep { // Renamed from ExamStep
+  INITIAL_DATA = 1, // Renamed from INITIAL_INFO
+  PRODUCT_LIST = 2, // Conceptually, this is now SolicitudList
   PREVIEW = 3,
   SUCCESS = 4,
 }
 
 interface AppContextType {
-  examData: ExamData | null;
+  initialContextData: InitialDataContext | null; // Renamed from examData
   solicitudes: SolicitudData[];
-  currentStep: ExamStep;
+  currentStep: SolicitudStep; // Renamed from ExamStep
   editingSolicitud: SolicitudData | null;
-  // Removed product detail modal states as per previous change
   isAddProductModalOpen: boolean;
-  setExamData: (data: ExamData) => void;
-  addSolicitud: (solicitudData: Omit<SolicitudData, 'id'>) => void; // ID will be generated internally
+  setInitialContextData: (data: InitialDataContext) => void; // Renamed from setExamData
+  addSolicitud: (solicitudData: Omit<SolicitudData, 'id'>) => void;
   updateSolicitud: (updatedSolicitud: SolicitudData) => void;
   deleteSolicitud: (solicitudId: string) => void;
-  setCurrentStep: (step: ExamStep) => void;
+  setCurrentStep: (step: SolicitudStep) => void; // Renamed from ExamStep
   setEditingSolicitud: (solicitud: SolicitudData | null) => void;
   openAddProductModal: (solicitudToEdit?: SolicitudData | null) => void;
   closeAddProductModal: () => void;
@@ -35,9 +33,9 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
-  const [examData, setExamDataState] = useState<ExamData | null>(null);
+  const [initialContextData, setInitialContextDataState] = useState<InitialDataContext | null>(null); // Renamed
   const [solicitudes, setSolicitudes] = useState<SolicitudData[]>([]);
-  const [currentStep, setCurrentStepState] = useState<ExamStep>(ExamStep.INITIAL_INFO);
+  const [currentStep, setCurrentStepState] = useState<SolicitudStep>(SolicitudStep.INITIAL_DATA); // Renamed
   const [editingSolicitud, setEditingSolicitudState] = useState<SolicitudData | null>(null);
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
 
@@ -45,9 +43,9 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   const [internalUser, setInternalUser] = useState<AuthAppUser | null>(authUser);
 
   const resetApp = useCallback(() => {
-    setExamDataState(null);
+    setInitialContextDataState(null); // Renamed
     setSolicitudes([]);
-    setCurrentStepState(ExamStep.INITIAL_INFO);
+    setCurrentStepState(SolicitudStep.INITIAL_DATA); // Renamed
     setEditingSolicitudState(null);
     setIsAddProductModalOpen(false);
   }, []);
@@ -65,37 +63,36 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   }, [authUser, internalUser, resetApp]);
 
 
-  const setExamData = useCallback((data: ExamData) => {
-    setExamDataState(prevExamData => ({ ...prevExamData, ...data }));
+  const setInitialContextData = useCallback((data: InitialDataContext) => { // Renamed
+    setInitialContextDataState(prevData => ({ ...prevData, ...data }));
   }, []);
 
   const addSolicitud = useCallback((solicitudData: Omit<SolicitudData, 'id'>) => {
-    if (!examData || !examData.ne) {
-      console.error("NE from examData is missing. Cannot generate Solicitud ID.");
-      // Consider showing a user-facing error toast here
+    if (!initialContextData || !initialContextData.ne) { // Renamed
+      console.error("NE from initialContextData is missing. Cannot generate Solicitud ID.");
       return;
     }
     const now = new Date();
     const datePart = format(now, 'yyyyMMdd');
     const timePart = format(now, 'HHmmss');
-    const newId = `${examData.ne}-${datePart}-${timePart}`;
+    const newId = `${initialContextData.ne}-${datePart}-${timePart}`; // Renamed
 
     const newSolicitud: SolicitudData = { ...solicitudData, id: newId };
     setSolicitudes((prevSolicitudes) => [...prevSolicitudes, newSolicitud]);
-  }, [examData]); // examData is a dependency
+  }, [initialContextData]); // Renamed
 
   const updateSolicitud = useCallback((updatedSolicitud: SolicitudData) => {
     setSolicitudes((prevSolicitudes) =>
       prevSolicitudes.map((s) => (s.id === updatedSolicitud.id ? updatedSolicitud : s))
     );
-    setEditingSolicitudState(null); // Clear editing state after update
+    setEditingSolicitudState(null);
   }, []);
 
   const deleteSolicitud = useCallback((solicitudId: string) => {
     setSolicitudes((prevSolicitudes) => prevSolicitudes.filter((s) => s.id !== solicitudId));
   }, []);
 
-  const setCurrentStep = useCallback((step: ExamStep) => {
+  const setCurrentStep = useCallback((step: SolicitudStep) => { // Renamed
     setCurrentStepState(step);
   }, []);
 
@@ -110,7 +107,6 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
 
   const closeAddProductModal = useCallback(() => {
     setIsAddProductModalOpen(false);
-    // Delay clearing editingSolicitud to allow modal to close gracefully if needed for animations
     setTimeout(() => setEditingSolicitudState(null), 150);
   }, []);
 
@@ -118,12 +114,12 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   return (
     <AppContext.Provider
       value={{
-        examData,
+        initialContextData, // Renamed
         solicitudes,
         currentStep,
         editingSolicitud,
         isAddProductModalOpen,
-        setExamData,
+        setInitialContextData, // Renamed
         addSolicitud,
         updateSolicitud,
         deleteSolicitud,

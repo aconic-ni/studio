@@ -2,8 +2,8 @@
 "use client";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useAppContext, ExamStep } from '@/context/AppContext';
-import { downloadTxtFile, downloadDetailedExcelFile } from '@/lib/fileExporter'; // Corrected import
+import { useAppContext, SolicitudStep } from '@/context/AppContext'; // Renamed SolicitudStep
+import { downloadTxtFile, downloadDetailedExcelFile } from '@/lib/fileExporter'; 
 import type { SolicitudData } from '@/types';
 import { Download, Check, ArrowLeft, FileType, User, Landmark, FileText, Banknote, Hash, Users, Mail, MessageSquare, Building, Code, CalendarDays, Info, Send, CheckSquare, Square } from 'lucide-react';
 import { format } from 'date-fns';
@@ -11,10 +11,7 @@ import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-// import { ClientPDFDownload } from '@/components/pdf/ClientPDFDownload'; // PDF Temporarily disabled
 
-
-// Helper component for displaying detail items in Preview
 const PreviewDetailItem: React.FC<{ label: string; value?: string | number | null | boolean, icon?: React.ElementType, className?: string }> = ({ label, value, icon: Icon, className }) => {
   let displayValue: string;
   if (typeof value === 'boolean') {
@@ -66,19 +63,19 @@ const getMonedaCuentaDisplayPreview = (solicitud: SolicitudData) => {
 
 
 export function PreviewScreen() {
-  const { examData, solicitudes, setCurrentStep } = useAppContext();
+  const { initialContextData, solicitudes, setCurrentStep } = useAppContext(); // Renamed examData
 
-  if (!examData) {
+  if (!initialContextData) { // Renamed examData
     return (
        <Card className="w-full max-w-5xl mx-auto custom-shadow">
         <CardHeader>
           <CardTitle className="text-xl md:text-2xl font-semibold text-foreground">Vista Previa de la Solicitud de Cheque</CardTitle>
-          <CardDescription className="text-muted-foreground">Cargando datos del examen...</CardDescription>
+          <CardDescription className="text-muted-foreground">Cargando datos iniciales...</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center p-10 text-muted-foreground">
-            No se encontraron datos del examen. Por favor, inicie una nueva solicitud.
-            <Button onClick={() => setCurrentStep(ExamStep.INITIAL_INFO)} className="mt-4">
+            No se encontraron datos iniciales. Por favor, inicie una nueva solicitud.
+            <Button onClick={() => setCurrentStep(SolicitudStep.INITIAL_DATA)} className="mt-4"> {/* Renamed Step */}
               Ir al Inicio
             </Button>
           </div>
@@ -88,19 +85,18 @@ export function PreviewScreen() {
   }
 
   const handleConfirm = () => {
-    setCurrentStep(ExamStep.SUCCESS);
+    setCurrentStep(SolicitudStep.SUCCESS); // Renamed Step
   };
 
   const handleDownloadExcel = () => {
-    if (examData) {
-      // This uses the detailed, per-solicitud sheet export
-      downloadDetailedExcelFile({ ...examData, products: solicitudes });
+    if (initialContextData) { // Renamed examData
+      downloadDetailedExcelFile({ ...initialContextData, products: solicitudes }); // Pass initialContextData
     }
   };
   
   const handleDownloadTxt = () => {
-     if (examData) {
-      downloadTxtFile(examData, solicitudes);
+     if (initialContextData) { // Renamed examData
+      downloadTxtFile(initialContextData, solicitudes); // Pass initialContextData
     }
   }
 
@@ -114,11 +110,11 @@ export function PreviewScreen() {
         <div>
           <h4 className="text-lg font-medium mb-2 text-foreground">Informacion General</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 bg-secondary/30 p-4 rounded-md shadow-sm text-sm">
-            <PreviewDetailItem label="A (Destinatario)" value={examData.recipient} icon={Send} />
-            <PreviewDetailItem label="De (Colaborador)" value={examData.manager} icon={User} />
-            <PreviewDetailItem label="Fecha de Examen" value={examData.date ? format(new Date(examData.date), "PPP", { locale: es }) : 'N/A'} icon={CalendarDays} />
-            <PreviewDetailItem label="NE (Tracking NX1)" value={examData.ne} icon={Info} />
-            <PreviewDetailItem label="Referencia" value={examData.reference || 'N/A'} icon={FileText} />
+            <PreviewDetailItem label="A (Destinatario)" value={initialContextData.recipient} icon={Send} />
+            <PreviewDetailItem label="De (Colaborador)" value={initialContextData.manager} icon={User} />
+            <PreviewDetailItem label="Fecha de Solicitud" value={initialContextData.date ? format(new Date(initialContextData.date), "PPP", { locale: es }) : 'N/A'} icon={CalendarDays} />
+            <PreviewDetailItem label="NE (Tracking NX1)" value={initialContextData.ne} icon={Info} />
+            <PreviewDetailItem label="Referencia" value={initialContextData.reference || 'N/A'} icon={FileText} />
           </div>
         </div>
 
@@ -145,13 +141,13 @@ export function PreviewScreen() {
                       
                       <div className="pt-3">
                         <h6 className="text-sm font-medium text-accent mb-1">Información Adicional</h6>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
-                          <PreviewDetailItem label="Consignatario" value={solicitud.consignatario} icon={Users} />
-                          <PreviewDetailItem label="Declaración Número" value={solicitud.declaracionNumero} icon={Hash} />
-                          <PreviewDetailItem label="Unidad Recaudadora" value={solicitud.unidadRecaudadora} icon={Building} />
-                          <PreviewDetailItem label="Código 1" value={solicitud.codigo1} icon={Code} />
-                          <PreviewDetailItem label="Codigo MUR" value={solicitud.codigo2} icon={Code} />
-                        </div>
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4">
+                           <PreviewDetailItem label="Consignatario" value={solicitud.consignatario} icon={Users} />
+                           <PreviewDetailItem label="Declaración Número" value={solicitud.declaracionNumero} icon={Hash} />
+                           <PreviewDetailItem label="Unidad Recaudadora" value={solicitud.unidadRecaudadora} icon={Building} />
+                           <PreviewDetailItem label="Código 1" value={solicitud.codigo1} icon={Code} />
+                           <PreviewDetailItem label="Codigo MUR" value={solicitud.codigo2} icon={Code} />
+                         </div>
                       </div>
 
                       
@@ -218,7 +214,7 @@ export function PreviewScreen() {
         </div>
 
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-border mt-6">
-            <Button variant="outline" onClick={() => setCurrentStep(ExamStep.PRODUCT_LIST)} className="hover:bg-accent/50 w-full sm:w-auto">
+            <Button variant="outline" onClick={() => setCurrentStep(SolicitudStep.PRODUCT_LIST)} className="hover:bg-accent/50 w-full sm:w-auto"> {/* Renamed Step */}
                 <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Lista de Solicitudes
             </Button>
             <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center sm:justify-end gap-3">
@@ -228,15 +224,6 @@ export function PreviewScreen() {
                 <Button variant="outline" onClick={handleDownloadExcel} className="hover:bg-accent/50 w-full sm:w-auto">
                     <Download className="mr-2 h-4 w-4" /> Descargar Excel
                 </Button>
-                {/* 
-                {isClient && examData && solicitudes && solicitudes.length > 0 && (
-                  <ClientPDFDownload 
-                    examData={examData} 
-                    solicitudes={solicitudes} 
-                    className="hover:bg-accent/50 w-full sm:w-auto" 
-                  />
-                )}
-                 */}
                 <Button onClick={handleConfirm} className="btn-primary w-full sm:w-auto">
                     <Check className="mr-2 h-4 w-4" /> Confirmar Solicitud
                 </Button>

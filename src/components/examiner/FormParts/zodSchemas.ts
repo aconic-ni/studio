@@ -1,7 +1,8 @@
 
 import { z } from 'zod';
 
-export const initialInfoSchema = z.object({
+// Renamed from initialInfoSchema
+export const initialDataSchema = z.object({
   ne: z.string().min(1, "NE es requerido."),
   reference: z.string().optional(),
   manager: z.string().min(1, "Nombre del Gestor es requerido."),
@@ -9,9 +10,10 @@ export const initialInfoSchema = z.object({
   recipient: z.string().min(1, "Destinatario es requerido."),
 });
 
-export type InitialInfoFormData = z.infer<typeof initialInfoSchema>;
+// Renamed from InitialInfoFormData
+export type InitialDataFormData = z.infer<typeof initialDataSchema>;
 
-// Zod schema for the "Nueva Solicitud" form
+// Zod schema for the "Nueva Solicitud" form (previously productSchema)
 export const solicitudSchema = z.object({
   id: z.string().optional(),
 
@@ -29,7 +31,7 @@ export const solicitudSchema = z.object({
   declaracionNumero: z.string().optional(),
   unidadRecaudadora: z.string().optional(),
   codigo1: z.string().optional(),
-  codigo2: z.string().optional(),
+  codigo2: z.string().optional(), // Codigo MUR
   
   banco: z.enum(['BAC', 'BANPRO', 'BANCENTRO', 'FICOSHA', 'AVANZ', 'ATLANTIDA', 'ACCION POR CHEQUE/NO APLICA BANCO', 'Otros'], { errorMap: () => ({ message: "Seleccione un banco." })}).optional(),
   bancoOtros: z.string().optional(),
@@ -53,7 +55,7 @@ export const solicitudSchema = z.object({
   constanciasNoRetencion2: z.boolean().default(false).optional(),
 
   correo: z.string().optional().refine(val => {
-    if (!val) return true; // Allow empty
+    if (!val) return true;
     return val.split(';').every(email => z.string().email().safeParse(email.trim()).success || email.trim() === '');
   }, "Uno o más correos no son válidos."),
   observation: z.string().optional(),
@@ -72,11 +74,6 @@ export const solicitudSchema = z.object({
       path: ['monedaCuentaOtros'],
     });
   }
-  // Removed the superRefine logic that required 'elaborarChequeA' or 'elaborarTransferenciaA'
 });
 
 export type SolicitudFormData = z.infer<typeof solicitudSchema>;
-// Keep old ProductFormData for compatibility if other parts of the app still use it,
-// but new forms should use SolicitudFormData
-export type ProductFormData = SolicitudFormData; // Alias for now
-export const productSchema = solicitudSchema; // Alias for now

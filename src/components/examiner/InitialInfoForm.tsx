@@ -1,15 +1,15 @@
 
 "use client";
-import * as React from 'react'; // Import React
+import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAppContext, ExamStep } from '@/context/AppContext';
-import type { InitialInfoFormData} from './FormParts/zodSchemas';
-import { initialInfoSchema } from './FormParts/zodSchemas';
+import { useAppContext, SolicitudStep } from '@/context/AppContext'; // Renamed SolicitudStep
+import type { InitialDataFormData } from './FormParts/zodSchemas'; // Renamed
+import { initialDataSchema } from './FormParts/zodSchemas'; // Renamed
 import { useAuth } from '@/context/AuthContext';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
@@ -18,7 +18,6 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
-// Helper function to extract and format name from email
 function extractNameFromEmail(email?: string | null): string {
   if (!email) return "";
   try {
@@ -34,33 +33,34 @@ function extractNameFromEmail(email?: string | null): string {
   }
 }
 
-export function InitialInfoForm() {
-  const { setExamData, setCurrentStep, examData: existingExamData } = useAppContext();
+// Renamed component function
+export function InitialDataForm() {
+  const { setInitialContextData, setCurrentStep, initialContextData: existingInitialContextData } = useAppContext(); // Renamed context data
   const { user } = useAuth();
-  const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false); // State for Popover
+  const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
 
   const defaultManagerName =
-    existingExamData?.manager ||
+    existingInitialContextData?.manager ||
     (user?.email ? extractNameFromEmail(user.email) : '');
 
-  const form = useForm<InitialInfoFormData>({
-    resolver: zodResolver(initialInfoSchema),
+  const form = useForm<InitialDataFormData>({ // Renamed type
+    resolver: zodResolver(initialDataSchema), // Renamed schema
     defaultValues: {
-      ne: existingExamData?.ne || '',
-      reference: existingExamData?.reference || '',
+      ne: existingInitialContextData?.ne || '',
+      reference: existingInitialContextData?.reference || '',
       manager: defaultManagerName || '',
-      date: existingExamData?.date || undefined,
-      recipient: existingExamData?.recipient || '',
+      date: existingInitialContextData?.date || undefined,
+      recipient: existingInitialContextData?.recipient || '',
     },
   });
 
-function onSubmit(data: InitialInfoFormData) {
-  setExamData({
-    ...existingExamData, // Preserve any existing data not in this form
+function onSubmit(data: InitialDataFormData) { // Renamed type
+  setInitialContextData({ // Renamed context setter
+    ...existingInitialContextData,
     ...data,
     reference: data.reference || "",
   });
-  setCurrentStep(ExamStep.PRODUCT_LIST);
+  setCurrentStep(SolicitudStep.PRODUCT_LIST); // Using SolicitudStep
 }
 
   return (
@@ -158,7 +158,7 @@ function onSubmit(data: InitialInfoFormData) {
                           selected={field.value}
                           onSelect={(date) => {
                             field.onChange(date);
-                            setIsDatePickerOpen(false); // Close popover on select
+                            setIsDatePickerOpen(false); 
                           }}
                           disabled={(date) =>
                             date > new Date() || date < new Date("1900-01-01")

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAppContext } from '@/context/AppContext';
-import type { SolicitudData, ExamData, SolicitudRecord } from '@/types';
+import type { SolicitudData, InitialDataContext, SolicitudRecord } from '@/types'; // Renamed ExamData
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,10 +17,6 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, Timestamp as FirestoreTimestamp } from 'firebase/firestore';
-// Import SolicitudDetailDocument if PDF download is re-enabled
-// import { PDFDownloadLink } from '@react-pdf/renderer';
-// import { SolicitudDetailDocument } from '@/components/pdf/SolicitudDetailDocument';
-
 
 const DetailItem: React.FC<{ label: string; value?: string | number | null | boolean; icon?: React.ElementType; className?: string }> = ({ label, value, icon: Icon, className }) => {
   let displayValue: string;
@@ -55,9 +51,9 @@ const CheckboxDetailItem: React.FC<{ label: string; checked?: boolean; subLabel?
 export default function SolicitudDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { examData: contextExamData, solicitudes: contextSolicitudes } = useAppContext();
+  const { initialContextData: contextInitialData, solicitudes: contextSolicitudes } = useAppContext(); // Renamed contextExamData
   
-  const [displayExamData, setDisplayExamData] = useState<ExamData | null>(null); // Initialize to null
+  const [displayInitialData, setDisplayInitialData] = useState<InitialDataContext | null>(null); // Renamed
   const [displaySolicitud, setDisplaySolicitud] = useState<SolicitudData | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -70,7 +66,7 @@ export default function SolicitudDetailPage() {
   }, []);
 
   useEffect(() => {
-    if (!isClient) return; // Wait for client mount
+    if (!isClient) return;
 
     if (!solicitudId) {
       toast({ title: "Error", description: "ID de solicitud no válido.", variant: "destructive" });
@@ -82,18 +78,16 @@ export default function SolicitudDetailPage() {
       setLoading(true);
       let foundInContext = false;
 
-      // Try to find in context first (useful if navigating from /examiner list)
-      if (contextExamData && contextSolicitudes && contextSolicitudes.length > 0) {
+      if (contextInitialData && contextSolicitudes && contextSolicitudes.length > 0) { // Renamed
         const found = contextSolicitudes.find(s => s.id === solicitudId);
         if (found) {
           setDisplaySolicitud(found);
-          setDisplayExamData(contextExamData);
+          setDisplayInitialData(contextInitialData); // Renamed
           foundInContext = true;
         }
       }
 
       if (!foundInContext) {
-        // If not found in context or context is empty, fetch from Firestore
         try {
           const docRef = doc(db, "SolicitudCheques", solicitudId);
           const docSnap = await getDoc(docRef);
@@ -101,15 +95,14 @@ export default function SolicitudDetailPage() {
           if (docSnap.exists()) {
             const record = docSnap.data() as SolicitudRecord;
             
-            const fetchedExamData: ExamData = {
+            const fetchedInitialData: InitialDataContext = { // Renamed
               ne: record.examNe,
               reference: record.examReference || '',
               manager: record.examManager,
-              // Ensure date is a JS Date object
               date: record.examDate instanceof FirestoreTimestamp ? record.examDate.toDate() : new Date(record.examDate),
               recipient: record.examRecipient,
             };
-            setDisplayExamData(fetchedExamData);
+            setDisplayInitialData(fetchedInitialData); // Renamed
 
             const fetchedSolicitudData: SolicitudData = {
               id: record.solicitudId,
@@ -157,7 +150,7 @@ export default function SolicitudDetailPage() {
 
     loadData();
 
-  }, [solicitudId, contextExamData, contextSolicitudes, router, toast, isClient]);
+  }, [solicitudId, contextInitialData, contextSolicitudes, router, toast, isClient]); // Renamed
 
 
   const handlePrint = () => {
@@ -201,7 +194,7 @@ export default function SolicitudDetailPage() {
     );
   }
 
-  if (!displaySolicitud || !displayExamData) {
+  if (!displaySolicitud || !displayInitialData) { // Renamed
     return (
       <AppShell>
         <div className="flex flex-col items-center justify-center h-screen text-center">
@@ -214,8 +207,6 @@ export default function SolicitudDetailPage() {
     );
   }
   
-  // const fileNameForPdf = `SolicitudCheque_${displayExamData.ne || 'SIN_NE'}_${displaySolicitud.id.slice(-6)}.pdf`;
-
   return (
     <AppShell>
       <div className="solicitud-detail-print-area py-2 md:py-5">
@@ -230,20 +221,6 @@ export default function SolicitudDetailPage() {
                 <Button variant="outline" onClick={handlePrint}>
                   <Printer className="mr-2 h-4 w-4" /> Imprimir
                 </Button>
-                 {/* PDF Download Link - Temporarily commented out
-                {isClient && displayExamData && displaySolicitud && (
-                  <PDFDownloadLink
-                    document={<SolicitudDetailDocument examData={displayExamData} solicitud={displaySolicitud} />}
-                    fileName={fileNameForPdf}
-                  >
-                    {({ loading: pdfLoading }) => (
-                      <Button variant="outline" disabled={pdfLoading}>
-                        <FileType className="mr-2 h-4 w-4" /> {pdfLoading ? 'Generando PDF...' : 'Descargar PDF'}
-                      </Button>
-                    )}
-                  </PDFDownloadLink>
-                )}
-                */}
               </div>
             </div>
           </CardHeader>
@@ -276,11 +253,11 @@ export default function SolicitudDetailPage() {
             <div className="mb-3 p-4 border border-border rounded-md bg-secondary/30 card-print-styles">
                 <h3 className="text-lg font-semibold mb-2 text-primary">Solicitud de Cheque</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-0">
-                  <DetailItem label="A" value={displayExamData.recipient} icon={Send} />
-                  <DetailItem label="De" value={displayExamData.manager} icon={User} />
-                  <DetailItem label="Fecha de Examen" value={displayExamData.date ? format(new Date(displayExamData.date), "PPP", { locale: es }) : 'N/A'} icon={CalendarDays} />
-                  <DetailItem label="NE (Tracking NX1)" value={displayExamData.ne} icon={Info} />
-                  <DetailItem label="Referencia" value={displayExamData.reference || 'N/A'} icon={FileText} className="md:col-span-2"/>
+                  <DetailItem label="A" value={displayInitialData.recipient} icon={Send} />
+                  <DetailItem label="De" value={displayInitialData.manager} icon={User} />
+                  <DetailItem label="Fecha de Solicitud" value={displayInitialData.date ? format(new Date(displayInitialData.date), "PPP", { locale: es }) : 'N/A'} icon={CalendarDays} />
+                  <DetailItem label="NE (Tracking NX1)" value={displayInitialData.ne} icon={Info} />
+                  <DetailItem label="Referencia" value={displayInitialData.reference || 'N/A'} icon={FileText} className="md:col-span-2"/>
                 </div>
               </div>
 
@@ -387,5 +364,3 @@ export default function SolicitudDetailPage() {
     </AppShell>
   );
 }
-
-    
