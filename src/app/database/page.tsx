@@ -178,9 +178,12 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
                   </TableCell>
                   <TableCell className="px-4 py-3 whitespace-nowrap text-sm font-medium text-foreground">{solicitud.solicitudId}</TableCell>
                   <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">
-                    {solicitud.examDate instanceof FirestoreTimestamp
-                      ? format(solicitud.examDate.toDate(), "PPP", { locale: es })
-                      : (solicitud.examDate instanceof Date ? format(solicitud.examDate, "PPP", { locale: es }) : 'N/A')}
+                    {solicitud.examDate &&
+  (solicitud.examDate instanceof FirestoreTimestamp
+    ? format(solicitud.examDate.toDate(), "PPP", { locale: es })
+    : (solicitud.examDate instanceof Date
+        ? format(solicitud.examDate, "PPP", { locale: es })
+        : 'N/A'))}
                   </TableCell>
                   <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{solicitud.examNe}</TableCell>
                   <TableCell className="px-4 py-3 whitespace-nowrap text-sm text-muted-foreground">{formatCurrencyFetched(solicitud.monto, solicitud.montoMoneda)}</TableCell>
