@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAppContext } from '@/context/AppContext';
-import type { SolicitudData, InitialDataContext, SolicitudRecord } from '@/types'; // Renamed ExamData
+import type { SolicitudData, InitialDataContext, SolicitudRecord } from '@/types';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,9 +51,9 @@ const CheckboxDetailItem: React.FC<{ label: string; checked?: boolean; subLabel?
 export default function SolicitudDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { initialContextData: contextInitialData, solicitudes: contextSolicitudes } = useAppContext(); // Renamed contextExamData
+  const { initialContextData: contextInitialData, solicitudes: contextSolicitudes } = useAppContext();
   
-  const [displayInitialData, setDisplayInitialData] = useState<InitialDataContext | null>(null); // Renamed
+  const [displayInitialData, setDisplayInitialData] = useState<InitialDataContext | null>(null);
   const [displaySolicitud, setDisplaySolicitud] = useState<SolicitudData | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -66,44 +66,47 @@ export default function SolicitudDetailPage() {
   }, []);
 
   useEffect(() => {
-    if (!isClient) return;
-
-    if (!solicitudId) {
-      toast({ title: "Error", description: "ID de solicitud no válido.", variant: "destructive" });
-      router.push('/examiner');
+    if (!isClient || !solicitudId) {
+      if (isClient && !solicitudId) { // Only toast if client and ID is missing post-mount
+         toast({ title: "Error", description: "ID de solicitud no válido.", variant: "destructive" });
+         router.push('/examiner');
+      }
+      if (!solicitudId) setLoading(false); // If no ID, stop loading
       return;
     }
-
+  
     const loadData = async () => {
       setLoading(true);
       let foundInContext = false;
-
-      if (contextInitialData && contextSolicitudes && contextSolicitudes.length > 0) { // Renamed
+  
+      // Try to load from context first
+      if (contextInitialData && contextSolicitudes && contextSolicitudes.length > 0) {
         const found = contextSolicitudes.find(s => s.id === solicitudId);
         if (found) {
           setDisplaySolicitud(found);
-          setDisplayInitialData(contextInitialData); // Renamed
+          setDisplayInitialData(contextInitialData);
           foundInContext = true;
         }
       }
-
+  
+      // If not found in context, fetch from Firestore
       if (!foundInContext) {
         try {
           const docRef = doc(db, "SolicitudCheques", solicitudId);
           const docSnap = await getDoc(docRef);
-
+  
           if (docSnap.exists()) {
             const record = docSnap.data() as SolicitudRecord;
             
-            const fetchedInitialData: InitialDataContext = { // Renamed
+            const fetchedInitialData: InitialDataContext = {
               ne: record.examNe,
               reference: record.examReference || '',
               manager: record.examManager,
               date: record.examDate instanceof FirestoreTimestamp ? record.examDate.toDate() : new Date(record.examDate),
               recipient: record.examRecipient,
             };
-            setDisplayInitialData(fetchedInitialData); // Renamed
-
+            setDisplayInitialData(fetchedInitialData);
+  
             const fetchedSolicitudData: SolicitudData = {
               id: record.solicitudId,
               monto: record.monto ?? undefined,
@@ -113,7 +116,7 @@ export default function SolicitudDetailPage() {
               declaracionNumero: record.declaracionNumero ?? undefined,
               unidadRecaudadora: record.unidadRecaudadora ?? undefined,
               codigo1: record.codigo1 ?? undefined,
-              codigo2: record.codigo2 ?? undefined,
+              codigo2: record.codigo2 ?? undefined, // Codigo MUR
               banco: record.banco ?? undefined,
               bancoOtros: record.bancoOtros ?? undefined,
               numeroCuenta: record.numeroCuenta ?? undefined,
@@ -134,23 +137,23 @@ export default function SolicitudDetailPage() {
               observation: record.observation ?? undefined,
             };
             setDisplaySolicitud(fetchedSolicitudData);
-
+  
           } else {
             toast({ title: "Error", description: "Solicitud no encontrada en la base de datos.", variant: "destructive" });
-            router.push('/examiner'); 
+            setDisplayInitialData(null); // Clear any potentially stale context data
+            setDisplaySolicitud(null);
           }
         } catch (error) {
           console.error("Error fetching solicitud from Firestore:", error);
           toast({ title: "Error", description: "No se pudo cargar la solicitud.", variant: "destructive" });
-          router.push('/examiner');
         }
       }
       setLoading(false);
     };
-
+  
     loadData();
-
-  }, [solicitudId, contextInitialData, contextSolicitudes, router, toast, isClient]); // Renamed
+  
+  }, [solicitudId, contextInitialData, contextSolicitudes, router, toast, isClient]);
 
 
   const handlePrint = () => {
@@ -194,7 +197,7 @@ export default function SolicitudDetailPage() {
     );
   }
 
-  if (!displaySolicitud || !displayInitialData) { // Renamed
+  if (!displaySolicitud || !displayInitialData) {
     return (
       <AppShell>
         <div className="flex flex-col items-center justify-center h-screen text-center">
@@ -234,7 +237,7 @@ export default function SolicitudDetailPage() {
                 data-ai-hint="company logo banner"
               />
             
-            <div className="mb-3 p-4 border border-border rounded-md bg-secondary/5 card-print-styles">
+             <div className="mb-3 p-4 border border-border rounded-md bg-secondary/5 card-print-styles">
                 <div className="grid grid-cols-[auto,1fr] gap-x-3 items-center">
                     <Label htmlFor="solicitudIdDisplay" className="flex items-center text-sm text-muted-foreground">
                         <Info className="mr-2 h-4 w-4 text-primary/70" />
@@ -254,7 +257,7 @@ export default function SolicitudDetailPage() {
                 <h3 className="text-lg font-semibold mb-2 text-primary">Solicitud de Cheque</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-0">
                   <DetailItem label="A" value={displayInitialData.recipient} icon={Send} />
-                  <DetailItem label="De" value={displayInitialData.manager} icon={User} />
+                  <DetailItem label="De (Usuario)" value={displayInitialData.manager} icon={User} />
                   <DetailItem label="Fecha de Solicitud" value={displayInitialData.date ? format(new Date(displayInitialData.date), "PPP", { locale: es }) : 'N/A'} icon={CalendarDays} />
                   <DetailItem label="NE (Tracking NX1)" value={displayInitialData.ne} icon={Info} />
                   <DetailItem label="Referencia" value={displayInitialData.reference || 'N/A'} icon={FileText} className="md:col-span-2"/>

@@ -2,7 +2,7 @@
 "use client";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useAppContext, SolicitudStep } from '@/context/AppContext'; // Renamed SolicitudStep
+import { useAppContext, SolicitudStep } from '@/context/AppContext';
 import { downloadTxtFile, downloadDetailedExcelFile } from '@/lib/fileExporter'; 
 import type { SolicitudData } from '@/types';
 import { Download, Check, ArrowLeft, FileType, User, Landmark, FileText, Banknote, Hash, Users, Mail, MessageSquare, Building, Code, CalendarDays, Info, Send, CheckSquare, Square } from 'lucide-react';
@@ -11,6 +11,10 @@ import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+// PDF Download is commented out due to unresolved errors
+// import dynamic from 'next/dynamic';
+// const DynamicClientPDFDownload = dynamic(() => import('@/components/pdf/ClientPDFDownload').then(mod => mod.ClientPDFDownload), { ssr: false, loading: () => <Button variant="outline" disabled><FileType className="mr-2 h-4 w-4" /> Cargando PDF...</Button> });
+
 
 const PreviewDetailItem: React.FC<{ label: string; value?: string | number | null | boolean, icon?: React.ElementType, className?: string }> = ({ label, value, icon: Icon, className }) => {
   let displayValue: string;
@@ -63,9 +67,9 @@ const getMonedaCuentaDisplayPreview = (solicitud: SolicitudData) => {
 
 
 export function PreviewScreen() {
-  const { initialContextData, solicitudes, setCurrentStep } = useAppContext(); // Renamed examData
+  const { initialContextData, solicitudes, setCurrentStep } = useAppContext();
 
-  if (!initialContextData) { // Renamed examData
+  if (!initialContextData) {
     return (
        <Card className="w-full max-w-5xl mx-auto custom-shadow">
         <CardHeader>
@@ -75,7 +79,7 @@ export function PreviewScreen() {
         <CardContent>
           <div className="text-center p-10 text-muted-foreground">
             No se encontraron datos iniciales. Por favor, inicie una nueva solicitud.
-            <Button onClick={() => setCurrentStep(SolicitudStep.INITIAL_DATA)} className="mt-4"> {/* Renamed Step */}
+            <Button onClick={() => setCurrentStep(SolicitudStep.INITIAL_DATA)} className="mt-4">
               Ir al Inicio
             </Button>
           </div>
@@ -85,18 +89,18 @@ export function PreviewScreen() {
   }
 
   const handleConfirm = () => {
-    setCurrentStep(SolicitudStep.SUCCESS); // Renamed Step
+    setCurrentStep(SolicitudStep.SUCCESS);
   };
 
   const handleDownloadExcel = () => {
-    if (initialContextData) { // Renamed examData
-      downloadDetailedExcelFile({ ...initialContextData, products: solicitudes }); // Pass initialContextData
+    if (initialContextData) {
+      downloadDetailedExcelFile({ ...initialContextData, products: solicitudes });
     }
   };
   
   const handleDownloadTxt = () => {
-     if (initialContextData) { // Renamed examData
-      downloadTxtFile(initialContextData, solicitudes); // Pass initialContextData
+     if (initialContextData) {
+      downloadTxtFile(initialContextData, solicitudes);
     }
   }
 
@@ -111,7 +115,7 @@ export function PreviewScreen() {
           <h4 className="text-lg font-medium mb-2 text-foreground">Informacion General</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 bg-secondary/30 p-4 rounded-md shadow-sm text-sm">
             <PreviewDetailItem label="A (Destinatario)" value={initialContextData.recipient} icon={Send} />
-            <PreviewDetailItem label="De (Colaborador)" value={initialContextData.manager} icon={User} />
+            <PreviewDetailItem label="De (Usuario)" value={initialContextData.manager} icon={User} />
             <PreviewDetailItem label="Fecha de Solicitud" value={initialContextData.date ? format(new Date(initialContextData.date), "PPP", { locale: es }) : 'N/A'} icon={CalendarDays} />
             <PreviewDetailItem label="NE (Tracking NX1)" value={initialContextData.ne} icon={Info} />
             <PreviewDetailItem label="Referencia" value={initialContextData.reference || 'N/A'} icon={FileText} />
@@ -214,7 +218,7 @@ export function PreviewScreen() {
         </div>
 
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-border mt-6">
-            <Button variant="outline" onClick={() => setCurrentStep(SolicitudStep.PRODUCT_LIST)} className="hover:bg-accent/50 w-full sm:w-auto"> {/* Renamed Step */}
+            <Button variant="outline" onClick={() => setCurrentStep(SolicitudStep.PRODUCT_LIST)} className="hover:bg-accent/50 w-full sm:w-auto">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Volver a Lista de Solicitudes
             </Button>
             <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center sm:justify-end gap-3">
@@ -224,6 +228,7 @@ export function PreviewScreen() {
                 <Button variant="outline" onClick={handleDownloadExcel} className="hover:bg-accent/50 w-full sm:w-auto">
                     <Download className="mr-2 h-4 w-4" /> Descargar Excel
                 </Button>
+                {/* <DynamicClientPDFDownload examData={initialContextData} solicitudes={solicitudes} className="w-full sm:w-auto"/> */}
                 <Button onClick={handleConfirm} className="btn-primary w-full sm:w-auto">
                     <Check className="mr-2 h-4 w-4" /> Confirmar Solicitud
                 </Button>

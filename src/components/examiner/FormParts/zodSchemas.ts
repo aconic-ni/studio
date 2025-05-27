@@ -5,7 +5,7 @@ import { z } from 'zod';
 export const initialDataSchema = z.object({
   ne: z.string().min(1, "NE es requerido."),
   reference: z.string().optional(),
-  manager: z.string().min(1, "Nombre del Gestor es requerido."),
+  manager: z.string().min(1, "Nombre del Usuario es requerido."), // Changed "Gestor" to "Usuario"
   date: z.date({ required_error: "Fecha es requerida." }),
   recipient: z.string().min(1, "Destinatario es requerido."),
 });
@@ -74,6 +74,14 @@ export const solicitudSchema = z.object({
       path: ['monedaCuentaOtros'],
     });
   }
+  // Monto is now the only required field, beneficiary fields are optional
+  // if (!data.elaborarChequeA?.trim() && !data.elaborarTransferenciaA?.trim()) {
+  //   ctx.addIssue({
+  //     code: z.ZodIssueCode.custom,
+  //     message: "Debe especificar al menos un beneficiario (para cheque o transferencia).",
+  //     path: ['elaborarChequeA'], 
+  //   });
+  // }
 });
 
 export type SolicitudFormData = z.infer<typeof solicitudSchema>;

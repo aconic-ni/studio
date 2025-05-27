@@ -63,7 +63,6 @@ interface SearchResultsTableProps {
   currentUserRole?: string;
   onUpdatePaymentStatus: (solicitudId: string, status: string | null, message?: string) => Promise<void>;
   onOpenMessageDialog: (solicitudId: string) => void;
-  // router prop is no longer needed here
 }
 
 const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
@@ -86,7 +85,7 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
   const getTitle = () => {
     if (searchType === "ne" && searchTerm) return `Solicitudes para NE: ${searchTerm}`;
     if (searchType === "solicitudId" && solicitudes.length > 0) return `Detalle Solicitud ID: ${solicitudes[0].solicitudId}`;
-    if (searchType === "manager" && searchTerm) return `Solicitudes del Gestor: ${searchTerm}`;
+    if (searchType === "manager" && searchTerm) return `Solicitudes del Usuario: ${searchTerm}`;
     if (searchType === "dateToday") return `Solicitudes de Hoy (${format(new Date(), "PPP", { locale: es })})`;
     if (searchType === "dateSpecific" && searchTerm) return `Solicitudes del ${searchTerm}`;
     if (searchType === "dateRange" && searchTerm) return `Solicitudes para el rango: ${searchTerm}`;
@@ -106,9 +105,9 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
               <TableRow>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Estado de Pago</TableHead>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">ID Solicitud</TableHead>
-                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha de Examen</TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Fecha de Solicitud</TableHead>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Monto</TableHead>
-                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Gestor</TableHead>
+                <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Usuario</TableHead>
                 <TableHead className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -124,8 +123,10 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
                             if (checked) {
                               onUpdatePaymentStatus(solicitud.solicitudId, 'Pagado');
                             } else {
+                              // Only allow unchecking if currently Pagado and no error message is being set
+                              // The message dialog flow will handle setting error status which implicitly unchecks
                               if (solicitud.paymentStatus === 'Pagado') {
-                                onUpdatePaymentStatus(solicitud.solicitudId, null);
+                                 onUpdatePaymentStatus(solicitud.solicitudId, null);
                               }
                             }
                           }}
@@ -206,7 +207,7 @@ const SearchResultsTable: React.FC<SearchResultsTableProps> = ({
 
 export default function DatabasePage() {
   const { user, loading: authLoading } = useAuth();
-  const router = useRouter(); // Keep for other potential navigation, but not for "Ver" in SearchResultsTable
+  const router = useRouter();
   const { toast } = useToast();
 
   const [searchType, setSearchType] = useState<SearchType>("ne");
@@ -237,9 +238,14 @@ export default function DatabasePage() {
       if (message && message.trim() !== '') {
         newStatus = `Error: ${message.trim()}`;
       } else if (message === '' && status && status.startsWith('Error:')) { 
-        // Clear error if message is empty and current status is an error
         newStatus = null; 
+      } else if (message === '' && !status) { // if message is empty and no explicit status is provided, it might mean clearing error.
+         const currentSolicitud = fetchedSolicitudes?.find(s => s.solicitudId === solicitudId);
+         if(currentSolicitud?.paymentStatus?.startsWith('Error:')) {
+            newStatus = null; // Clear error if message is empty and current status was an error
+         }
       }
+
 
       await updateDoc(docRef, {
         paymentStatus: newStatus,
@@ -251,8 +257,8 @@ export default function DatabasePage() {
         prev?.map(s =>
           s.solicitudId === solicitudId
             ? { ...s,
-                paymentStatus: newStatus || undefined, // Ensure undefined if null
-                paymentStatusLastUpdatedAt: new Date(), // Approximate client-side update for immediate UI feedback
+                paymentStatus: newStatus || undefined,
+                paymentStatusLastUpdatedAt: new Date(), 
                 paymentStatusLastUpdatedBy: user.email!
               }
             : s
@@ -262,7 +268,7 @@ export default function DatabasePage() {
       console.error("Error updating payment status: ", err);
       toast({ title: "Error", description: "No se pudo actualizar el estado de pago.", variant: "destructive" });
     }
-  }, [user, toast]);
+  }, [user, toast, fetchedSolicitudes]);
 
   const openMessageDialog = (solicitudId: string) => {
     setCurrentSolicitudIdForMessage(solicitudId);
@@ -278,14 +284,11 @@ export default function DatabasePage() {
   const handleSaveMessage = async () => {
     if (currentSolicitudIdForMessage) {
       const currentSolicitud = fetchedSolicitudes?.find(s => s.solicitudId === currentSolicitudIdForMessage);
-      // If message is empty and current status was an error, clear the error status
       if (messageText.trim() === '' && currentSolicitud?.paymentStatus?.startsWith('Error:')) {
         await handleUpdatePaymentStatus(currentSolicitudIdForMessage, null); 
       } else if (messageText.trim() !== '') {
-        // If message is not empty, set it as an error
         await handleUpdatePaymentStatus(currentSolicitudIdForMessage, `Error: ${messageText.trim()}`, messageText.trim());
       }
-      // If message is empty and status was not an error, nothing changes by saving empty message
     }
     setIsMessageDialogOpen(false);
     setMessageText('');
@@ -297,12 +300,11 @@ export default function DatabasePage() {
     setIsClient(true);
   }, []);
 
-  // Auth redirection effect
   useEffect(() => {
-    if (isClient && !authLoading) { // Ensure client side and auth is resolved
+    if (isClient && !authLoading) {
       const isAuthorized = user && (user.isStaticUser || user.role === 'revisor' || user.role === 'calificador');
       if (!isAuthorized) {
-        if (!fetchedSolicitudes) {
+        if (!fetchedSolicitudes) { 
           router.push('/');
         }
       }
@@ -337,7 +339,6 @@ export default function DatabasePage() {
             const data = {
                 ...docData,
                 solicitudId: docSnap.id,
-                // Convert Timestamps to Dates
                 examDate: (docData.examDate as FirestoreTimestamp).toDate(),
                 savedAt: (docData.savedAt as FirestoreTimestamp).toDate(),
                 paymentStatusLastUpdatedAt: docData.paymentStatusLastUpdatedAt ? (docData.paymentStatusLastUpdatedAt as FirestoreTimestamp).toDate() : undefined,
@@ -348,7 +349,7 @@ export default function DatabasePage() {
           setCurrentSearchTermForDisplay(searchTermText.trim());
           return;
         case "manager":
-          if (!searchTermText.trim()) { setError("Por favor, ingrese un nombre de Gestor para buscar."); setIsLoading(false); return; }
+          if (!searchTermText.trim()) { setError("Por favor, ingrese un nombre de Usuario para buscar."); setIsLoading(false); return; }
           q = query(solicitudsCollectionRef, where("examManager", "==", searchTermText.trim()), orderBy("examDate", "desc"));
           termForDisplay = searchTermText.trim();
           break;
@@ -399,7 +400,6 @@ export default function DatabasePage() {
             return {
               ...docData,
               solicitudId: doc.id,
-              // Convert Timestamps to Dates
               examDate: docData.examDate instanceof FirestoreTimestamp ? docData.examDate.toDate() : docData.examDate as Date,
               savedAt: docData.savedAt instanceof FirestoreTimestamp ? docData.savedAt.toDate() : docData.savedAt as Date,
               paymentStatusLastUpdatedAt: docData.paymentStatusLastUpdatedAt instanceof FirestoreTimestamp ? docData.paymentStatusLastUpdatedAt.toDate() : (docData.paymentStatusLastUpdatedAt ? docData.paymentStatusLastUpdatedAt as Date : undefined),
@@ -420,7 +420,7 @@ export default function DatabasePage() {
   const handleExport = () => {
     if (fetchedSolicitudes && fetchedSolicitudes.length > 0) {
       const headers = [
-        "Estado de Pago", "ID Solicitud", "Fecha de Examen", "NE Examen", "Referencia Examen", "Destinatario Examen", "Gestor", "Monto", "Moneda Monto", "Cantidad en Letras", 
+        "Estado de Pago", "ID Solicitud", "Fecha de Solicitud", "NE Solicitud", "Referencia Solicitud", "Destinatario Solicitud", "Usuario", "Monto", "Moneda Monto", "Cantidad en Letras", 
         "Consignatario", "Declaración Número", "Unidad Recaudadora", "Código 1", "Codigo MUR", "Banco", "Otro Banco", "Número de Cuenta", "Moneda de la Cuenta", "Otra Moneda Cuenta",
         "Elaborar Cheque A", "Elaborar Transferencia A", 
         "Impuestos Pagados Cliente", "R/C (Imp. Pagados)", "T/B (Imp. Pagados)", "Cheque (Imp. Pagados)",
@@ -432,11 +432,11 @@ export default function DatabasePage() {
       const dataToExport = fetchedSolicitudes.map(s => ({
         "Estado de Pago": s.paymentStatus || 'Pendiente',
         "ID Solicitud": s.solicitudId,
-        "Fecha de Examen": s.examDate instanceof Date ? format(s.examDate, "yyyy-MM-dd HH:mm", { locale: es }) : 'N/A',
-        "NE Examen": s.examNe,
-        "Referencia Examen": s.examReference || 'N/A',
-        "Destinatario Examen": s.examRecipient,
-        "Gestor": s.examManager,
+        "Fecha de Solicitud": s.examDate instanceof Date ? format(s.examDate, "yyyy-MM-dd HH:mm", { locale: es }) : 'N/A',
+        "NE Solicitud": s.examNe,
+        "Referencia Solicitud": s.examReference || 'N/A',
+        "Destinatario Solicitud": s.examRecipient,
+        "Usuario": s.examManager,
         "Monto": s.monto,
         "Moneda Monto": s.montoMoneda,
         "Cantidad en Letras": s.cantidadEnLetras || 'N/A',
@@ -444,7 +444,7 @@ export default function DatabasePage() {
         "Declaración Número": s.declaracionNumero || 'N/A',
         "Unidad Recaudadora": s.unidadRecaudadora || 'N/A',
         "Código 1": s.codigo1 || 'N/A',
-        "Codigo MUR": s.codigo2 || 'N/A',
+        "Codigo MUR": s.codigo2 || 'N/A', // Codigo MUR
         "Banco": s.banco === 'ACCION POR CHEQUE/NO APLICA BANCO' ? 'Acción por Cheque / No Aplica Banco' : s.banco || 'N/A',
         "Otro Banco": s.banco === 'Otros' ? (s.bancoOtros || 'N/A') : 'N/A',
         "Número de Cuenta": s.banco === 'ACCION POR CHEQUE/NO APLICA BANCO' ? 'N/A' : s.numeroCuenta || 'N/A',
@@ -477,7 +477,7 @@ export default function DatabasePage() {
       case "ne":
       case "solicitudId":
       case "manager":
-        return <Input type="text" placeholder={searchType === "ne" ? "Ingrese NE (Ej: NX1-12345)" : searchType === "solicitudId" ? "Ingrese ID Solicitud Completo" : "Ingrese Nombre del Gestor"} value={searchTermText} onChange={(e) => setSearchTermText(e.target.value)} className="flex-grow" aria-label="Término de búsqueda" />;
+        return <Input type="text" placeholder={searchType === "ne" ? "Ingrese NE (Ej: NX1-12345)" : searchType === "solicitudId" ? "Ingrese ID Solicitud Completo" : "Ingrese Nombre del Usuario"} value={searchTermText} onChange={(e) => setSearchTermText(e.target.value)} className="flex-grow" aria-label="Término de búsqueda" />;
       case "dateToday": return <p className="text-sm text-muted-foreground flex-grow items-center flex h-10">Se buscarán las solicitudes de hoy.</p>;
       case "dateSpecific":
         return (
@@ -497,7 +497,6 @@ export default function DatabasePage() {
     }
   };
 
-  // Initial loader: only for first mount or if auth is loading AND we have no prior results.
   if (!isClient || (authLoading && !fetchedSolicitudes)) {
     return <div className="min-h-screen flex items-center justify-center grid-bg"><Loader2 className="h-12 w-12 animate-spin text-white" /></div>;
   }
@@ -518,7 +517,7 @@ export default function DatabasePage() {
                   <SelectContent>
                     <SelectItem value="ne">Por NE</SelectItem>
                     <SelectItem value="solicitudId">Por ID Solicitud</SelectItem>
-                    <SelectItem value="manager">Por Gestor</SelectItem>
+                    <SelectItem value="manager">Por Usuario</SelectItem>
                     <SelectItem value="dateToday">Por Fecha (Hoy)</SelectItem>
                     <SelectItem value="dateSpecific">Por Fecha (Específica)</SelectItem>
                     <SelectItem value="dateRange">Por Fecha (Rango)</SelectItem>
@@ -563,5 +562,3 @@ export default function DatabasePage() {
     </AppShell>
   );
 }
-
-    

@@ -2,9 +2,9 @@
 "use client";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAppContext, SolicitudStep } from '@/context/AppContext'; // Renamed SolicitudStep
-import { ProductTable } from './ProductTable'; // Will be SolicitudTable conceptually
-import { AddProductModal } from './AddProductModal'; // Will be AddSolicitudModal conceptually
+import { useAppContext, SolicitudStep } from '@/context/AppContext';
+import { ProductTable } from './ProductTable';
+import { AddProductModal } from './AddProductModal';
 import { PlusCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -12,14 +12,14 @@ import { useToast } from "@/hooks/use-toast";
 
 
 export function ProductListScreen() {
-  const { initialContextData, setCurrentStep, openAddProductModal, solicitudes } = useAppContext(); // Renamed examData
+  const { initialContextData, setCurrentStep, openAddProductModal, solicitudes } = useAppContext();
   const { toast } = useToast();
 
-  if (!initialContextData) { // Renamed examData
+  if (!initialContextData) {
     return (
       <div className="text-center py-10">
         <p>Error: Datos iniciales de la solicitud no encontrados.</p>
-        <Button onClick={() => setCurrentStep(SolicitudStep.INITIAL_DATA)}>Volver al inicio</Button> {/* Renamed Step */}
+        <Button onClick={() => setCurrentStep(SolicitudStep.INITIAL_DATA)}>Volver al inicio</Button>
       </div>
     );
   }
@@ -33,7 +33,7 @@ export function ProductListScreen() {
         });
         return;
       }
-    setCurrentStep(SolicitudStep.PREVIEW); // Renamed Step
+    setCurrentStep(SolicitudStep.PREVIEW);
   }
 
   return (
@@ -55,21 +55,21 @@ export function ProductListScreen() {
         <div className="mb-6 p-4 bg-secondary/30 border border-border rounded-md shadow">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                 <div><span className="font-semibold">A:</span> {initialContextData.recipient}</div>
-                <div><span className="font-semibold">De:</span> {initialContextData.manager}</div>
+                <div><span className="font-semibold">De (Usuario):</span> {initialContextData.manager}</div>
                 <div><span className="font-semibold">Fecha:</span> {initialContextData.date ? format(new Date(initialContextData.date), "PPP", { locale: es }) : 'N/A'}</div>
                 <div><span className="font-semibold">NE:</span> {initialContextData.ne}</div>
                 <div><span className="font-semibold">Referencia:</span> {initialContextData.reference || 'N/A'}</div>
             </div>
             <div className="mt-3">
-                <Button variant="link" onClick={() => setCurrentStep(SolicitudStep.INITIAL_DATA)} className="text-primary p-0 h-auto hover:underline"> {/* Renamed Step */}
+                <Button variant="link" onClick={() => setCurrentStep(SolicitudStep.INITIAL_DATA)} className="text-primary p-0 h-auto hover:underline">
                     <ArrowLeft className="mr-1 h-4 w-4" /> Regresar para modificar
                 </Button>
             </div>
         </div>
 
-        <ProductTable /> {/* Conceptually SolicitudTable */}
+        <ProductTable />
       </CardContent>
-      <AddProductModal /> {/* Conceptually AddSolicitudModal */}
+      <AddProductModal />
     </Card>
   );
 }

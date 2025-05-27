@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAppContext, SolicitudStep } from '@/context/AppContext'; // Renamed SolicitudStep
-import type { InitialDataFormData } from './FormParts/zodSchemas'; // Renamed
-import { initialDataSchema } from './FormParts/zodSchemas'; // Renamed
+import { useAppContext, SolicitudStep } from '@/context/AppContext';
+import type { InitialDataFormData } from './FormParts/zodSchemas';
+import { initialDataSchema } from './FormParts/zodSchemas';
 import { useAuth } from '@/context/AuthContext';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
@@ -33,9 +33,8 @@ function extractNameFromEmail(email?: string | null): string {
   }
 }
 
-// Renamed component function
 export function InitialDataForm() {
-  const { setInitialContextData, setCurrentStep, initialContextData: existingInitialContextData } = useAppContext(); // Renamed context data
+  const { setInitialContextData, setCurrentStep, initialContextData: existingInitialContextData } = useAppContext();
   const { user } = useAuth();
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
 
@@ -43,8 +42,8 @@ export function InitialDataForm() {
     existingInitialContextData?.manager ||
     (user?.email ? extractNameFromEmail(user.email) : '');
 
-  const form = useForm<InitialDataFormData>({ // Renamed type
-    resolver: zodResolver(initialDataSchema), // Renamed schema
+  const form = useForm<InitialDataFormData>({
+    resolver: zodResolver(initialDataSchema),
     defaultValues: {
       ne: existingInitialContextData?.ne || '',
       reference: existingInitialContextData?.reference || '',
@@ -54,13 +53,13 @@ export function InitialDataForm() {
     },
   });
 
-function onSubmit(data: InitialDataFormData) { // Renamed type
-  setInitialContextData({ // Renamed context setter
+function onSubmit(data: InitialDataFormData) {
+  setInitialContextData({
     ...existingInitialContextData,
     ...data,
     reference: data.reference || "",
   });
-  setCurrentStep(SolicitudStep.PRODUCT_LIST); // Using SolicitudStep
+  setCurrentStep(SolicitudStep.PRODUCT_LIST);
 }
 
   return (
@@ -119,9 +118,9 @@ function onSubmit(data: InitialDataFormData) { // Renamed type
                 name="manager"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>De (Nombre colaborador) *</FormLabel>
+                    <FormLabel>De (Nombre Usuario) *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nombre completo del colaborador" {...field} value={field.value ?? ''} />
+                      <Input placeholder="Nombre completo del usuario" {...field} value={field.value ?? ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -158,7 +157,7 @@ function onSubmit(data: InitialDataFormData) { // Renamed type
                           selected={field.value}
                           onSelect={(date) => {
                             field.onChange(date);
-                            setIsDatePickerOpen(false); 
+                            setIsDatePickerOpen(false);
                           }}
                           disabled={(date) =>
                             date > new Date() || date < new Date("1900-01-01")

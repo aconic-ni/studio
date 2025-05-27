@@ -5,8 +5,8 @@ import type { Timestamp } from 'firebase/firestore';
 export interface InitialDataContext {
   ne: string;
   reference: string;
-  manager: string; // "De (Nombre colaborador)"
-  date: Date; // This will be a Date object in the app state
+  manager: string; // "De (Nombre Usuario)"
+  date: Date; 
   recipient: string; // "A:"
 }
 
@@ -60,9 +60,9 @@ export interface AppUser {
 // Represents the structure of each document in the "SolicitudCheques" collection
 export interface SolicitudRecord {
   // Fields from InitialDataContext (general context for the set of solicituds)
-  examNe: string; // Remains 'examNe' as it refers to the specific "examen" tracking number
+  examNe: string;
   examReference: string | null;
-  examManager: string;
+  examManager: string; // Represents the user who created the solicitud
   examDate: Timestamp; // Firestore Timestamp
   examRecipient: string;
 
