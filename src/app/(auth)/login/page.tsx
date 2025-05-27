@@ -16,12 +16,10 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    if (!isClient || loading) return; 
+    if (!isClient || loading) return;
 
-    if (user) { 
-      if (user.isStaticUser) {
-        router.push('/database');
-      } else if (user.role === 'revisor') {
+    if (user) {
+      if (user.isStaticUser || user.role === 'revisor' || user.role === 'calificador') {
         router.push('/database');
       } else { // Default for other Firebase authenticated users
         router.push('/examiner');
@@ -29,11 +27,12 @@ export default function LoginPage() {
     }
   }, [user, loading, router, isClient]);
 
-  const handleLoginSuccess = (isStaticUser?: boolean) => {
+  const handleLoginSuccess = () => {
     // Redirection is handled by the useEffect listening to AuthContext's 'user' state.
+    // Modal visibility for this page is always true until redirection.
   };
-  
-  if (!isClient || loading) { 
+
+  if (!isClient || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center grid-bg">
         <Loader2 className="h-16 w-16 animate-spin text-white" />
@@ -41,7 +40,7 @@ export default function LoginPage() {
     );
   }
 
-  if (user) {
+  if (user) { // If user exists, it means redirection is in progress or about to happen
     return (
       <div className="min-h-screen flex items-center justify-center grid-bg">
         <Loader2 className="h-16 w-16 animate-spin text-white" />
@@ -50,12 +49,13 @@ export default function LoginPage() {
     );
   }
 
+  // Only render LoginModal if not loading, client is ready, and no user (meaning they need to log in)
   return (
     <div className="min-h-screen flex items-center justify-center grid-bg">
-       <LoginModal 
-         isOpen={true} 
-         onClose={() => router.push('/')} 
-         onLoginSuccess={handleLoginSuccess} 
+       <LoginModal
+         isOpen={true} // This modal is always open on this dedicated login page
+         onClose={() => router.push('/')} // If user manually closes, redirect to home or handle appropriately
+         onLoginSuccess={handleLoginSuccess}
        />
     </div>
   );

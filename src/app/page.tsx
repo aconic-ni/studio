@@ -6,7 +6,7 @@ import { Building2 } from 'lucide-react';
 import { LoginModal } from '@/components/auth/LoginModal';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react'; 
+import { Loader2 } from 'lucide-react';
 
 export default function HomePage() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -21,10 +21,8 @@ export default function HomePage() {
   useEffect(() => {
     if (!isClient || loading) return;
 
-    if (user) { 
-      if (user.isStaticUser) {
-        router.push('/database');
-      } else if (user.role === 'revisor') {
+    if (user) {
+      if (user.isStaticUser || user.role === 'revisor' || user.role === 'calificador') {
         router.push('/database');
       } else { // Default for other Firebase authenticated users
         router.push('/examiner');
@@ -32,8 +30,9 @@ export default function HomePage() {
     }
   }, [user, loading, router, isClient]);
 
-  const handleLoginSuccess = (isStaticUser?: boolean) => {
-    setIsLoginModalOpen(false);
+  const handleLoginSuccess = () => {
+    setIsLoginModalOpen(false); // Close this page's modal
+    // Redirection is handled by the useEffect listening to AuthContext's 'user' state.
   };
 
   if (!isClient || loading) {
@@ -44,7 +43,7 @@ export default function HomePage() {
     );
   }
 
-  if (user) {
+  if (user) { // If user exists, redirection is in progress
      return (
       <div className="min-h-screen flex items-center justify-center grid-bg">
         <Loader2 className="h-16 w-16 animate-spin text-white" />
@@ -52,7 +51,7 @@ export default function HomePage() {
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center grid-bg text-white p-4">
       <main className="flex flex-col items-center text-center">
@@ -71,8 +70,8 @@ export default function HomePage() {
           <h1 className="text-4xl md:text-5xl font-bold">CustomsFA-L</h1>
           <p className="text-blue-200 mt-1 text-sm md:text-base">Sistema de FACTURACIÓN LOCAL</p>
         </header>
-        <Button 
-          onClick={() => setIsLoginModalOpen(true)} 
+        <Button
+          onClick={() => setIsLoginModalOpen(true)}
           className="text-white bg-[#4d7599] hover:bg-[#3a5670] text-lg px-8 py-4"
           size="lg"
         >
@@ -86,7 +85,7 @@ export default function HomePage() {
 
       <LoginModal
         isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)} 
+        onClose={() => setIsLoginModalOpen(false)}
         onLoginSuccess={handleLoginSuccess}
       />
     </div>

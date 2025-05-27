@@ -53,7 +53,7 @@ export interface AppUser {
   email: string | null;
   displayName?: string | null;
   isStaticUser?: boolean;
-  role?: string; // Added for user role (e.g., 'revisor')
+  role?: string; // e.g., 'revisor', 'calificador'
 }
 
 // Represents the structure of each document in the "SolicitudCheques" collection
@@ -105,6 +105,11 @@ export interface SolicitudRecord {
   // Metadata
   savedAt: Timestamp; // Firestore Timestamp
   savedBy: string | null; // User's email
+
+  // New fields for payment status
+  paymentStatus?: string; // e.g., "Pagado", "Error: (mensaje)"
+  paymentStatusLastUpdatedAt?: Timestamp; // Firestore Timestamp for when payment status was last changed
+  paymentStatusLastUpdatedBy?: string; // User's email who last changed payment status
 }
 
 
